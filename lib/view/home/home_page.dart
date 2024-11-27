@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:suriota_mobile_gateway/models/device_card_model.dart';
+import 'package:suriota_mobile_gateway/controller/device_controller.dart';
+import 'package:suriota_mobile_gateway/models/device_model.dart';
 import 'package:suriota_mobile_gateway/view/device_menu/device_menu.dart';
 import 'package:suriota_mobile_gateway/global/widgets/device_card.dart';
 import 'package:suriota_mobile_gateway/view/home/ble_scanner.dart';
@@ -9,20 +10,14 @@ import '../../constant/app_color.dart';
 import '../../constant/font_setup.dart';
 import '../../constant/image_asset.dart';
 import 'add_device_page.dart';
+import 'package:get/get.dart';
 
-class HomePage extends StatefulWidget {
+class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
-}
-
-class _HomePageState extends State<HomePage> {
-  List<DeviceCardModel> deviceList = deviceListDummy;
-  bool cardButtonStatus = true;
-
-  @override
   Widget build(BuildContext context) {
+    final deviceController = Get.put(DeviceController());
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -53,36 +48,63 @@ class _HomePageState extends State<HomePage> {
               'Device List',
               style: FontFamily.headlineMedium,
             ),
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: deviceList.length,
-              itemBuilder: (BuildContext context, int index) {
-                return InkWell(
-                  onTap: () {
-                    Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => DeviceMenuConfigurationPage(
-                                  title: 'Suriota Gateway ${index + 1}',
-                                )));
-                  },
-                  child: DeviceCard(
-                    deviceTitle: deviceList[index].deviceTitle,
-                    deviceAddress: deviceList[index].deviceAddress,
-                    buttonTitle: 'Connect',
-                    colorButton: deviceList[index].statusColor
-                        ? AppColor.primaryColor
-                        : AppColor.redColor,
-                    onPressed: () {
-                      setState(() {
-                        deviceList[index].statusColor =
-                            !deviceList[index].statusColor;
-                      });
-                    },
-                  ),
-                );
-              },
+            Obx(
+              () => (deviceController.deviceList.value == null ||
+                      deviceController.deviceList.value.isEmpty)
+                  ? const Center(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(vertical: 80),
+                        child: Text(
+                          "No Device",
+                          style: TextStyle(
+                              fontSize: 40,
+                              fontWeight: FontWeight.bold,
+                              color: AppColor.grey),
+                        ),
+                      ),
+                    )
+                  : ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: deviceController.deviceList.length,
+                      itemBuilder: (BuildContext context, int index) {
+                        return InkWell(
+                          onTap: () {
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) =>
+                                        DeviceMenuConfigurationPage(
+                                          title: 'Suriota Gateway ${index + 1}',
+                                        )));
+                          },
+                          child: Obx(
+                            () => DeviceCard(
+                              deviceTitle: deviceController
+                                  .deviceList[index].deviceTitle,
+                              deviceAddress: deviceController
+                                  .deviceList[index].deviceAddress,
+                              buttonTitle: 'Connect',
+                              colorButton: deviceController
+                                      .deviceList[index].deviceStatus.value
+                                  ? AppColor.primaryColor
+                                  : AppColor.redColor,
+                              onPressed: () {
+                                // setState(() {
+                                //   deviceList[index].deviceStatus =
+                                //       !deviceList[index].deviceStatus;
+                                // });
+                                deviceController
+                                        .deviceList[index].deviceStatus.value =
+                                    !deviceController
+                                        .deviceList[index].deviceStatus.value;
+                                // deviceController.removeDevice(index: index);
+                              },
+                            ),
+                          ),
+                        );
+                      },
+                    ),
             ),
           ],
         ),
@@ -92,8 +114,9 @@ class _HomePageState extends State<HomePage> {
         onPressed: () {
           // Navigator.push(context,
           //     MaterialPageRoute(builder: (context) => const AddDevicePage()));
-          Navigator.push(
-              context, MaterialPageRoute(builder: (context) => BleScanner()));
+          // Navigator.push(
+          //     context, MaterialPageRoute(builder: (context) => BleScanner()));
+          deviceController.addDevice(name: "Name", address: 'Tittle');
         },
         shape: (const CircleBorder()),
         child: const Icon(

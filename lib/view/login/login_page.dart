@@ -111,20 +111,28 @@ class _LoginPageState extends State<LoginPage> {
                 AppGap.gap24,
                 CustomButton(
                   onPressed: () {
-                    if (_formField.currentState!.validate()) {
-                      Navigator.pushAndRemoveUntil(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const HomePage(
-                                // title: 'Main Menu',
-                                )),
-                        (Route<dynamic> route) => false,
-                      );
-                    } else {
-                      showDialog(
-                          context: context,
-                          builder: (context) => const CustomDialog());
-                    }
+                    // if (_formField.currentState!.validate()) {
+                    //   Navigator.pushAndRemoveUntil(
+                    //     context,
+                    //     MaterialPageRoute(
+                    //         builder: (context) => const HomePage(
+                    //             // title: 'Main Menu',
+                    //             )),
+                    //     (Route<dynamic> route) => false,
+                    //   );
+                    // } else {
+                    //   showDialog(
+                    //       context: context,
+                    //       builder: (context) => const CustomDialog());
+                    // }
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const HomePage(
+                              // title: 'Main Menu',
+                              )),
+                      (Route<dynamic> route) => false,
+                    );
                   },
                   titleButton: 'SIGN IN',
                 ),
