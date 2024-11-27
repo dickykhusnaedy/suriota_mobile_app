@@ -80,7 +80,9 @@ class DeviceCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      deviceTitle ?? "Device Tittle",
+                      deviceTitle!.length > 20
+                          ? '${deviceTitle!.substring(0, 18)}...'
+                          : deviceTitle ?? "Device Tittle",
                       style: FontFamily.headlineMedium,
                     ),
                     Text(
