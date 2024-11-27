@@ -1,0 +1,5 @@
+enum CardButtonStatus {
+  connect,
+  pair,
+}
+
