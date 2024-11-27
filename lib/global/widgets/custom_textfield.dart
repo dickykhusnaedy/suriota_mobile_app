@@ -18,22 +18,25 @@ class CustomTextFormField extends StatelessWidget {
   final Widget? suffixIcon;
   final Widget? prefixIcon;
   final EdgeInsetsGeometry padding;
-  const CustomTextFormField({
-    super.key,
-    required this.labelTxt,
-    this.hintTxt = "",
-    this.labelTxtStyle,
-    this.hintTxtStyle,
-    this.suffixIcon,
-    this.prefixIcon,
-    this.errorTxt,
-    this.padding = const EdgeInsets.only(top: 4, bottom: 6),
-    this.controller,
-    this.validator,
-    this.readOnly = false,
-    this.onTap,
-    this.onChanges,
-  });
+  final TextInputType? keyboardType;
+  final bool? obscureText;
+  const CustomTextFormField(
+      {super.key,
+      required this.labelTxt,
+      this.hintTxt = "",
+      this.labelTxtStyle,
+      this.hintTxtStyle,
+      this.suffixIcon,
+      this.prefixIcon,
+      this.errorTxt,
+      this.padding = const EdgeInsets.only(top: 4, bottom: 6),
+      this.controller,
+      this.validator,
+      this.readOnly = false,
+      this.onTap,
+      this.onChanges,
+      this.keyboardType,
+      this.obscureText});
 
   @override
   Widget build(BuildContext context) {
@@ -49,7 +52,9 @@ class CustomTextFormField extends StatelessWidget {
           ),
           const Gap(4),
           TextFormField(
-            style: FontFamily.labelText,
+            obscureText: obscureText ?? false,
+            keyboardType: keyboardType,
+            style: FontFamily.normalText,
             controller: controller,
             validator: validator,
             onTap: onTap,
@@ -72,9 +77,9 @@ class CustomTextFormField extends StatelessWidget {
               errorText: errorTxt,
               border: borderStyle,
               enabledBorder: borderStyle,
-              focusedBorder: borderStyle,
-              focusedErrorBorder: borderStyle,
-              errorBorder: borderStyle,
+              focusedBorder: focusedBorder,
+              focusedErrorBorder: focusedErrorBorder,
+              errorBorder: errorBorder,
               disabledBorder: borderStyle,
             ),
           ),
@@ -84,9 +89,33 @@ class CustomTextFormField extends StatelessWidget {
   }
 
   OutlineInputBorder get borderStyle => OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         borderSide: const BorderSide(
           color: AppColor.primaryColor,
+          width: 1,
+        ),
+      );
+
+  OutlineInputBorder get focusedBorder => OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(
+          color: AppColor.primaryColor,
+          width: 2,
+        ),
+      );
+
+  OutlineInputBorder get errorBorder => OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(
+          color: Colors.red,
+          width: 1,
+        ),
+      );
+
+  OutlineInputBorder get focusedErrorBorder => OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(
+          color: Colors.red,
           width: 2,
         ),
       );

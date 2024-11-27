@@ -1,12 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:suriota_mobile_gateway/constant/app_color.dart';
-import 'package:suriota_mobile_gateway/view/profile.dart';
 
-import '../view/about_us_page.dart';
-import '../view/login_page.dart';
 import 'font_setup.dart';
-import 'image_asset.dart';
 
 ThemeData themeData() {
   return ThemeData(
@@ -60,90 +56,6 @@ Center dataEmptyView(BuildContext context, String message) {
           // 'Sorry, the data is not found!'.toUpperCase(),
           style: Theme.of(context).textTheme.headlineLarge,
         )
-      ],
-    ),
-  );
-}
-
-Padding sideBar(BuildContext context) {
-  return Padding(
-    padding: const EdgeInsets.all(8.0),
-    child: Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Image.asset(
-          ImageAsset.profile2,
-          height: 100,
-          fit: BoxFit.scaleDown,
-        ),
-        const SizedBox(
-          height: 10,
-        ),
-        Center(
-          child: Text(
-            'Jefferey Wijaya',
-            style: FontFamily.headlineLarge,
-          ),
-        ),
-        const SizedBox(
-          height: 100,
-        ),
-        ListTile(
-          leading: const Icon(
-            Icons.home,
-            color: AppColor.primaryColor,
-          ),
-          title: Text(
-            'Home',
-            style: FontFamily.normal,
-          ),
-          onTap: () {
-            Navigator.pop(context);
-          },
-        ),
-        ListTile(
-          leading: const Icon(
-            Icons.person,
-            color: AppColor.primaryColor,
-          ),
-          title: Text(
-            'Profile',
-            style: FontFamily.normal,
-          ),
-          onTap: () {
-            Navigator.push(context,
-                MaterialPageRoute(builder: (context) => const ProfilePage()));
-          },
-        ),
-        ListTile(
-          leading: const Icon(
-            Icons.info,
-            color: AppColor.primaryColor,
-          ),
-          title: Text(
-            'About Us',
-            style: FontFamily.normal,
-          ),
-          onTap: () {
-            Navigator.push(context,
-                MaterialPageRoute(builder: (context) => const AboutUsPage()));
-          },
-        ),
-        ListTile(
-          leading: const Icon(
-            Icons.logout,
-            color: AppColor.primaryColor,
-          ),
-          title: Text(
-            'Log Out',
-            style: FontFamily.normal,
-          ),
-          onTap: () {
-            Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (context) => const LoginPage()),
-                (Route route) => false);
-          },
-        ),
       ],
     ),
   );

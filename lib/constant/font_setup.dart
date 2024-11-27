@@ -41,4 +41,8 @@ class FontFamily {
     fontSize: 14,
     color: AppColor.grey,
   );
+  static TextStyle normalText = GoogleFonts.poppins(
+    fontSize: 14,
+    color: AppColor.darkGrey,
+  );
 }

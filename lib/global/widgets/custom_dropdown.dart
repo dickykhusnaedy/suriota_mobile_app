@@ -76,7 +76,7 @@ class _CustomDropdownState extends State<CustomDropdown> {
       popupProps: widget.listItem.length > 5
           ? PopupProps.dialog(
               fit: FlexFit.loose,
-              dialogProps: DialogProps(
+              dialogProps: const DialogProps(
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.all(Radius.circular(12))),
               ),
@@ -118,7 +118,7 @@ class _CustomDropdownState extends State<CustomDropdown> {
             )
           : PopupProps.menu(
               fit: FlexFit.loose,
-              menuProps: MenuProps(
+              menuProps: const MenuProps(
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.all(Radius.circular(12)))),
               showSelectedItems: true,

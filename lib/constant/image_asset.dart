@@ -2,8 +2,8 @@ class ImageAsset {
   ImageAsset._();
 
   static const logoSuriota = 'assets/logo_suriota.png';
-  static const profile = 'assets/jefferey.jpg';
-  static const profile2 = 'assets/profile2.png';
+  static const profile = 'assets/profile.jpg';
+  static const profile2 = 'assets/profile.jpg';
   static const iconBluetooth = 'assets/icon_bluetooth.png';
   static const companyImage = 'assets/company_image.jpg';
   static const iconGoogle = 'assets/google_icon.png';

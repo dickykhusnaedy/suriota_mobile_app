@@ -43,7 +43,7 @@ class CustomRadioTile extends StatelessWidget {
         activeColor: AppColor.primaryColor,
         focusColor: AppColor.primaryColor,
 
-        overlayColor: const MaterialStatePropertyAll(Colors.transparent),
+        overlayColor: const WidgetStatePropertyAll(Colors.transparent),
         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
         value: value,
         groupValue: grupValue,

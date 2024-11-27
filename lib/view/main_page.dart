@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:suriota_mobile_gateway/constant/app_color.dart';
 import 'package:suriota_mobile_gateway/constant/font_setup.dart';
-import 'package:suriota_mobile_gateway/view/about_us_page.dart';
-import 'package:suriota_mobile_gateway/view/homepage.dart';
-import 'package:suriota_mobile_gateway/view/login_page.dart';
-
+import 'package:suriota_mobile_gateway/view/sidebar_menu/about_us_page.dart';
+import 'package:suriota_mobile_gateway/view/home/home_page.dart';
+import 'package:suriota_mobile_gateway/view/login/login_page.dart';
 import '../constant/image_asset.dart';
-import 'profile.dart';
+import 'sidebar_menu/profile.dart';
 
 class MainMenuPage extends StatefulWidget {
   const MainMenuPage({super.key, required this.title});
@@ -36,15 +35,16 @@ class _MainMenuPageState extends State<MainMenuPage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Image.asset(
-                ImageAsset.profile2,
-                height: 100,
-                fit: BoxFit.scaleDown,
+              const Center(
+                child: CircleAvatar(
+                  radius: 100,
+                  backgroundImage: AssetImage(ImageAsset.profile2),
+                ),
               ),
               const SizedBox(height: 10),
               Center(
                 child: Text(
-                  'Jefferey Wijaya',
+                  'Rudi Soru',
                   style: FontFamily.headlineLarge,
                 ),
               ),
