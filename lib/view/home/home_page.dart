@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:suriota_mobile_gateway/controller/bluetooth_controller.dart';
 import 'package:suriota_mobile_gateway/controller/device_controller.dart';
 import 'package:suriota_mobile_gateway/models/device_model.dart';
 import 'package:suriota_mobile_gateway/view/device_menu/device_menu.dart';
@@ -17,7 +18,7 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final deviceController = Get.put(DeviceController());
+    final bluetoothController = Get.put(BluetoothController());
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -49,8 +50,8 @@ class HomePage extends StatelessWidget {
               style: FontFamily.headlineMedium,
             ),
             Obx(
-              () => (deviceController.deviceList.value == null ||
-                      deviceController.deviceList.value.isEmpty)
+              () => (bluetoothController.pairedDevices.value == null ||
+                      bluetoothController.pairedDevices.value.isEmpty)
                   ? const Center(
                       child: Padding(
                         padding: EdgeInsets.symmetric(vertical: 80),
@@ -66,39 +67,41 @@ class HomePage extends StatelessWidget {
                   : ListView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      itemCount: deviceController.deviceList.length,
+                      itemCount: bluetoothController.pairedDevices.length,
                       itemBuilder: (BuildContext context, int index) {
                         return InkWell(
+                          onLongPress: () =>
+                              bluetoothController.removeDevice(index: index),
                           onTap: () {
-                            Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) =>
-                                        DeviceMenuConfigurationPage(
-                                          title: 'Suriota Gateway ${index + 1}',
-                                        )));
+                            // Navigator.push(
+                            //     context,
+                            //     MaterialPageRoute(
+                            //         builder: (context) =>
+                            //             DeviceMenuConfigurationPage(
+                            //               title: 'Suriota Gateway ${index + 1}',
+                            //             )));
                           },
                           child: Obx(
                             () => DeviceCard(
-                              deviceTitle: deviceController
-                                  .deviceList[index].deviceTitle,
-                              deviceAddress: deviceController
-                                  .deviceList[index].deviceAddress,
+                              deviceTitle: bluetoothController
+                                  .pairedDevices[index].deviceTitle,
+                              deviceAddress: bluetoothController
+                                  .pairedDevices[index].deviceAddress,
                               buttonTitle: 'Connect',
-                              colorButton: deviceController
-                                      .deviceList[index].deviceStatus.value
-                                  ? AppColor.primaryColor
-                                  : AppColor.redColor,
+                              colorButton: bluetoothController
+                                      .pairedDevices[index].isConnected.value
+                                  ? AppColor.redColor
+                                  : AppColor.primaryColor,
                               onPressed: () {
+                                bluetoothController.removeDevice(index: index);
                                 // setState(() {
                                 //   deviceList[index].deviceStatus =
                                 //       !deviceList[index].deviceStatus;
                                 // });
-                                deviceController
-                                        .deviceList[index].deviceStatus.value =
-                                    !deviceController
-                                        .deviceList[index].deviceStatus.value;
-                                // deviceController.removeDevice(index: index);
+                                // deviceController
+                                //         .deviceList[index].deviceStatus.value =
+                                //     !deviceController
+                                //         .deviceList[index].deviceStatus.value;
                               },
                             ),
                           ),
@@ -114,9 +117,9 @@ class HomePage extends StatelessWidget {
         onPressed: () {
           // Navigator.push(context,
           //     MaterialPageRoute(builder: (context) => const AddDevicePage()));
-          // Navigator.push(
-          //     context, MaterialPageRoute(builder: (context) => BleScanner()));
-          deviceController.addDevice(name: "Name", address: 'Tittle');
+          Navigator.push(
+              context, MaterialPageRoute(builder: (context) => BleScanner()));
+          // deviceController.addDevice(name: "Name", address: 'Tittle');
         },
         shape: (const CircleBorder()),
         child: const Icon(

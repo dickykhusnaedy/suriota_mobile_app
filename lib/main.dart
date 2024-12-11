@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:suriota_mobile_gateway/constant/theme.dart';
+import 'package:suriota_mobile_gateway/view/home/home_page.dart';
 import 'package:suriota_mobile_gateway/view/login/login_page.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await GetStorage.init(); // Inisialisasi GetStorage
   runApp(const MyApp());
 }
 
@@ -21,7 +25,8 @@ class MyApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         title: 'Suriota Mobile Gateway',
         theme: themeData(),
-        home: const LoginPage(),
+        home: const HomePage(),
+        // home: const LoginPage(),
       ),
     );
   }

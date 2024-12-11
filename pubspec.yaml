@@ -25,6 +25,7 @@ dependencies:
   flutter_blue:
   get: ^4.6.6
   permission_handler:
+  get_storage: ^2.1.1
 
 dev_dependencies:
   flutter_test:
