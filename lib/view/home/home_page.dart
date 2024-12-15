@@ -50,8 +50,7 @@ class HomePage extends StatelessWidget {
               style: FontFamily.headlineMedium,
             ),
             Obx(
-              () => (bluetoothController.pairedDevices.value == null ||
-                      bluetoothController.pairedDevices.value.isEmpty)
+              () => (bluetoothController.pairedDevices.isEmpty)
                   ? const Center(
                       child: Padding(
                         padding: EdgeInsets.symmetric(vertical: 80),
@@ -73,42 +72,48 @@ class HomePage extends StatelessWidget {
                           onLongPress: () =>
                               bluetoothController.removeDevice(index: index),
                           onTap: () {
-                            // Navigator.push(
-                            //     context,
-                            //     MaterialPageRoute(
-                            //         builder: (context) =>
-                            //             DeviceMenuConfigurationPage(
-                            //               title: 'Suriota Gateway ${index + 1}',
-                            //             )));
+                            Get.to(() => DeviceMenuConfigurationPage(
+                                  title: 'Suriota Gateway ${index + 1}',
+                                ));
                           },
                           child: Obx(
-                            () => DeviceCard(
-                              deviceTitle: bluetoothController
-                                  .pairedDevices[index].deviceTitle,
-                              deviceAddress: bluetoothController
-                                  .pairedDevices[index].deviceAddress,
-                              buttonTitle: 'Connect',
-                              colorButton: bluetoothController
-                                      .pairedDevices[index].isConnected.value
-                                  ? AppColor.redColor
-                                  : AppColor.primaryColor,
-                              onPressed: () {
-                                bluetoothController.removeDevice(index: index);
-                                // setState(() {
-                                //   deviceList[index].deviceStatus =
-                                //       !deviceList[index].deviceStatus;
-                                // });
-                                // deviceController
-                                //         .deviceList[index].deviceStatus.value =
-                                //     !deviceController
-                                //         .deviceList[index].deviceStatus.value;
-                              },
-                            ),
+                            () {
+                              return DeviceCard(
+                                deviceTitle: bluetoothController
+                                    .pairedDevices[index].deviceTitle,
+                                deviceAddress: bluetoothController
+                                    .pairedDevices[index].deviceAddress,
+                                buttonTitle: bluetoothController
+                                        .pairedDevices[index].isConnected.value
+                                    ? 'Disconnect'
+                                    : 'Connect',
+                                colorButton: bluetoothController
+                                        .pairedDevices[index].isConnected.value
+                                    ? AppColor.redColor
+                                    : AppColor.primaryColor,
+                                onPressed: () {
+                                  if (bluetoothController
+                                      .pairedDevices[index].isConnected.value) {
+                                    // Jika perangkat sedang terhubung, putuskan koneksi
+                                    bluetoothController.disconnectDevice();
+                                    bluetoothController
+                                        .pairedDevices[index]
+                                        .isConnected
+                                        .value = false; // Update status
+                                  } else {
+                                    // Jika perangkat tidak terhubung, hubungkan
+                                    bluetoothController.connectToPairedDevice(
+                                        bluetoothController
+                                            .pairedDevices[index]);
+                                  }
+                                },
+                              );
+                            },
                           ),
                         );
                       },
                     ),
-            ),
+            )
           ],
         ),
       ),

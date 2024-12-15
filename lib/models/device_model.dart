@@ -6,14 +6,12 @@ import 'package:suriota_mobile_gateway/view/home/home_page.dart';
 class DeviceModel {
   final String deviceTitle;
   final String deviceAddress;
-  final FlutterBlue ble; // Tidak dapat disimpan langsung, perlu solusi khusus
   RxBool isConnected;
   RxBool isAvailable;
 
   DeviceModel({
     required this.deviceTitle,
     required this.deviceAddress,
-    required this.ble,
     required this.isConnected,
     required this.isAvailable,
   });
@@ -33,7 +31,6 @@ class DeviceModel {
     return DeviceModel(
       deviceTitle: json['deviceTitle'],
       deviceAddress: json['deviceAddress'],
-      ble: ble, // Inisialisasi dengan instance yang sudah ada
       isConnected: (json['isConnected'] as bool).obs, // Konversi bool ke RxBool
       isAvailable: (json['isAvailable'] as bool).obs, // Konversi bool ke RxBool
     );

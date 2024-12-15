@@ -51,8 +51,7 @@ class BleScanner extends StatelessWidget {
                           deviceTitle: device.name.isNotEmpty
                               ? device.name
                               : 'Unknown Device',
-                              deviceAddress: device.id.toString(),
-                          ble: bluetoothController.flutterBlue,
+                          deviceAddress: device.id.toString(),
                           isConnected: true.obs,
                           isAvailable: true.obs));
                     }
