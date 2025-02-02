@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:suriota_mobile_gateway/controller/bluetooth_controller.dart';
-import 'package:suriota_mobile_gateway/controller/device_controller.dart';
 import 'package:suriota_mobile_gateway/models/device_model.dart';
 import 'package:suriota_mobile_gateway/view/device_menu/device_menu.dart';
 import 'package:suriota_mobile_gateway/global/widgets/device_card.dart';
@@ -92,20 +91,20 @@ class HomePage extends StatelessWidget {
                                     ? AppColor.redColor
                                     : AppColor.primaryColor,
                                 onPressed: () {
-                                  if (bluetoothController
-                                      .pairedDevices[index].isConnected.value) {
-                                    // Jika perangkat sedang terhubung, putuskan koneksi
-                                    bluetoothController.disconnectDevice();
-                                    bluetoothController
-                                        .pairedDevices[index]
-                                        .isConnected
-                                        .value = false; // Update status
-                                  } else {
-                                    // Jika perangkat tidak terhubung, hubungkan
-                                    bluetoothController.connectToPairedDevice(
-                                        bluetoothController
-                                            .pairedDevices[index]);
-                                  }
+                                  // if (bluetoothController
+                                  //     .pairedDevices[index].isConnected.value) {
+                                  //   // Jika perangkat sedang terhubung, putuskan koneksi
+                                  //   bluetoothController.disconnectDevice();
+                                  //   bluetoothController
+                                  //       .pairedDevices[index]
+                                  //       .isConnected
+                                  //       .value = false; // Update status
+                                  // } else {
+                                  //   // Jika perangkat tidak terhubung, hubungkan
+                                  //   bluetoothController.connectToPairedDevice(
+                                  //       bluetoothController
+                                  //           .pairedDevices[index]);
+                                  // }
                                 },
                               );
                             },

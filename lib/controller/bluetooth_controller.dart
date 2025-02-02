@@ -28,7 +28,7 @@ class BluetoothController extends GetxController {
     isScanning.value = true;
     devices.clear(); // Hapus daftar perangkat saat scan ulang
 
-    flutterBlue.startScan(timeout: Duration(seconds: 10)).then((_) {
+    flutterBlue.startScan(timeout: Duration(seconds: 3)).then((_) {
       isScanning.value = false;
     });
 
@@ -160,7 +160,7 @@ class BluetoothController extends GetxController {
       isScanning.value = true;
 
       // Mulai scan untuk menemukan perangkat dengan MAC address yang cocok
-      flutterBlue.startScan(timeout: Duration(seconds: 5));
+      flutterBlue.startScan(timeout: Duration(seconds: 3));
       flutterBlue.scanResults.listen((results) async {
         for (var result in results) {
           if (result.device.id.toString() == deviceModel.deviceAddress) {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:suriota_mobile_gateway/constant/app_color.dart';
 import 'package:suriota_mobile_gateway/controller/bluetooth_controller.dart';
+import 'package:suriota_mobile_gateway/global/widgets/custom_alertdialog.dart';
 import 'package:suriota_mobile_gateway/global/widgets/device_card.dart';
 import 'package:suriota_mobile_gateway/models/device_model.dart';
 
@@ -46,6 +47,12 @@ class BleScanner extends StatelessWidget {
                     if (isConnected) {
                       bluetoothController.disconnectDevice();
                     } else {
+                      // showDialog(
+                      //   context: context,
+                      //   builder: (BuildContext context) {
+                      //     return const CustomAlertDialog();
+                      //   },
+                      // );
                       bluetoothController.connectToDevice(device);
                       bluetoothController.savePairedDevice(DeviceModel(
                           deviceTitle: device.name.isNotEmpty
@@ -54,6 +61,7 @@ class BleScanner extends StatelessWidget {
                           deviceAddress: device.id.toString(),
                           isConnected: true.obs,
                           isAvailable: true.obs));
+                      Navigator.pop(context);
                     }
                   },
                 );
