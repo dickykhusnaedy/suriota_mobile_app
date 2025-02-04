@@ -118,7 +118,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
       ),
       body: IndexedStack(
         index: bottomSelectedIndex,
-        children: const [
+        children:  [
           HomePage(),
           ProfilePage(),
           AboutUsPage(),
