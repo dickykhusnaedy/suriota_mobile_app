@@ -22,7 +22,6 @@ dependencies:
   dropdown_search: ^5.0.5
   flutter_screenutil: ^5.9.3
   path_provider_foundation: ^2.4.0
-  flutter_blue:
   get: ^4.6.6
   permission_handler:
   get_storage: ^2.1.1

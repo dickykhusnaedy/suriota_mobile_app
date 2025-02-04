@@ -3,7 +3,6 @@ import 'package:suriota_mobile_gateway/constant/app_color.dart';
 import 'package:suriota_mobile_gateway/constant/app_gap.dart';
 import 'package:suriota_mobile_gateway/constant/font_setup.dart';
 import 'package:suriota_mobile_gateway/constant/image_asset.dart';
-import 'package:suriota_mobile_gateway/global/widgets/custom_dialog.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_textfield.dart';
 import 'package:suriota_mobile_gateway/view/home/home_page.dart';
 import 'package:suriota_mobile_gateway/view/login/register.dart';
@@ -128,7 +127,7 @@ class _LoginPageState extends State<LoginPage> {
                     Navigator.pushAndRemoveUntil(
                       context,
                       MaterialPageRoute(
-                          builder: (context) => const HomePage(
+                          builder: (context) =>  HomePage(
                               // title: 'Main Menu',
                               )),
                       (Route<dynamic> route) => false,
