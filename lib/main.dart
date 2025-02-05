@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:suriota_mobile_gateway/constant/theme.dart';
 import 'package:suriota_mobile_gateway/view/home/home_page.dart';
 
 Future<void> main() async {
@@ -20,7 +19,6 @@ class MyApp extends StatelessWidget {
       builder: (context, child) => MaterialApp(
         debugShowCheckedModeBanner: false,
         title: 'Suriota Mobile Gateway',
-        theme: themeData(),
         home: HomePage(),
         // home: const LoginPage(),
       ),
