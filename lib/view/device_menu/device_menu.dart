@@ -76,7 +76,7 @@ class DeviceMenuConfigurationPage extends StatelessWidget {
                       child: Text(
                         'Connect',
                         style: FontFamily.normal
-                            .copyWith(fontSize: 10, color: Colors.white),
+                            .copyWith(fontSize: 10, color: Colors.black),
                       )),
                 )
               ],
