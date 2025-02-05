@@ -43,6 +43,36 @@ class CustomButton extends StatelessWidget {
   }
 }
 
+class Button extends StatelessWidget {
+  final void Function()? onPressed;
+  final String text;
+  final TextStyle? customStyle;
+  final Color? btnColor;
+
+  const Button(
+      {super.key,
+      required this.onPressed,
+      required this.text,
+      this.customStyle,
+      this.btnColor});
+
+  @override
+  Widget build(BuildContext context) {
+    return ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+            backgroundColor: btnColor ?? AppColor.primaryColor,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10))),
+        child: Text(
+          text,
+          style: customStyle ??
+              FontFamily.headlineMedium.copyWith(color: Colors.white),
+        ));
+  }
+}
+
 class BtnButtomNavBar extends StatelessWidget {
   final String title;
   final void Function()? onPressed;
