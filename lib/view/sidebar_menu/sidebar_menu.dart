@@ -11,12 +11,17 @@ class SideBarMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    double statusBarHeight = MediaQuery.of(context).padding.top;
+
     return Drawer(
       child: Padding(
         padding: const EdgeInsets.all(8.0),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.start,
           children: [
+            SizedBox(
+              height: statusBarHeight + 50,
+            ),
             const Center(
               child: CircleAvatar(
                 radius: 75,
@@ -33,7 +38,7 @@ class SideBarMenu extends StatelessWidget {
               ),
             ),
             const SizedBox(
-              height: 100,
+              height: 20,
             ),
             ListTile(
               leading: const Icon(
