@@ -62,20 +62,22 @@ class DeviceCard extends StatelessWidget {
     return Card(
       color: AppColor.cardColor,
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Row(
-              mainAxisAlignment: MainAxisAlignment.start,
               children: [
                 SizedBox(
-                    width: 50,
-                    height: 50,
-                    child: Image.asset(ImageAsset.iconBluetooth)),
-                const SizedBox(
-                  width: 20,
+                  height: 64,
+                  child: Image.asset(
+                    ImageAsset.iconBluetooth,
+                    width: 40,
+                    height: 40,
+                    fit: BoxFit.contain,
+                  ),
                 ),
+                const SizedBox(width: 10),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -85,6 +87,7 @@ class DeviceCard extends StatelessWidget {
                           : deviceTitle ?? "Device Tittle",
                       style: FontFamily.headlineMedium,
                     ),
+                    const SizedBox(width: 4),
                     Text(
                       deviceAddress!.length > 20
                           ? '${deviceAddress!.substring(0, 20)}...'
@@ -97,16 +100,13 @@ class DeviceCard extends StatelessWidget {
                 ),
               ],
             ),
-            CustomButton(
-                colorButton: colorButton,
-                height: 40,
-                width: 90,
-                titleButton: buttonTitle ?? 'Tittle',
-                textStyle: FontFamily.normal.copyWith(
-                    fontSize: 8,
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold),
-                onPressed: (onPressed))
+            const SizedBox(width: 10),
+            Button(
+                onPressed: onPressed,
+                text: (buttonTitle ?? ''),
+                btnColor: colorButton,
+                customStyle: FontFamily.normal
+                    .copyWith(fontSize: 11, color: Colors.white)),
           ],
         ),
       ),
