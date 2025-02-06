@@ -16,52 +16,38 @@ class SideBarMenu extends StatelessWidget {
     return Drawer(
       child: Padding(
         padding: const EdgeInsets.all(8.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
+        child: ListView(
           children: [
             SizedBox(
-              height: statusBarHeight + 50,
+              height: statusBarHeight,
             ),
             const Center(
               child: CircleAvatar(
-                radius: 75,
-                backgroundImage: AssetImage(ImageAsset.profile2),
-              ),
+                  radius: 70, backgroundImage: AssetImage(ImageAsset.profile2)),
             ),
-            const SizedBox(
-              height: 10,
-            ),
+            const SizedBox(height: 10),
             Center(
-              child: Text(
-                'Rudi Soru',
-                style: FontFamily.headlineLarge,
-              ),
+              child: Text('Rudi Soru', style: FontFamily.headlineLarge),
             ),
-            const SizedBox(
-              height: 20,
-            ),
+            const SizedBox(height: 20),
             ListTile(
-              leading: const Icon(
-                Icons.home,
-                color: AppColor.primaryColor,
+              leading: const SizedBox(
+                width: 30,
+                height: 30,
+                child: Icon(Icons.home, color: AppColor.primaryColor),
               ),
-              title: Text(
-                'Home',
-                style: FontFamily.normal,
-              ),
+              title: Text('Home', style: FontFamily.normal),
               onTap: () {
                 Navigator.pop(context);
               },
             ),
             ListTile(
-              leading: const Icon(
-                Icons.person,
-                color: AppColor.primaryColor,
+              leading: const SizedBox(
+                width: 30,
+                height: 30,
+                child: Icon(Icons.person, color: AppColor.primaryColor),
               ),
-              title: Text(
-                'Profile',
-                style: FontFamily.normal,
-              ),
+              title: Text('Profile', style: FontFamily.normal),
               onTap: () {
                 Navigator.push(
                     context,
@@ -70,14 +56,12 @@ class SideBarMenu extends StatelessWidget {
               },
             ),
             ListTile(
-              leading: const Icon(
-                Icons.info,
-                color: AppColor.primaryColor,
+              leading: const SizedBox(
+                width: 30,
+                height: 30,
+                child: Icon(Icons.info, color: AppColor.primaryColor),
               ),
-              title: Text(
-                'About Us',
-                style: FontFamily.normal,
-              ),
+              title: Text('About Us', style: FontFamily.normal),
               onTap: () {
                 Navigator.push(
                     context,
@@ -86,20 +70,20 @@ class SideBarMenu extends StatelessWidget {
               },
             ),
             ListTile(
-              leading: const Icon(
-                Icons.logout,
-                color: AppColor.primaryColor,
+              leading: const SizedBox(
+                width: 30,
+                height: 30,
+                child: Icon(Icons.logout, color: AppColor.redColor),
               ),
-              title: Text(
-                'Log Out',
-                style: FontFamily.normal,
-              ),
+              title: Text('Log Out',
+                  style: FontFamily.normal.copyWith(color: AppColor.redColor)),
               onTap: () {
                 Navigator.of(context).pushAndRemoveUntil(
                     MaterialPageRoute(builder: (context) => const LoginPage()),
                     (Route route) => false);
               },
             ),
+            const SizedBox(height: 30),
           ],
         ),
       ),
