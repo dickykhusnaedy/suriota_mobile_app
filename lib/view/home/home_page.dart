@@ -49,16 +49,18 @@ class _HomePageState extends State<HomePage> {
                 'Connecting the device near you',
                 style: FontFamily.normal.copyWith(fontSize: 18),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 50),
               Text(
                 'Device List',
                 style: FontFamily.headlineMedium,
               ),
               const SizedBox(height: 10),
-              ListView.builder(
+              ListView.separated(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: deviceList.length,
+                separatorBuilder: (context, index) =>
+                    const SizedBox(height: 10),
                 itemBuilder: (BuildContext context, int index) {
                   return InkWell(
                       onTap: () {
@@ -83,6 +85,7 @@ class _HomePageState extends State<HomePage> {
                       ));
                 },
               ),
+              const SizedBox(height: 60),
             ],
           ),
         ),
