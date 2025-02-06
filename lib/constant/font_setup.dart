@@ -1,6 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:suriota_mobile_gateway/constant/app_color.dart';
+
+class FontSizeTheme {
+  static double h1 = 32.sp;
+  static double h2 = 24.sp;
+  static double h3 = 20.sp;
+  static double h4 = 18.sp;
+  static double h5 = 16.sp;
+  static double h6 = 14.sp;
+  static double bodySize = 14.sp;
+}
 
 class FontFamily {
   FontFamily._();
@@ -19,6 +30,7 @@ class FontFamily {
   );
   static TextStyle tittleSmall = GoogleFonts.poppins(
     fontSize: 20,
+    
     fontWeight: FontWeight.bold,
     color: color,
   );
