@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:suriota_mobile_gateway/constant/app_color.dart';
 import 'package:suriota_mobile_gateway/constant/font_setup.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_alertdialog.dart';
 import 'package:suriota_mobile_gateway/models/device_dummy.dart';
@@ -18,14 +19,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        centerTitle: true,
-        iconTheme: const IconThemeData(color: Colors.white),
-        title: Text(
-          'Add Device',
-          style: FontFamily.tittleSmall.copyWith(color: Colors.white),
-        ),
-      ),
+      appBar: _appBar(),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -51,6 +45,19 @@ class _AddDevicePageState extends State<AddDevicePage> {
                 })
           ],
         ),
+      ),
+    );
+  }
+
+  AppBar _appBar() {
+    return AppBar(
+      centerTitle: true,
+      iconTheme: const IconThemeData(color: Colors.white),
+      backgroundColor: AppColor.primaryColor,
+      title: Text(
+        'Add Device',
+        style: FontFamily.tittleSmall
+            .copyWith(color: Colors.white, fontSize: 18),
       ),
     );
   }
