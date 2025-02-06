@@ -15,6 +15,7 @@ Widget cardMenu(BuildContext context, String? iconImage, String? titleCard,
       height: 175,
       width: widthCard,
       child: Card(
+        elevation: 0.0,
         color: AppColor.cardColor,
         child: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -22,8 +23,12 @@ Widget cardMenu(BuildContext context, String? iconImage, String? titleCard,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               SizedBox(
-                height: 86,
-                child: Image.asset(iconImage ?? 'Not Found'),
+                height: 80,
+                child: Image.asset(
+                  iconImage ?? 'Not Found',
+                  width: 80,
+                  fit: BoxFit.contain,
+                ),
               ),
               // ignore: prefer_const_constructors
               SizedBox(
@@ -103,14 +108,14 @@ class DeviceCard extends StatelessWidget {
             const SizedBox(width: 8),
             SizedBox(
               width: 99,
-              height: 23,
+              height: 25,
               child: Button(
                   width: double.infinity,
                   onPressed: onPressed,
                   text: (buttonTitle ?? ''),
                   btnColor: colorButton,
                   customStyle: FontFamily.normal
-                      .copyWith(fontSize: 11, color: Colors.white)),
+                      .copyWith(fontSize: 12, color: Colors.white)),
             ),
           ],
         ),
