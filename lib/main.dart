@@ -13,13 +13,17 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ScreenUtilInit(
-      designSize: const Size(375, 812),
+      designSize: const Size(390, 844), // Design size in Figma
       minTextAdapt: true,
       splitScreenMode: true,
       builder: (context, child) => MaterialApp(
         debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          textTheme: Typography.englishLike2018.apply(fontSizeFactor: 1.sp),
+          useMaterial3: true,
+        ),
         title: 'Suriota Mobile Gateway',
-        home: HomePage(),
+        home: const HomePage(),
         // home: const LoginPage(),
       ),
     );
