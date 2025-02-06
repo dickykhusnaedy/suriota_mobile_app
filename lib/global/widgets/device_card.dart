@@ -82,15 +82,15 @@ class DeviceCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      deviceTitle!.length > 20
-                          ? '${deviceTitle!.substring(0, 18)}...'
+                      deviceTitle!.length > 19
+                          ? '${deviceTitle!.substring(0, 19)}...'
                           : deviceTitle ?? "Device Tittle",
                       style: FontFamily.headlineMedium,
                     ),
-                    const SizedBox(width: 4),
+                    const SizedBox(height: 4),
                     Text(
-                      deviceAddress!.length > 20
-                          ? '${deviceAddress!.substring(0, 20)}...'
+                      deviceAddress!.length > 19
+                          ? '${deviceAddress!.substring(0, 19)}...'
                           : deviceAddress ?? "address",
                       style: FontFamily.normal,
                       softWrap: true,
@@ -100,13 +100,18 @@ class DeviceCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(width: 10),
-            Button(
-                onPressed: onPressed,
-                text: (buttonTitle ?? ''),
-                btnColor: colorButton,
-                customStyle: FontFamily.normal
-                    .copyWith(fontSize: 11, color: Colors.white)),
+            const SizedBox(width: 8),
+            SizedBox(
+              width: 99,
+              height: 23,
+              child: Button(
+                  width: double.infinity,
+                  onPressed: onPressed,
+                  text: (buttonTitle ?? ''),
+                  btnColor: colorButton,
+                  customStyle: FontFamily.normal
+                      .copyWith(fontSize: 11, color: Colors.white)),
+            ),
           ],
         ),
       ),
