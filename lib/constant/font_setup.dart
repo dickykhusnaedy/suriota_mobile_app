@@ -10,7 +10,17 @@ class FontSizeTheme {
   static double h4 = 18.sp;
   static double h5 = 16.sp;
   static double h6 = 14.sp;
-  static double bodySize = 14.sp;
+  static double body = 14.sp;
+  static double bodySmall = 12.sp;
+}
+
+class FontWeightTheme {
+  static FontWeight light = FontWeight.w300;
+  static FontWeight regular = FontWeight.w400;
+  static FontWeight medium = FontWeight.w500;
+  static FontWeight semiBold = FontWeight.w600;
+  static FontWeight bold = FontWeight.w700;
+  static FontWeight extraBold = FontWeight.w900;
 }
 
 class FontFamily {
@@ -30,7 +40,6 @@ class FontFamily {
   );
   static TextStyle tittleSmall = GoogleFonts.poppins(
     fontSize: 20,
-    
     fontWeight: FontWeight.bold,
     color: color,
   );
@@ -41,7 +50,7 @@ class FontFamily {
     color: color,
   );
   static TextStyle headlineMedium = GoogleFonts.poppins(
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: FontWeight.bold,
     color: AppColor.primaryColor,
   );
