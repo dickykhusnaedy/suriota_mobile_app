@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:suriota_mobile_gateway/constant/app_gap.dart';
+import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
 import 'package:suriota_mobile_gateway/global/widgets/device_card.dart';
 import 'package:suriota_mobile_gateway/models/device_dummy.dart';
 import 'package:suriota_mobile_gateway/models/device_model.dart';
@@ -23,44 +26,35 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    double screenWidth = MediaQuery.of(context).size.width;
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColor.whiteColor,
       appBar: AppBar(
         backgroundColor: Colors.white,
         title: Image.asset(
           ImageAsset.logoSuriota,
-          width: 161,
-          height: 38,
+          width: screenWidth * (screenWidth >= 600 ? 0.3 : 0.4),
           fit: BoxFit.contain,
         ),
       ),
-      endDrawer: const SideBarMenu(),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+          padding: AppPadding.screenPadding,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Hallo, Soru👋',
-                style: FontFamily.titleLarge,
-              ),
-              Text(
-                'Connecting the device near you',
-                style: FontFamily.normal.copyWith(fontSize: 18),
-              ),
-              const SizedBox(height: 50),
-              Text(
-                'Device List',
-                style: FontFamily.headlineMedium,
-              ),
-              const SizedBox(height: 10),
+              Text('Hallo, Soru👋', style: context.h1),
+              AppSpacing.xs,
+              Text('Connecting the device near you', style: context.body),
+              AppSpacing.xxl,
+              Text('Device List', style: context.h4),
+              AppSpacing.sm,
               ListView.separated(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: deviceList.length,
-                separatorBuilder: (context, index) =>
-                    const SizedBox(height: 10),
+                separatorBuilder: (context, index) => AppSpacing.sm,
                 itemBuilder: (BuildContext context, int index) {
                   return InkWell(
                       onTap: () {
@@ -85,11 +79,12 @@ class _HomePageState extends State<HomePage> {
                       ));
                 },
               ),
-              const SizedBox(height: 60),
+              AppSpacing.xxl,
             ],
           ),
         ),
       ),
+      endDrawer: const SideBarMenu(),
       floatingActionButton: _floatingButtonCustom(context),
     );
   }
@@ -97,7 +92,7 @@ class _HomePageState extends State<HomePage> {
   Container _floatingButtonCustom(BuildContext context) {
     return Container(
         height: 50,
-        width: 130,
+        width: 150.w,
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
         decoration: BoxDecoration(
           color: AppColor.primaryColor,
