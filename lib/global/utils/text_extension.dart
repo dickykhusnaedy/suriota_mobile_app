@@ -9,6 +9,7 @@ extension CustomTextTheme on BuildContext {
   TextStyle get h6 => Theme.of(this).textTheme.headlineSmall!;
   TextStyle get body => Theme.of(this).textTheme.bodyMedium!;
   TextStyle get bodySmall => Theme.of(this).textTheme.bodySmall!;
-  TextStyle get buttonText => Theme.of(this).textTheme.labelMedium!;
-  TextStyle get buttonTextSmall => Theme.of(this).textTheme.labelSmall!;
+  TextStyle get buttonText => Theme.of(this).textTheme.labelLarge!;
+  TextStyle get buttonTextSmall => Theme.of(this).textTheme.labelMedium!;
+  TextStyle get buttonTextSmallest => Theme.of(this).textTheme.labelSmall!;
 }
