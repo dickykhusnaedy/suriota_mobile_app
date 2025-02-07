@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:suriota_mobile_gateway/constant/app_gap.dart';
 import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
 import 'package:suriota_mobile_gateway/global/widgets/device_card.dart';
@@ -32,10 +31,15 @@ class _HomePageState extends State<HomePage> {
       backgroundColor: AppColor.whiteColor,
       appBar: AppBar(
         backgroundColor: Colors.white,
-        title: Image.asset(
-          ImageAsset.logoSuriota,
-          width: screenWidth * (screenWidth >= 600 ? 0.3 : 0.4),
-          fit: BoxFit.contain,
+        title: SizedBox(
+          width: screenWidth * (screenWidth <= 600 ? 0.4 : 0.2),
+          child: AspectRatio(
+            aspectRatio: 16 / 9,
+            child: Image.asset(
+              ImageAsset.logoSuriota,
+              fit: BoxFit.contain,
+            ),
+          ),
         ),
       ),
       body: SafeArea(
@@ -57,6 +61,7 @@ class _HomePageState extends State<HomePage> {
                 separatorBuilder: (context, index) => AppSpacing.sm,
                 itemBuilder: (BuildContext context, int index) {
                   return InkWell(
+                      borderRadius: BorderRadius.circular(8),
                       onTap: () {
                         Navigator.push(
                             context,
@@ -90,9 +95,11 @@ class _HomePageState extends State<HomePage> {
   }
 
   Container _floatingButtonCustom(BuildContext context) {
+    double screenWidth = MediaQuery.of(context).size.width;
+
     return Container(
+        width: screenWidth * (screenWidth < 600 ? 0.3 : 0.15),
         height: 50,
-        width: 150.w,
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
         decoration: BoxDecoration(
           color: AppColor.primaryColor,
@@ -111,7 +118,7 @@ class _HomePageState extends State<HomePage> {
                 size: 20,
                 color: Colors.white,
               ),
-              const SizedBox(width: 10),
+              AppSpacing.sm,
               Text(
                 'Add Device',
                 style: FontFamily.titleMedium
