@@ -61,7 +61,6 @@ class _HomePageState extends State<HomePage> {
                 separatorBuilder: (context, index) => AppSpacing.sm,
                 itemBuilder: (BuildContext context, int index) {
                   return InkWell(
-                      borderRadius: BorderRadius.circular(8),
                       onTap: () {
                         Navigator.push(
                             context,
