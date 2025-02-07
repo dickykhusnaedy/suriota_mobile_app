@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:suriota_mobile_gateway/constant/app_gap.dart';
 import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_button.dart';
@@ -74,55 +73,52 @@ class DeviceCard extends StatelessWidget {
       color: AppColor.cardColor,
       elevation: 0.0,
       child: Padding(
-        padding: AppPadding.medium,
+        padding: AppPadding.small,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            SizedBox(
-              width: screenWidth * (screenWidth < 600 ? 0.45 : 0.6),
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  double boxWidth = constraints.maxWidth;
-
-                  return Row(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    children: [
-                      Image.asset(ImageAsset.iconBluetooth,
-                          width: 35, height: 35, fit: BoxFit.contain),
-                      AppSpacing.sm,
-                      SizedBox(
-                        width: boxWidth - 50.w,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              deviceTitle!,
-                              style: context.h6,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            AppSpacing.xs,
-                            Text(
-                              deviceAddress!,
-                              style: context.body,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
+            Flexible(
+              flex: screenWidth <= 600 ? 2 : 3,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  Image.asset(ImageAsset.iconBluetooth,
+                      width: 35, height: 35, fit: BoxFit.contain),
+                  AppSpacing.sm,
+                  Flexible(
+                    flex: 1,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          deviceTitle!,
+                          style: context.h6,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      )
-                    ],
-                  );
-                },
+                        AppSpacing.xs,
+                        Text(
+                          deviceAddress!,
+                          style: context.body,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  )
+                ],
               ),
             ),
-            SizedBox(
-              width: screenWidth * (screenWidth < 600 ? 0.33 : 0.2),
-              height: 30,
-              child: Button(
-                  width: double.infinity,
-                  onPressed: onPressed,
-                  text: buttonTitle ?? '',
-                  btnColor: colorButton,
-                  customStyle: context.buttonTextSmall),
+            AppSpacing.sm,
+            Flexible(
+              flex: 1,
+              child: SizedBox(
+                height: 30,
+                child: Button(
+                    width: double.infinity,
+                    onPressed: onPressed,
+                    text: buttonTitle ?? '',
+                    btnColor: colorButton,
+                    customStyle: context.buttonTextSmallest),
+              ),
             ),
           ],
         ),
