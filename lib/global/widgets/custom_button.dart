@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:suriota_mobile_gateway/constant/app_gap.dart';
 
 import '../../constant/app_color.dart';
 import '../../constant/font_setup.dart';
@@ -50,6 +51,7 @@ class Button extends StatelessWidget {
   final Color? btnColor;
   final double? width;
   final double? height;
+  final Widget? icons;
 
   const Button(
       {super.key,
@@ -58,7 +60,8 @@ class Button extends StatelessWidget {
       this.customStyle,
       this.btnColor,
       this.width,
-      this.height});
+      this.height,
+      this.icons});
 
   @override
   Widget build(BuildContext context) {
@@ -72,10 +75,18 @@ class Button extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 15),
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10))),
-          child: Text(
-            text,
-            style: customStyle ??
-                FontFamily.headlineMedium.copyWith(color: Colors.white),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              icons ?? const SizedBox(),
+              icons != null ? AppSpacing.sm : const SizedBox(),
+              Text(
+                text,
+                style: customStyle ??
+                    FontFamily.headlineMedium
+                        .copyWith(color: AppColor.whiteColor),
+              ),
+            ],
           )),
     );
   }
