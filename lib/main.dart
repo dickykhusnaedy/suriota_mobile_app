@@ -1,10 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:suriota_mobile_gateway/constant/theme.dart';
 import 'package:suriota_mobile_gateway/view/home/home_page.dart';
 
 Future<void> main() async {
-  runApp(const MyApp());
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Set orientation potrait only
+  SystemChrome.setPreferredOrientations(
+      [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]).then((_) {
+    runApp(const MyApp());
+  });
 }
 
 class MyApp extends StatelessWidget {
