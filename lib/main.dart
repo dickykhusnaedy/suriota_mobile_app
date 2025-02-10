@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:suriota_mobile_gateway/constant/theme.dart';
-import 'package:suriota_mobile_gateway/view/home/home_page.dart';
+import 'package:suriota_mobile_gateway/screen/home/home_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,7 +28,7 @@ class MyApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
         title: 'Suriota Mobile Gateway',
-        home: const HomePage(),
+        home: const HomeScreen(),
         // home: const LoginPage(),
       ),
     );
