@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:suriota_mobile_gateway/constant/app_color.dart';
-import 'package:suriota_mobile_gateway/constant/font_setup.dart';
-import 'package:suriota_mobile_gateway/global/widgets/custom_alertdialog.dart';
+import 'package:suriota_mobile_gateway/constant/app_gap.dart';
+import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
+import 'package:suriota_mobile_gateway/global/widgets/custom_button.dart';
 import 'package:suriota_mobile_gateway/models/device_dummy.dart';
 import 'package:suriota_mobile_gateway/models/device_model.dart';
-import '../../global/widgets/device_card.dart';
 
 class AddDevicePage extends StatefulWidget {
   const AddDevicePage({super.key});
@@ -19,34 +19,11 @@ class _AddDevicePageState extends State<AddDevicePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: _appBar(),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: deviceList.length,
-                itemBuilder: (BuildContext context, int index) {
-                  return DeviceCard(
-                    deviceTitle: deviceList[index].deviceTitle,
-                    deviceAddress: deviceList[index].deviceAddress,
-                    buttonTitle: 'Pair',
-                    onPressed: () {
-                      showDialog(
-                        context: context,
-                        builder: (BuildContext context) {
-                          return const CustomAlertDialog();
-                        },
-                      );
-                    },
-                  );
-                })
-          ],
-        ),
-      ),
-    );
+        appBar: _appBar(),
+        body: SingleChildScrollView(
+          padding: AppPadding.horizontalMedium,
+          child: _findDevice(context),
+        ));
   }
 
   AppBar _appBar() {
@@ -54,10 +31,38 @@ class _AddDevicePageState extends State<AddDevicePage> {
       centerTitle: true,
       iconTheme: const IconThemeData(color: Colors.white),
       backgroundColor: AppColor.primaryColor,
-      title: Text(
-        'Add Device',
-        style: FontFamily.tittleSmall
-            .copyWith(color: Colors.white, fontSize: 18),
+      title: Text('Add Device',
+          style: context.h5.copyWith(color: AppColor.whiteColor)),
+    );
+  }
+
+  Container _findDevice(BuildContext context) {
+    return Container(
+      height: MediaQuery.of(context).size.height,
+      alignment: Alignment.center,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'Find device',
+            style: context.h2,
+          ),
+          AppSpacing.sm,
+          Text('Finding nearby devices with\nBluetooth connectivity...',
+              textAlign: TextAlign.center,
+              style: context.body.copyWith(color: AppColor.grey)),
+          AppSpacing.xxxl,
+          Button(
+              onPressed: () {},
+              text: 'Search devices',
+              icons: const Icon(
+                Icons.search,
+                color: AppColor.whiteColor,
+                size: 23,
+              ),
+              height: 50,
+              width: MediaQuery.of(context).size.width * 0.5)
+        ],
       ),
     );
   }
