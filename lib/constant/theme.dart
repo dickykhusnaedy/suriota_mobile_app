@@ -6,6 +6,7 @@ import 'font_setup.dart';
 
 class AppTheme {
   static ThemeData lightTheme = ThemeData(
+      scaffoldBackgroundColor: AppColor.whiteColor,
       textTheme: GoogleFonts.poppinsTextTheme().copyWith(
         titleLarge: GoogleFonts.poppins(
             fontSize: FontSizeTheme.h1,
