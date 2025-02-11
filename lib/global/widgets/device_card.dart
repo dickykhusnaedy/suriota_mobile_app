@@ -49,6 +49,64 @@ Widget cardMenu(BuildContext context, String? iconImage, String? titleCard,
   );
 }
 
+class CardMenu extends StatelessWidget {
+  final String text;
+  final double width;
+  final String? imagePath;
+  final Widget page;
+
+  const CardMenu(
+      {super.key,
+      required this.text,
+      this.imagePath,
+      required this.width,
+      required this.page});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: width,
+      height: 185,
+      child: GestureDetector(
+        onTap: () {
+          Navigator.push(
+              context, MaterialPageRoute(builder: (context) => page));
+        },
+        child: Card(
+          color: AppColor.cardColor,
+          elevation: 0.0,
+          margin: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Padding(
+            padding: AppPadding.medium,
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 100,
+                    height: 100,
+                    child: Image.asset(imagePath!,
+                        width: 100, fit: BoxFit.contain),
+                  ),
+                  AppSpacing.xs,
+                  Text(
+                    text,
+                    style: context.body,
+                    textAlign: TextAlign.center,
+                  )
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class DeviceCard extends StatelessWidget {
   final String? deviceTitle;
   final String? deviceAddress;
@@ -71,6 +129,7 @@ class DeviceCard extends StatelessWidget {
 
     return Card(
       color: AppColor.cardColor,
+      margin: EdgeInsets.zero,
       elevation: 0.0,
       child: Padding(
         padding: AppPadding.small,
