@@ -1,4 +1,42 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
+
+class AppSpacing {
+  static final xs = Gap(4.sp.clamp(4, 6));
+  static final sm = Gap(8.sp.clamp(8, 10));
+  static final md = Gap(16.sp.clamp(16, 18));
+  static final lg = Gap(24.sp.clamp(24, 26));
+  static final xl = Gap(32.sp.clamp(32, 36));
+  static final xxl = Gap(48.sp.clamp(48, 52));
+  static final xxxl = Gap(55.sp.clamp(55, 59));
+  static final xxxxl = Gap(80.sp.clamp(80, 84));
+}
+
+class AppPadding {
+  static EdgeInsets small = EdgeInsets.all(8.w.clamp(8, 10));
+  static EdgeInsets medium = EdgeInsets.all(16.w.clamp(16, 18));
+  static EdgeInsets large = EdgeInsets.all(24.w.clamp(24, 26));
+
+  static EdgeInsets horizontalSmall =
+      EdgeInsets.symmetric(horizontal: 8.w.clamp(8, 10));
+  static EdgeInsets horizontalMedium =
+      EdgeInsets.symmetric(horizontal: 16.w.clamp(16, 18));
+  static EdgeInsets horizontalLarge =
+      EdgeInsets.symmetric(horizontal: 24.w.clamp(24, 26));
+
+  static EdgeInsets verticalSmall =
+      EdgeInsets.symmetric(vertical: 8.h.clamp(8, 10));
+  static EdgeInsets verticalMedium =
+      EdgeInsets.symmetric(vertical: 16.h.clamp(16, 18));
+  static EdgeInsets verticalLarge =
+      EdgeInsets.symmetric(vertical: 24.h.clamp(24, 26));
+
+  static EdgeInsets cardPadding = EdgeInsets.symmetric(
+      horizontal: 20.w.clamp(20, 22), vertical: 15.h.clamp(15, 17));
+
+  static EdgeInsets screenPadding = EdgeInsets.all(16.w.clamp(16, 18));
+}
 
 class AppGap {
   AppGap._();

@@ -15,8 +15,7 @@ class CustomAlertDialog extends StatelessWidget {
     return AlertDialog(
       backgroundColor: AppColor.cardColor,
       scrollable: true,
-      shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(28)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
       title: Center(
         child: Text(
           'Device Initial',
@@ -26,27 +25,26 @@ class CustomAlertDialog extends StatelessWidget {
       content: Column(
         children: [
           SizedBox(
-              height: 170,
-              child:
-                  Image.asset(ImageAsset.iconDeviceInitial)),
+              height: 170, child: Image.asset(ImageAsset.iconDeviceInitial)),
           const SizedBox(
             height: 10,
           ),
           const CustomTextFormField(
             labelTxt: 'Device Name',
-            hintTxt: 'Enter The Device Name',
+            hintTxt: 'Enter the device name',
           ),
           const SizedBox(
             height: 20,
           ),
-          CustomButton(
-            onPressed: () {
-              Navigator.pop(context);
-            },
-            height: 39,
-            width: MediaQuery.of(context).size.width * 1,
-            titleButton: 'Save',
-          )
+          Button(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              height: 40,
+              width: MediaQuery.of(context).size.width * 1,
+              text: 'Save',
+              customStyle:
+                  FontFamily.normal.copyWith(fontSize: 14, color: Colors.white))
         ],
       ),
     );

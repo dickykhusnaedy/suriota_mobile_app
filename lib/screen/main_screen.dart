@@ -1,22 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:suriota_mobile_gateway/constant/app_color.dart';
 import 'package:suriota_mobile_gateway/constant/font_setup.dart';
-import 'package:suriota_mobile_gateway/view/sidebar_menu/about_us_page.dart';
-import 'package:suriota_mobile_gateway/view/home/home_page.dart';
-import 'package:suriota_mobile_gateway/view/login/login_page.dart';
+import 'package:suriota_mobile_gateway/screen/sidebar_menu/about_us_page.dart';
+import 'package:suriota_mobile_gateway/screen/home/home_screen.dart';
+import 'package:suriota_mobile_gateway/screen/login/login_page.dart';
 import '../constant/image_asset.dart';
 import 'sidebar_menu/profile.dart';
 
-class MainMenuPage extends StatefulWidget {
-  const MainMenuPage({super.key, required this.title});
+class MainScreen extends StatefulWidget {
+  const MainScreen({super.key, required this.title});
 
   final String title;
 
   @override
-  State<MainMenuPage> createState() => _MainMenuPageState();
+  State<MainScreen> createState() => _MainScreenState();
 }
 
-class _MainMenuPageState extends State<MainMenuPage> {
+class _MainScreenState extends State<MainScreen> {
   int bottomSelectedIndex = 0;
 
   void onItemTapped(int index) {
@@ -118,8 +118,8 @@ class _MainMenuPageState extends State<MainMenuPage> {
       ),
       body: IndexedStack(
         index: bottomSelectedIndex,
-        children:  [
-          HomePage(),
+        children: [
+          HomeScreen(),
           ProfilePage(),
           AboutUsPage(),
         ],

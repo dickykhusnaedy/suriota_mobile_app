@@ -1,7 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:suriota_mobile_gateway/view/device_menu/device_communication/data_display.dart';
+import 'package:suriota_mobile_gateway/screen/devices/device_communication/data_display.dart';
 
 import '../../../constant/app_color.dart';
 import '../../../constant/font_setup.dart';

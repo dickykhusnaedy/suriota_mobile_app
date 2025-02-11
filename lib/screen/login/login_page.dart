@@ -4,8 +4,8 @@ import 'package:suriota_mobile_gateway/constant/app_gap.dart';
 import 'package:suriota_mobile_gateway/constant/font_setup.dart';
 import 'package:suriota_mobile_gateway/constant/image_asset.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_textfield.dart';
-import 'package:suriota_mobile_gateway/view/home/home_page.dart';
-import 'package:suriota_mobile_gateway/view/login/register.dart';
+import 'package:suriota_mobile_gateway/screen/home/home_screen.dart';
+import 'package:suriota_mobile_gateway/screen/login/register.dart';
 import '../../global/widgets/custom_button.dart';
 
 class LoginPage extends StatefulWidget {
@@ -114,7 +114,7 @@ class _LoginPageState extends State<LoginPage> {
                     //   Navigator.pushAndRemoveUntil(
                     //     context,
                     //     MaterialPageRoute(
-                    //         builder: (context) => const HomePage(
+                    //         builder: (context) => const HomeScreen(
                     //             // title: 'Main Menu',
                     //             )),
                     //     (Route<dynamic> route) => false,
@@ -127,7 +127,7 @@ class _LoginPageState extends State<LoginPage> {
                     Navigator.pushAndRemoveUntil(
                       context,
                       MaterialPageRoute(
-                          builder: (context) =>  HomePage(
+                          builder: (context) => const HomeScreen(
                               // title: 'Main Menu',
                               )),
                       (Route<dynamic> route) => false,

@@ -4,6 +4,58 @@ import 'package:suriota_mobile_gateway/constant/app_color.dart';
 
 import 'font_setup.dart';
 
+class AppTheme {
+  static ThemeData lightTheme = ThemeData(
+      scaffoldBackgroundColor: AppColor.whiteColor,
+      textTheme: GoogleFonts.poppinsTextTheme().copyWith(
+        titleLarge: GoogleFonts.poppins(
+            fontSize: FontSizeTheme.h1,
+            fontWeight: FontWeightTheme.extraBold,
+            color: AppColor.primaryColor),
+        titleMedium: GoogleFonts.poppins(
+            fontSize: FontSizeTheme.h2,
+            fontWeight: FontWeightTheme.bold,
+            color: AppColor.primaryColor),
+        titleSmall: GoogleFonts.poppins(
+            fontSize: FontSizeTheme.h3,
+            fontWeight: FontWeightTheme.bold,
+            color: AppColor.primaryColor),
+        headlineLarge: GoogleFonts.poppins(
+            fontSize: FontSizeTheme.h4,
+            fontWeight: FontWeightTheme.semiBold,
+            color: AppColor.primaryColor),
+        headlineMedium: GoogleFonts.poppins(
+            fontSize: FontSizeTheme.h5,
+            fontWeight: FontWeightTheme.semiBold,
+            color: AppColor.primaryColor),
+        headlineSmall: GoogleFonts.poppins(
+            fontSize: FontSizeTheme.h6,
+            fontWeight: FontWeightTheme.semiBold,
+            color: AppColor.primaryColor),
+        bodyMedium: GoogleFonts.poppins(
+            fontSize: FontSizeTheme.body,
+            fontWeight: FontWeightTheme.regular,
+            color: AppColor.primaryColor),
+        bodySmall: GoogleFonts.poppins(
+            fontSize: FontSizeTheme.bodySmall,
+            fontWeight: FontWeightTheme.regular,
+            color: AppColor.primaryColor),
+        labelLarge: GoogleFonts.poppins(
+            fontSize: FontSizeTheme.body,
+            fontWeight: FontWeightTheme.medium,
+            color: AppColor.whiteColor),
+        labelMedium: GoogleFonts.poppins(
+            fontSize: FontSizeTheme.bodySmall,
+            fontWeight: FontWeightTheme.medium,
+            color: AppColor.whiteColor),
+        labelSmall: GoogleFonts.poppins(
+            fontSize: FontSizeTheme.bodySmallest,
+            fontWeight: FontWeightTheme.medium,
+            color: AppColor.whiteColor),
+      ),
+      useMaterial3: true);
+}
+
 ThemeData themeData() {
   return ThemeData(
     // drawerTheme: DrawerThemeData(backgroundColor: AppColor.cardColor),

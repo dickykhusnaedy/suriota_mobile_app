@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:suriota_mobile_gateway/constant/app_gap.dart';
+import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_button.dart';
 
 import '../../constant/app_color.dart';
@@ -15,6 +17,7 @@ Widget cardMenu(BuildContext context, String? iconImage, String? titleCard,
       height: 175,
       width: widthCard,
       child: Card(
+        elevation: 0.0,
         color: AppColor.cardColor,
         child: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -22,8 +25,12 @@ Widget cardMenu(BuildContext context, String? iconImage, String? titleCard,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               SizedBox(
-                height: 86,
-                child: Image.asset(iconImage ?? 'Not Found'),
+                height: 80,
+                child: Image.asset(
+                  iconImage ?? 'Not Found',
+                  width: 80,
+                  fit: BoxFit.contain,
+                ),
               ),
               // ignore: prefer_const_constructors
               SizedBox(
@@ -42,7 +49,71 @@ Widget cardMenu(BuildContext context, String? iconImage, String? titleCard,
   );
 }
 
+class CardMenu extends StatelessWidget {
+  final String text;
+  final double width;
+  final String? imagePath;
+  final Widget page;
+
+  const CardMenu(
+      {super.key,
+      required this.text,
+      this.imagePath,
+      required this.width,
+      required this.page});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: width,
+      height: 185,
+      child: GestureDetector(
+        onTap: () {
+          Navigator.push(
+              context, MaterialPageRoute(builder: (context) => page));
+        },
+        child: Card(
+          color: AppColor.cardColor,
+          elevation: 0.0,
+          margin: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Padding(
+            padding: AppPadding.medium,
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 100,
+                    height: 100,
+                    child: Image.asset(imagePath!,
+                        width: 100, fit: BoxFit.contain),
+                  ),
+                  AppSpacing.xs,
+                  Text(
+                    text,
+                    style: context.body,
+                    textAlign: TextAlign.center,
+                  )
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class DeviceCard extends StatelessWidget {
+  final String? deviceTitle;
+  final String? deviceAddress;
+  final String? buttonTitle;
+  final Color? colorButton;
+  final VoidCallback? onPressed;
+
   const DeviceCard({
     super.key,
     this.deviceAddress,
@@ -51,62 +122,63 @@ class DeviceCard extends StatelessWidget {
     this.colorButton,
     this.onPressed,
   });
-  final String? deviceTitle;
-  final String? deviceAddress;
-  final String? buttonTitle;
-  final Color? colorButton;
-  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
+    double screenWidth = MediaQuery.of(context).size.width;
+
     return Card(
       color: AppColor.cardColor,
+      margin: EdgeInsets.zero,
+      elevation: 0.0,
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: AppPadding.small,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.start,
-              children: [
-                SizedBox(
-                    width: 50,
-                    height: 50,
-                    child: Image.asset(ImageAsset.iconBluetooth)),
-                const SizedBox(
-                  width: 20,
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      deviceTitle!.length > 20
-                          ? '${deviceTitle!.substring(0, 18)}...'
-                          : deviceTitle ?? "Device Tittle",
-                      style: FontFamily.headlineMedium,
+            Flexible(
+              flex: screenWidth <= 600 ? 2 : 3,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  Image.asset(ImageAsset.iconBluetooth,
+                      width: 35, height: 35, fit: BoxFit.contain),
+                  AppSpacing.sm,
+                  Flexible(
+                    flex: 1,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          deviceTitle!,
+                          style: context.h6,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        AppSpacing.xs,
+                        Text(
+                          deviceAddress!,
+                          style: context.body,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                     ),
-                    Text(
-                      deviceAddress!.length > 20
-                          ? '${deviceAddress!.substring(0, 20)}...'
-                          : deviceAddress ?? "address",
-                      style: FontFamily.normal,
-                      softWrap: true,
-                      overflow: TextOverflow.visible,
-                    )
-                  ],
-                ),
-              ],
+                  )
+                ],
+              ),
             ),
-            CustomButton(
-                colorButton: colorButton,
-                height: 40,
-                width: 90,
-                titleButton: buttonTitle ?? 'Tittle',
-                textStyle: FontFamily.normal.copyWith(
-                    fontSize: 8,
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold),
-                onPressed: (onPressed))
+            AppSpacing.sm,
+            Flexible(
+              flex: 1,
+              child: SizedBox(
+                height: 30,
+                child: Button(
+                    width: double.infinity,
+                    onPressed: onPressed,
+                    text: buttonTitle ?? '',
+                    btnColor: colorButton,
+                    customStyle: context.buttonTextSmallest),
+              ),
+            ),
           ],
         ),
       ),

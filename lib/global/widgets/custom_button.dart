@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:suriota_mobile_gateway/constant/app_gap.dart';
 
 import '../../constant/app_color.dart';
 import '../../constant/font_setup.dart';
@@ -39,6 +40,54 @@ class CustomButton extends StatelessWidget {
               FontFamily.headlineMedium.copyWith(color: Colors.white),
         ),
       ),
+    );
+  }
+}
+
+class Button extends StatelessWidget {
+  final void Function()? onPressed;
+  final String text;
+  final TextStyle? customStyle;
+  final Color? btnColor;
+  final double? width;
+  final double? height;
+  final Widget? icons;
+
+  const Button(
+      {super.key,
+      required this.onPressed,
+      required this.text,
+      this.customStyle,
+      this.btnColor,
+      this.width,
+      this.height,
+      this.icons});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: width ?? 100,
+      height: height ?? 42,
+      child: ElevatedButton(
+          onPressed: onPressed,
+          style: ElevatedButton.styleFrom(
+              backgroundColor: btnColor ?? AppColor.primaryColor,
+              padding: const EdgeInsets.symmetric(horizontal: 15),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10))),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              icons ?? const SizedBox(),
+              icons != null ? AppSpacing.sm : const SizedBox(),
+              Text(
+                text,
+                style: customStyle ??
+                    FontFamily.headlineMedium
+                        .copyWith(color: AppColor.whiteColor),
+              ),
+            ],
+          )),
     );
   }
 }
