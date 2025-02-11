@@ -1,16 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:suriota_mobile_gateway/constant/app_color.dart';
 import 'package:suriota_mobile_gateway/constant/app_gap.dart';
-import 'package:suriota_mobile_gateway/constant/font_setup.dart';
 import 'package:suriota_mobile_gateway/constant/image_asset.dart';
 import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
-import 'package:suriota_mobile_gateway/screen/devices/logging_config/logging_page.dart';
+import 'package:suriota_mobile_gateway/global/widgets/custom_button.dart';
 import 'package:suriota_mobile_gateway/global/widgets/device_card.dart';
-
-import 'detail_information_device.dart';
-import 'device_communication/device_communications.dart';
-import 'modbus_config/modbus_configuration_page.dart';
-import 'server_config/server_config_page.dart';
+import 'package:suriota_mobile_gateway/screen/devices/detail_device_info_screen.dart';
+import 'package:suriota_mobile_gateway/screen/devices/device_communication/device_communications.dart';
+import 'package:suriota_mobile_gateway/screen/devices/logging_config/logging_page.dart';
+import 'package:suriota_mobile_gateway/screen/devices/modbus_config/modbus_configuration_page.dart';
+import 'package:suriota_mobile_gateway/screen/devices/server_config/server_config_page.dart';
 
 class DetailDeviceScreen extends StatelessWidget {
   final String title;
@@ -18,125 +17,123 @@ class DetailDeviceScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    double screenWidth = MediaQuery.of(context).size.width;
+
+    final List<Map<String, dynamic>> menuItems = [
+      {
+        "text": "Device Communication",
+        "imagePath": ImageAsset.iconDevice,
+        "page": const DeviceCommunicationsPage()
+      },
+      {
+        "text": "Modbus Configurations",
+        "imagePath": ImageAsset.iconConfig,
+        "page": const ModbusConfigurationPage()
+      },
+      {
+        "text": "Server Configurations",
+        "imagePath": ImageAsset.iconServer,
+        "page": const ServerConfigPage()
+      },
+      {
+        "text": "Logging Configurations",
+        "imagePath": ImageAsset.iconLogging,
+        "page": const LoggingConfigurationPage()
+      },
+    ];
+
     return Scaffold(
-      appBar: _appBar(context),
+      appBar: _appBar(context, title),
       body: SingleChildScrollView(
         padding: AppPadding.horizontalMedium,
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            AppSpacing.md,
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                SizedBox(
-                  height: 72,
-                  child: Image.asset(ImageAsset.iconBluetooth),
+                Flexible(
+                  flex: screenWidth <= 600 ? 2 : 3,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [
+                      Image.asset(ImageAsset.iconBluetooth,
+                          width: 45, height: 45, fit: BoxFit.contain),
+                      AppSpacing.md,
+                      Flexible(
+                        flex: 1,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              title,
+                              style: context.h4,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            AppSpacing.xs,
+                            Text(
+                              'CC:7B:5C:28:A4:7E',
+                              style: context.bodySmall,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            AppSpacing.xs,
+                            Text(
+                              'BONDED',
+                              style: context.bodySmall,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      )
+                    ],
+                  ),
                 ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: FontFamily.headlineMedium,
-                    ),
-                    Text(
-                      'CC:7B:5C:28:A4:7E',
-                      style: FontFamily.normal.copyWith(fontSize: 16),
-                    ),
-                    Text(
-                      'BONDED',
-                      style: FontFamily.normal.copyWith(fontSize: 16),
-                    ),
-                  ],
+                AppSpacing.sm,
+                Flexible(
+                  flex: 1,
+                  child: SizedBox(
+                    height: 30,
+                    child: Button(
+                        width: double.infinity,
+                        onPressed: () {},
+                        text: 'Disconnect',
+                        btnColor: AppColor.redColor,
+                        customStyle: context.buttonTextSmallest),
+                  ),
                 ),
-                SizedBox(
-                  height: 23,
-                  child: ElevatedButton(
-                      onPressed: () {},
-                      style: ButtonStyle(
-                        backgroundColor: WidgetStatePropertyAll(
-                            Theme.of(context).appBarTheme.backgroundColor),
-                        shape: const WidgetStatePropertyAll(
-                            RoundedRectangleBorder(
-                                borderRadius:
-                                    BorderRadius.all(Radius.circular(8)))),
-                      ),
-                      child: Text(
-                        'Connect',
-                        style: FontFamily.normal
-                            .copyWith(fontSize: 10, color: Colors.black),
-                      )),
-                )
               ],
             ),
-            const SizedBox(
-              height: 30,
-            ),
+            AppSpacing.xl,
             Text(
               'Configuration Menu',
-              style: FontFamily.headlineMedium.copyWith(fontSize: 14),
+              style: context.h5,
             ),
-            const SizedBox(
-              height: 16,
-            ),
-            Wrap(
-              alignment: WrapAlignment.center,
-              children: [
-                InkWell(
-                  onTap: () {
-                    Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) =>
-                                const DeviceCommunicationsPage()));
-                  },
-                  child: cardMenu(
-                      context, ImageAsset.iconDevice, 'Device Communications'),
-                ),
-                InkWell(
-                  onTap: () {
-                    Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) =>
-                                const ModbusConfigurationPage()));
-                  },
-                  child: cardMenu(
-                      context, ImageAsset.iconConfig, 'Modbus Configurations'),
-                ),
-                InkWell(
-                  onTap: () {
-                    Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const ServerConfigPage(),
-                        ));
-                  },
-                  child: cardMenu(
-                      context, ImageAsset.iconServer, 'Server Configurations'),
-                ),
-                InkWell(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) =>
-                              const LoggingConfigurationPage()),
-                    );
-                  },
-                  child: cardMenu(context, ImageAsset.iconLogging,
-                      'Logging Configurations'),
-                ),
-              ],
-            ),
-            // cardMenu(context),
+            AppSpacing.md,
+            LayoutBuilder(builder: (context, constraints) {
+              double cardWidth = (constraints.maxWidth / 2) - 8;
+
+              return Wrap(
+                spacing: 16,
+                runSpacing: 16,
+                alignment: WrapAlignment.spaceBetween,
+                children: menuItems
+                    .map((item) => CardMenu(
+                        width: cardWidth,
+                        text: item['text']!,
+                        imagePath: item['imagePath']!,
+                        page: item['page']))
+                    .toList(),
+              );
+            }),
+            AppSpacing.lg,
           ],
         ),
       ),
     );
   }
 
-  AppBar _appBar(BuildContext context) {
+  AppBar _appBar(BuildContext context, String title) {
     return AppBar(
       title: Text(
         'Detail Device',
@@ -151,8 +148,9 @@ class DetailDeviceScreen extends StatelessWidget {
               Navigator.push(
                   context,
                   MaterialPageRoute(
-                      builder: (context) =>
-                          const DetailInformationDevicePage()));
+                      builder: (context) => DetailDeviceInfoScreen(
+                            deviceName: title,
+                          )));
             },
             icon: const Icon(Icons.info))
       ],
