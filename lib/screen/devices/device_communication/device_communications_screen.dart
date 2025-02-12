@@ -6,7 +6,7 @@ import 'package:suriota_mobile_gateway/constant/app_gap.dart';
 import 'package:suriota_mobile_gateway/constant/image_asset.dart';
 import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_button.dart';
-import 'package:suriota_mobile_gateway/screen/devices/device_communication/data_display.dart';
+import 'package:suriota_mobile_gateway/screen/devices/device_communication/data_display_screen.dart';
 import 'package:suriota_mobile_gateway/screen/devices/device_communication/form_device_setup.dart';
 
 class DeviceCommunicationsScreen extends StatelessWidget {
@@ -131,6 +131,7 @@ class DeviceCommunicationsScreen extends StatelessWidget {
     return Card(
       color: AppColor.cardColor,
       margin: EdgeInsets.zero,
+      elevation: 0.0,
       child: Padding(
         padding: AppPadding.small,
         child: Row(
