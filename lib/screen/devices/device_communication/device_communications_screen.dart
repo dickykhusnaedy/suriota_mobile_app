@@ -7,7 +7,7 @@ import 'package:suriota_mobile_gateway/constant/image_asset.dart';
 import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_button.dart';
 import 'package:suriota_mobile_gateway/screen/devices/device_communication/data_display_screen.dart';
-import 'package:suriota_mobile_gateway/screen/devices/device_communication/form_device_setup.dart';
+import 'package:suriota_mobile_gateway/screen/devices/device_communication/form_setup_device_screen.dart';
 
 class DeviceCommunicationsScreen extends StatelessWidget {
   const DeviceCommunicationsScreen({super.key});
@@ -60,7 +60,7 @@ class DeviceCommunicationsScreen extends StatelessWidget {
               Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const FomDeviceSetupView(),
+                    builder: (context) => const FormSetupDeviceScreen(),
                   ));
             },
             icon: const Icon(
@@ -177,7 +177,7 @@ class DeviceCommunicationsScreen extends StatelessWidget {
                           context,
                           MaterialPageRoute(
                               builder: (context) =>
-                                  const FomDeviceSetupView()));
+                                  const FormSetupDeviceScreen()));
                     },
                     text: 'Setup',
                     btnColor: AppColor.primaryColor,
