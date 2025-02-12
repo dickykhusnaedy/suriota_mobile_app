@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
 
 import '../../constant/app_color.dart';
-import '../../constant/font_setup.dart';
 
 class CustomRadioTile extends StatelessWidget {
   final String value;
@@ -29,8 +29,7 @@ class CustomRadioTile extends StatelessWidget {
       dense: true,
       contentPadding: EdgeInsets.zero,
       title: Text(value),
-      titleTextStyle:
-          isSelected ? FontFamily.headlineMedium : FontFamily.normal,
+      titleTextStyle: isSelected ? context.h6 : context.body,
       onTap: () {
         onChanges();
       },
