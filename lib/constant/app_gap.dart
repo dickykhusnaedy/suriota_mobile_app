@@ -14,6 +14,7 @@ class AppSpacing {
 }
 
 class AppPadding {
+  static EdgeInsets smallest = EdgeInsets.all(4.w.clamp(4, 6));
   static EdgeInsets small = EdgeInsets.all(8.w.clamp(8, 10));
   static EdgeInsets medium = EdgeInsets.all(16.w.clamp(16, 18));
   static EdgeInsets large = EdgeInsets.all(24.w.clamp(24, 26));
