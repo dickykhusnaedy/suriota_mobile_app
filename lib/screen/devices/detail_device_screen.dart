@@ -17,8 +17,6 @@ class DetailDeviceScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    double screenWidth = MediaQuery.of(context).size.width;
-
     final List<Map<String, dynamic>> menuItems = [
       {
         "text": "Device Communication",
@@ -44,92 +42,101 @@ class DetailDeviceScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: _appBar(context, title),
-      body: SingleChildScrollView(
-        padding: AppPadding.horizontalMedium,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            AppSpacing.md,
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Flexible(
-                  flex: screenWidth <= 600 ? 2 : 3,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    children: [
-                      Image.asset(ImageAsset.iconBluetooth,
-                          width: 45, height: 45, fit: BoxFit.contain),
-                      AppSpacing.md,
-                      Flexible(
-                        flex: 1,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              title,
-                              style: context.h4,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            AppSpacing.xs,
-                            Text(
-                              'CC:7B:5C:28:A4:7E',
-                              style: context.bodySmall,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            AppSpacing.xs,
-                            Text(
-                              'BONDED',
-                              style: context.bodySmall,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ),
-                      )
-                    ],
-                  ),
-                ),
-                AppSpacing.sm,
-                Flexible(
-                  flex: 1,
-                  child: SizedBox(
-                    height: 30,
-                    child: Button(
-                        width: double.infinity,
-                        onPressed: () {},
-                        text: 'Disconnect',
-                        btnColor: AppColor.redColor,
-                        customStyle: context.buttonTextSmallest),
-                  ),
-                ),
-              ],
-            ),
-            AppSpacing.xl,
-            Text(
-              'Configuration Menu',
-              style: context.h5,
-            ),
-            AppSpacing.md,
-            LayoutBuilder(builder: (context, constraints) {
-              double cardWidth = (constraints.maxWidth / 2) - 8;
-
-              return Wrap(
-                spacing: 16,
-                runSpacing: 16,
-                alignment: WrapAlignment.spaceBetween,
-                children: menuItems
-                    .map((item) => CardMenu(
-                        width: cardWidth,
-                        text: item['text']!,
-                        imagePath: item['imagePath']!,
-                        page: item['page']))
-                    .toList(),
-              );
-            }),
-            AppSpacing.lg,
-          ],
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: AppPadding.horizontalMedium,
+          child: _bodyContent(context, menuItems),
         ),
       ),
+    );
+  }
+
+  Column _bodyContent(
+      BuildContext context, List<Map<String, dynamic>> menuItems) {
+    double screenWidth = MediaQuery.of(context).size.width;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        AppSpacing.md,
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Flexible(
+              flex: screenWidth <= 600 ? 2 : 3,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  Image.asset(ImageAsset.iconBluetooth,
+                      width: 45, height: 45, fit: BoxFit.contain),
+                  AppSpacing.md,
+                  Flexible(
+                    flex: 1,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: context.h4,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        AppSpacing.xs,
+                        Text(
+                          'CC:7B:5C:28:A4:7E',
+                          style: context.bodySmall,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        AppSpacing.xs,
+                        Text(
+                          'BONDED',
+                          style: context.bodySmall,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  )
+                ],
+              ),
+            ),
+            AppSpacing.sm,
+            Flexible(
+              flex: 1,
+              child: SizedBox(
+                height: 30,
+                child: Button(
+                    width: double.infinity,
+                    onPressed: () {},
+                    text: 'Disconnect',
+                    btnColor: AppColor.redColor,
+                    customStyle: context.buttonTextSmallest),
+              ),
+            ),
+          ],
+        ),
+        AppSpacing.xl,
+        Text(
+          'Configuration Menu',
+          style: context.h5,
+        ),
+        AppSpacing.md,
+        LayoutBuilder(builder: (context, constraints) {
+          double cardWidth = (constraints.maxWidth / 2) - 8;
+
+          return Wrap(
+            spacing: 16,
+            runSpacing: 16,
+            alignment: WrapAlignment.spaceBetween,
+            children: menuItems
+                .map((item) => CardMenu(
+                    width: cardWidth,
+                    text: item['text']!,
+                    imagePath: item['imagePath']!,
+                    page: item['page']))
+                .toList(),
+          );
+        }),
+        AppSpacing.lg,
+      ],
     );
   }
 

@@ -20,9 +20,11 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
         appBar: _appBar(),
-        body: SingleChildScrollView(
-          padding: AppPadding.horizontalMedium,
-          child: _findDevice(context),
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: AppPadding.horizontalMedium,
+            child: _findDevice(context),
+          ),
         ));
   }
 
