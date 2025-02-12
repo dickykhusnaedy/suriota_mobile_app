@@ -9,8 +9,8 @@ import 'package:suriota_mobile_gateway/global/widgets/custom_button.dart';
 import 'package:suriota_mobile_gateway/screen/devices/device_communication/data_display.dart';
 import 'package:suriota_mobile_gateway/screen/devices/device_communication/form_device_setup.dart';
 
-class DeviceCommunicationsPage extends StatelessWidget {
-  const DeviceCommunicationsPage({super.key});
+class DeviceCommunicationsScreen extends StatelessWidget {
+  const DeviceCommunicationsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
