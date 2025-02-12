@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
+import 'package:suriota_mobile_gateway/constant/app_gap.dart';
+import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
 
 import '../../constant/app_color.dart';
 import '../../constant/font_setup.dart';
@@ -20,6 +22,7 @@ class CustomTextFormField extends StatelessWidget {
   final EdgeInsetsGeometry padding;
   final TextInputType? keyboardType;
   final bool? obscureText;
+
   const CustomTextFormField(
       {super.key,
       required this.labelTxt,
@@ -48,30 +51,29 @@ class CustomTextFormField extends StatelessWidget {
         children: [
           Text(
             labelTxt,
-            style: labelTxtStyle ?? FontFamily.headlineMedium,
+            style: labelTxtStyle ??
+                context.h6.copyWith(fontWeight: FontWeightTheme.bold),
           ),
-          const Gap(4),
+          AppSpacing.sm,
           TextFormField(
             obscureText: obscureText ?? false,
             keyboardType: keyboardType,
-            style: FontFamily.normalText,
+            style: context.body.copyWith(color: AppColor.darkGrey),
             controller: controller,
             validator: validator,
             onTap: onTap,
             onChanged: onChanges,
             readOnly: readOnly,
-            cursorColor: AppColor.primaryColor,
+            cursorColor: AppColor.darkGrey,
             decoration: InputDecoration(
               filled: true,
               fillColor: Colors.white,
               floatingLabelBehavior: FloatingLabelBehavior.always,
               alignLabelWithHint: false,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                // vertical: 2,
-              ),
+              contentPadding: AppPadding.horizontalMedium,
               hintText: hintTxt,
-              hintStyle: hintTxtStyle ?? FontFamily.labelText,
+              hintStyle:
+                  hintTxtStyle ?? context.body.copyWith(color: AppColor.grey),
               suffixIcon: suffixIcon,
               prefixIcon: prefixIcon,
               errorText: errorTxt,
