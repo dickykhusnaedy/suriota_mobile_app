@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:gap/gap.dart';
+import 'package:suriota_mobile_gateway/constant/app_color.dart';
 import 'package:suriota_mobile_gateway/constant/app_gap.dart';
+import 'package:suriota_mobile_gateway/constant/font_setup.dart';
 import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
-
-import '../../constant/app_color.dart';
-import '../../constant/font_setup.dart';
 
 class CustomTextFormField extends StatelessWidget {
   final TextEditingController? controller;
@@ -43,50 +41,47 @@ class CustomTextFormField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: padding,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            labelTxt,
-            style: labelTxtStyle ??
-                context.h6.copyWith(fontWeight: FontWeightTheme.bold),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          labelTxt,
+          style: labelTxtStyle ??
+              context.h6.copyWith(fontWeight: FontWeightTheme.bold),
+        ),
+        AppSpacing.sm,
+        TextFormField(
+          obscureText: obscureText ?? false,
+          keyboardType: keyboardType,
+          style: context.body.copyWith(color: AppColor.darkGrey),
+          controller: controller,
+          validator: validator,
+          onTap: onTap,
+          onChanged: onChanges,
+          readOnly: readOnly,
+          cursorColor: AppColor.darkGrey,
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: Colors.white,
+            floatingLabelBehavior: FloatingLabelBehavior.always,
+            alignLabelWithHint: false,
+            contentPadding: AppPadding.horizontalMedium,
+            hintText: hintTxt,
+            hintStyle:
+                hintTxtStyle ?? context.body.copyWith(color: AppColor.grey),
+            suffixIcon: suffixIcon,
+            prefixIcon: prefixIcon,
+            errorText: errorTxt,
+            border: borderStyle,
+            enabledBorder: borderStyle,
+            focusedBorder: focusedBorder,
+            focusedErrorBorder: focusedErrorBorder,
+            errorBorder: errorBorder,
+            disabledBorder: borderStyle,
           ),
-          AppSpacing.sm,
-          TextFormField(
-            obscureText: obscureText ?? false,
-            keyboardType: keyboardType,
-            style: context.body.copyWith(color: AppColor.darkGrey),
-            controller: controller,
-            validator: validator,
-            onTap: onTap,
-            onChanged: onChanges,
-            readOnly: readOnly,
-            cursorColor: AppColor.darkGrey,
-            decoration: InputDecoration(
-              filled: true,
-              fillColor: Colors.white,
-              floatingLabelBehavior: FloatingLabelBehavior.always,
-              alignLabelWithHint: false,
-              contentPadding: AppPadding.horizontalMedium,
-              hintText: hintTxt,
-              hintStyle:
-                  hintTxtStyle ?? context.body.copyWith(color: AppColor.grey),
-              suffixIcon: suffixIcon,
-              prefixIcon: prefixIcon,
-              errorText: errorTxt,
-              border: borderStyle,
-              enabledBorder: borderStyle,
-              focusedBorder: focusedBorder,
-              focusedErrorBorder: focusedErrorBorder,
-              errorBorder: errorBorder,
-              disabledBorder: borderStyle,
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
