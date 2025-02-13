@@ -53,11 +53,11 @@ class FontFamily {
   static TextStyle headlineMedium = GoogleFonts.poppins(
     fontSize: 14,
     fontWeight: FontWeight.bold,
-    color: AppColor.primaryColor,
+    color: color,
   );
   static TextStyle normal = GoogleFonts.poppins(
     fontSize: 14,
-    color: AppColor.primaryColor,
+    color: color,
   );
   static TextStyle labelText = GoogleFonts.poppins(
     fontSize: 14,
