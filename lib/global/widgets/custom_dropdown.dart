@@ -1,8 +1,8 @@
 import 'package:dropdown_search/dropdown_search.dart';
 import 'package:flutter/material.dart';
-
-import '../../constant/app_color.dart';
-import '../../constant/font_setup.dart';
+import 'package:suriota_mobile_gateway/constant/app_color.dart';
+import 'package:suriota_mobile_gateway/constant/app_gap.dart';
+import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
 
 class CustomDropdown extends StatefulWidget {
   const CustomDropdown({
@@ -35,17 +35,17 @@ class _CustomDropdownState extends State<CustomDropdown> {
     return DropdownSearch<String>(
       items: widget.listItem,
       dropdownDecoratorProps: DropDownDecoratorProps(
-        baseStyle: FontFamily.normal,
+        baseStyle: context.h6,
         dropdownSearchDecoration: InputDecoration(
           hintText: widget.hintText,
-          hintStyle: FontFamily.labelText,
+          hintStyle: context.body.copyWith(color: AppColor.grey),
           filled: true,
           fillColor: Colors.white, // Sama dengan CustomTextFormField
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: const BorderSide(
               color: AppColor.primaryColor,
-              width: 2,
+              width: 1,
             ),
           ),
           focusedBorder: OutlineInputBorder(
@@ -59,10 +59,10 @@ class _CustomDropdownState extends State<CustomDropdown> {
             borderRadius: BorderRadius.circular(12),
             borderSide: const BorderSide(
               color: AppColor.primaryColor,
-              width: 2,
+              width: 1,
             ),
           ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 14),
+          contentPadding: AppPadding.horizontalMedium,
         ),
       ),
       onChanged: (value) {
@@ -83,7 +83,7 @@ class _CustomDropdownState extends State<CustomDropdown> {
               showSelectedItems: true,
               showSearchBox: true,
               searchFieldProps: TextFieldProps(
-                style: FontFamily.normal,
+                style: context.body,
                 textCapitalization: TextCapitalization.characters,
                 decoration: InputDecoration(
                     contentPadding: const EdgeInsets.all(6),
@@ -96,22 +96,20 @@ class _CustomDropdownState extends State<CustomDropdown> {
                         borderSide:
                             BorderSide(color: AppColor.primaryColor, width: 2)),
                     hintText: "Search",
-                    hintStyle: FontFamily.labelText),
+                    hintStyle: context.body),
               ),
               itemBuilder: (context, item, isSelected) {
                 return Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  padding: AppPadding.horizontalMedium,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(8),
                     color: isSelected
-                        ? AppColor.primaryColor.withOpacity(0.1)
+                        ? AppColor.primaryColor.withValues(alpha: 0.1)
                         : null,
                   ),
                   child: Text(
                     item,
-                    style: FontFamily.normal
-                        .copyWith(color: AppColor.primaryColor),
+                    style: context.body,
                   ),
                 );
               },
@@ -120,39 +118,21 @@ class _CustomDropdownState extends State<CustomDropdown> {
               fit: FlexFit.loose,
               menuProps: const MenuProps(
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.all(Radius.circular(12)))),
+                      borderRadius: BorderRadius.all(Radius.circular(4)))),
               showSelectedItems: true,
               showSearchBox: false,
-              // searchFieldProps: TextFieldProps(
-              //   style: FontFamily.normal,
-              //   textCapitalization: TextCapitalization.characters,
-              //   decoration: InputDecoration(
-              //       contentPadding: const EdgeInsets.all(6),
-              //       enabledBorder: const OutlineInputBorder(
-              //           borderRadius: BorderRadius.all(Radius.circular(8)),
-              //           borderSide:
-              //               BorderSide(color: AppColor.primaryColor, width: 2)),
-              //       focusedBorder: const OutlineInputBorder(
-              //           borderRadius: BorderRadius.all(Radius.circular(8)),
-              //           borderSide:
-              //               BorderSide(color: AppColor.primaryColor, width: 2)),
-              //       hintText: "Search",
-              //       hintStyle: FontFamily.labelText),
-              // ),
               itemBuilder: (context, item, isSelected) {
                 return Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  padding: AppPadding.small,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(8),
                     color: isSelected
-                        ? AppColor.primaryColor.withOpacity(0.1)
+                        ? AppColor.primaryColor.withValues(alpha: 0.1)
                         : null,
                   ),
                   child: Text(
                     item,
-                    style: FontFamily.normal
-                        .copyWith(color: AppColor.primaryColor),
+                    style: context.body.copyWith(color: AppColor.primaryColor),
                   ),
                 );
               },
