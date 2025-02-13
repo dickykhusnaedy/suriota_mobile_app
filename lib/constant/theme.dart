@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:suriota_mobile_gateway/constant/app_color.dart';
-
-import 'font_setup.dart';
+import 'package:suriota_mobile_gateway/constant/font_setup.dart';
+import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
 
 class AppTheme {
   static ThemeData lightTheme = ThemeData(
@@ -54,6 +54,22 @@ class AppTheme {
             color: AppColor.whiteColor),
       ),
       useMaterial3: true);
+}
+
+class ShowMessage {
+  static void showCustomSnackBar(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message,
+            style: context.body.copyWith(color: AppColor.whiteColor)),
+        margin: const EdgeInsets.only(bottom: 20, left: 10, right: 10),
+        duration: const Duration(seconds: 3),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
 }
 
 ThemeData themeData() {
