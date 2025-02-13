@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:gap/gap.dart';
 import 'package:suriota_mobile_gateway/constant/app_color.dart';
 import 'package:suriota_mobile_gateway/constant/app_gap.dart';
+import 'package:suriota_mobile_gateway/constant/theme.dart';
 import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
+import 'package:suriota_mobile_gateway/global/widgets/custom_button.dart';
+import 'package:suriota_mobile_gateway/global/widgets/custom_dropdown.dart';
+import 'package:suriota_mobile_gateway/global/widgets/custom_radiotile.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_textfield.dart';
-
-import '../../../constant/font_setup.dart';
-import '../../../global/widgets/custom_dropdown.dart';
-import '../../../global/widgets/custom_radiotile.dart';
-import '../../../global/widgets/title_tile.dart';
+import 'package:suriota_mobile_gateway/global/widgets/title_tile.dart';
 
 class FormSetupDeviceScreen extends StatefulWidget {
   const FormSetupDeviceScreen({super.key});
@@ -36,23 +35,28 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
                 labelTxt: "Device Name",
                 hintTxt: "Enter the device name",
               ),
-              if (modBusSelected == "RS-485") AppSpacing.sm,
-              CustomTextFormField(
-                labelTxt: "Refresh Rate",
-                hintTxt: "Enter the Refresh Rate",
-                suffixIcon: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        "m/s",
-                        style: context.bodySmall.copyWith(color: AppColor.grey),
-                      )
-                    ]),
-              ),
-              AppSpacing.sm,
+              if (modBusSelected == "RS-485")
+                Column(
+                  children: [
+                    AppSpacing.md,
+                    CustomTextFormField(
+                      labelTxt: "Refresh Rate",
+                      hintTxt: "Enter the Refresh Rate",
+                      suffixIcon: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              "m/s",
+                              style: context.bodySmall
+                                  .copyWith(color: AppColor.grey),
+                            )
+                          ]),
+                    ),
+                  ],
+                ),
+              AppSpacing.md,
               Column(
-                mainAxisAlignment: MainAxisAlignment.start,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text("Choose Moodbus Type", style: context.h6),
                   AppSpacing.sm,
@@ -60,87 +64,42 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
                     value: "RS-485",
                     grupValue: modBusSelected,
                     onChanges: () {
-                      if (modBusSelected != "RS-485") {
-                        setState(() {
-                          modBusSelected = "RS-485";
-                        });
-                      }
+                      setState(() {
+                        modBusSelected = "RS-485";
+                      });
                     },
                   ),
                   CustomRadioTile(
                     value: "TCP/IP",
                     grupValue: modBusSelected,
                     onChanges: () {
-                      if (modBusSelected != "TCP/IP") {
-                        setState(() {
-                          modBusSelected = "TCP/IP";
-                        });
-                      }
+                      setState(() {
+                        modBusSelected = "TCP/IP";
+                      });
                     },
                   ),
-                  const Gap(8),
-                  if (modBusSelected == "RS-485") rs485Field(),
-                  if (modBusSelected == "TCP/IP") tcpIpField(),
                 ],
               ),
+              AppSpacing.md,
+              TitleTile(title: "Modbus Setup $modBusSelected"),
+              AppSpacing.md,
+              modBusSelected == 'RS-485'
+                  ? _formRS485Wrapper()
+                  : _formTCPIPWrapper(),
+              AppSpacing.lg,
+              Button(
+                width: MediaQuery.of(context).size.width,
+                onPressed: () {
+                  ShowMessage.showCustomSnackBar(
+                      context, "Feature for save data is coming soon!");
+                },
+                text: 'Save',
+              ),
+              AppSpacing.lg
             ],
           ),
         ),
       ),
-      // body: ListView(
-      //   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-      //   children: [
-      //
-      //     if (modBusSelected == "RS-485")
-      //       const CustomTextFormField(
-      //         labelTxt: "Refresh Rate",
-      //         hintTxt: "Enter the Refresh Rate",
-      //         suffixIcon: Column(
-      //             mainAxisAlignment: MainAxisAlignment.center,
-      //             children: [Text("m/s")]),
-      //       ),
-      //     const Gap(6),
-      //     Column(
-      //       mainAxisAlignment: MainAxisAlignment.start,
-      //       crossAxisAlignment: CrossAxisAlignment.stretch,
-      //       children: [
-      //         Text("Choose Moodbus Type", style: FontFamily.headlineMedium),
-      //         CustomRadioTile(
-      //           value: "RS-485",
-      //           grupValue: modBusSelected,
-      //           onChanges: () {
-      //             if (modBusSelected != "RS-485") {
-      //               setState(() {
-      //                 modBusSelected = "RS-485";
-      //               });
-      //             }
-      //           },
-      //         ),
-      //         CustomRadioTile(
-      //           value: "TCP/IP",
-      //           grupValue: modBusSelected,
-      //           onChanges: () {
-      //             if (modBusSelected != "TCP/IP") {
-      //               setState(() {
-      //                 modBusSelected = "TCP/IP";
-      //               });
-      //             }
-      //           },
-      //         ),
-      //         const Gap(8),
-      //         if (modBusSelected == "RS-485") rs485Field(),
-      //         if (modBusSelected == "TCP/IP") tcpIpField(),
-      //       ],
-      //     ),
-      //     const Gap(20),
-      //     CustomButton(
-      //       titleButton: "SAVE",
-      //       onPressed: () {
-      //         dialogSuccess(context);
-      //       },
-      //     ),
-      //   ],
-      // ),
     );
   }
 
@@ -156,54 +115,7 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
     );
   }
 
-  Widget tcpIpField() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      mainAxisAlignment: MainAxisAlignment.start,
-      children: [
-        const TitleTile(title: "Modbus Setup TCP/IP"),
-        const Gap(6),
-        const CustomTextFormField(
-          labelTxt: "IP Address",
-          hintTxt: "127.0.0.1",
-        ),
-        const CustomTextFormField(
-          labelTxt: "Server Port",
-          hintTxt: "502",
-        ),
-        const CustomTextFormField(
-          labelTxt: "Connect Timeout",
-          hintTxt: "3000 m/s",
-        ),
-        const Gap(10),
-        Text("Choose Internet Protocol", style: FontFamily.headlineMedium),
-        CustomRadioTile(
-          value: "IPv4",
-          grupValue: protocolSelected,
-          onChanges: () {
-            if (protocolSelected != "IPv4") {
-              setState(() {
-                protocolSelected = "IPv4";
-              });
-            }
-          },
-        ),
-        CustomRadioTile(
-          value: "IPv6",
-          grupValue: protocolSelected,
-          onChanges: () {
-            if (protocolSelected != "IPv6") {
-              setState(() {
-                protocolSelected = "IPv6";
-              });
-            }
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget rs485Field() {
+  Widget _formRS485Wrapper() {
     List<String> baudrates = [
       '9600 Baud',
       '19200 Baud',
@@ -221,43 +133,86 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
       '2 Stop Bits',
     ];
     String? selectedBaudRate;
+
     return Column(
       mainAxisAlignment: MainAxisAlignment.start,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const TitleTile(title: "Modbus Setup RS-485"),
-        const Gap(6),
         Text(
           'Choose Baudrate',
-          style: FontFamily.headlineMedium,
+          style: context.h6,
         ),
-        const Gap(4),
+        AppSpacing.sm,
         CustomDropdown(
           listItem: baudrates,
           hintText: 'Choose the baudrate',
           selectedItem: selectedBaudRate ?? '',
         ),
-        const Gap(6),
+        AppSpacing.md,
         Text(
           'Choose Bit Data',
-          style: FontFamily.headlineMedium,
+          style: context.h6,
         ),
-        const Gap(4),
+        AppSpacing.sm,
         CustomDropdown(listItem: bitData, hintText: 'Choose bit data'),
-        const Gap(6),
+        AppSpacing.md,
         Text(
           'Choose Parity',
-          style: FontFamily.headlineMedium,
+          style: context.h6,
         ),
-        const Gap(4),
+        AppSpacing.sm,
         CustomDropdown(listItem: parity, hintText: 'Choose the parity'),
-        const Gap(6),
+        AppSpacing.md,
         Text(
           'Choose Stop Bit',
-          style: FontFamily.headlineMedium,
+          style: context.h6,
         ),
-        const Gap(4),
+        AppSpacing.sm,
         CustomDropdown(listItem: stopBits, hintText: 'Choose the stop bit'),
+      ],
+    );
+  }
+
+  Widget _formTCPIPWrapper() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisAlignment: MainAxisAlignment.start,
+      children: [
+        const CustomTextFormField(
+          labelTxt: "IP Address",
+          hintTxt: "127.0.0.1",
+        ),
+        AppSpacing.md,
+        const CustomTextFormField(
+          labelTxt: "Server Port",
+          hintTxt: "502",
+        ),
+        AppSpacing.md,
+        const CustomTextFormField(
+          labelTxt: "Connect Timeout",
+          hintTxt: "3000 m/s",
+        ),
+        AppSpacing.md,
+        Text("Choose Internet Protocol", style: context.h6),
+        AppSpacing.sm,
+        CustomRadioTile(
+          value: "IPv4",
+          grupValue: protocolSelected,
+          onChanges: () {
+            setState(() {
+              protocolSelected = "IPv4";
+            });
+          },
+        ),
+        CustomRadioTile(
+          value: "IPv6",
+          grupValue: protocolSelected,
+          onChanges: () {
+            setState(() {
+              protocolSelected = "IPv6";
+            });
+          },
+        ),
       ],
     );
   }
