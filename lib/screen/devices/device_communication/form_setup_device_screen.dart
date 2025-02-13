@@ -94,6 +94,7 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
                       context, "Feature for save data is coming soon!");
                 },
                 text: 'Save',
+                height: 50,
               ),
               AppSpacing.lg
             ],

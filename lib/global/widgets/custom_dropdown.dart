@@ -86,11 +86,11 @@ class _CustomDropdownState extends State<CustomDropdown> {
                 style: context.body,
                 textCapitalization: TextCapitalization.characters,
                 decoration: InputDecoration(
-                    contentPadding: const EdgeInsets.all(6),
+                    contentPadding: AppPadding.medium,
                     enabledBorder: const OutlineInputBorder(
                         borderRadius: BorderRadius.all(Radius.circular(8)),
                         borderSide:
-                            BorderSide(color: AppColor.primaryColor, width: 2)),
+                            BorderSide(color: AppColor.primaryColor, width: 1)),
                     focusedBorder: const OutlineInputBorder(
                         borderRadius: BorderRadius.all(Radius.circular(8)),
                         borderSide:
@@ -100,7 +100,8 @@ class _CustomDropdownState extends State<CustomDropdown> {
               ),
               itemBuilder: (context, item, isSelected) {
                 return Container(
-                  padding: AppPadding.horizontalMedium,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(8),
                     color: isSelected
@@ -123,7 +124,7 @@ class _CustomDropdownState extends State<CustomDropdown> {
               showSearchBox: false,
               itemBuilder: (context, item, isSelected) {
                 return Container(
-                  padding: AppPadding.small,
+                  padding: AppPadding.medium,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(8),
                     color: isSelected

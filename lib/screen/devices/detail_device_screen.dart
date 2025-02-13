@@ -8,7 +8,7 @@ import 'package:suriota_mobile_gateway/global/widgets/device_card.dart';
 import 'package:suriota_mobile_gateway/screen/devices/detail_device_info_screen.dart';
 import 'package:suriota_mobile_gateway/screen/devices/device_communication/device_communications_screen.dart';
 import 'package:suriota_mobile_gateway/screen/devices/logging_config/logging_page.dart';
-import 'package:suriota_mobile_gateway/screen/devices/modbus_config/modbus_configuration_page.dart';
+import 'package:suriota_mobile_gateway/screen/devices/modbus_config/modbus_screen.dart';
 import 'package:suriota_mobile_gateway/screen/devices/server_config/server_config_page.dart';
 
 class DetailDeviceScreen extends StatelessWidget {
@@ -26,7 +26,7 @@ class DetailDeviceScreen extends StatelessWidget {
       {
         "text": "Modbus Configurations",
         "imagePath": ImageAsset.iconConfig,
-        "page": const ModbusConfigurationPage()
+        "page": const ModbusScreen()
       },
       {
         "text": "Server Configurations",
