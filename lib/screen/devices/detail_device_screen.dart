@@ -9,7 +9,7 @@ import 'package:suriota_mobile_gateway/screen/devices/detail_device_info_screen.
 import 'package:suriota_mobile_gateway/screen/devices/device_communication/device_communications_screen.dart';
 import 'package:suriota_mobile_gateway/screen/devices/logging_config/logging_page.dart';
 import 'package:suriota_mobile_gateway/screen/devices/modbus_config/modbus_screen.dart';
-import 'package:suriota_mobile_gateway/screen/devices/server_config/server_config_page.dart';
+import 'package:suriota_mobile_gateway/screen/devices/server_config/form_config_server_screen.dart';
 
 class DetailDeviceScreen extends StatelessWidget {
   final String title;
@@ -31,7 +31,7 @@ class DetailDeviceScreen extends StatelessWidget {
       {
         "text": "Server Configurations",
         "imagePath": ImageAsset.iconServer,
-        "page": const ServerConfigPage()
+        "page": const FormConfigServer()
       },
       {
         "text": "Logging Configurations",
