@@ -7,7 +7,7 @@ import 'package:suriota_mobile_gateway/global/widgets/custom_button.dart';
 import 'package:suriota_mobile_gateway/global/widgets/device_card.dart';
 import 'package:suriota_mobile_gateway/screen/devices/detail_device_info_screen.dart';
 import 'package:suriota_mobile_gateway/screen/devices/device_communication/device_communications_screen.dart';
-import 'package:suriota_mobile_gateway/screen/devices/logging_config/logging_page.dart';
+import 'package:suriota_mobile_gateway/screen/devices/logging_config/form_logging_config_screen.dart';
 import 'package:suriota_mobile_gateway/screen/devices/modbus_config/modbus_screen.dart';
 import 'package:suriota_mobile_gateway/screen/devices/server_config/form_config_server_screen.dart';
 
@@ -36,7 +36,7 @@ class DetailDeviceScreen extends StatelessWidget {
       {
         "text": "Logging Configurations",
         "imagePath": ImageAsset.iconLogging,
-        "page": const LoggingConfigurationPage()
+        "page": const FormLoggingConfigScreen()
       },
     ];
 
