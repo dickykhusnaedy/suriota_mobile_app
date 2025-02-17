@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:suriota_mobile_gateway/constant/app_color.dart';
-import 'package:suriota_mobile_gateway/constant/font_setup.dart';
+import 'package:suriota_mobile_gateway/constant/app_gap.dart';
 import 'package:suriota_mobile_gateway/constant/image_asset.dart';
-
-import '../../global/widgets/custom_textfield.dart';
+import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
+import 'package:suriota_mobile_gateway/global/widgets/field_data_widget.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -11,76 +11,63 @@ class ProfilePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        iconTheme: const IconThemeData(color: Colors.white),
-        centerTitle: true,
-        title: Text(
-          'My Profile',
-          style: FontFamily.tittleSmall.copyWith(color: Colors.white),
+      appBar: _appBar(context),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: AppPadding.horizontalMedium,
+          child: _bodyContent(context),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Center(
-              child: CircleAvatar(
-                radius: 75,
-                backgroundImage: AssetImage(ImageAsset.profile2),
-              ),
-            ),
-            const SizedBox(
-              height: 16,
-            ),
-            Center(
-              child: Text(
-                'Rudi Soru',
-                style: FontFamily.titleMedium,
-              ),
-            ),
-            const SizedBox(
-              height: 24,
-            ),
-            const CustomTextFormField(
-              readOnly: true,
-              labelTxt: 'Full Name',
-              hintTxt: 'Rudi Soru',
-              prefixIcon: Icon(
-                Icons.email,
-                color: AppColor.primaryColor,
-              ),
-            ),
-            const SizedBox(
-              height: 13,
-            ),
-            const CustomTextFormField(
-              readOnly: true,
-              labelTxt: 'Email',
-              hintTxt: 'rudisoru@dah.com',
-              prefixIcon: Icon(
-                Icons.email,
-                color: AppColor.primaryColor,
-              ),
-            ),
-            const SizedBox(
-              height: 13,
-            ),
-            const CustomTextFormField(
-              readOnly: true,
-              labelTxt: 'Phone Number',
-              hintTxt: '+6282377654557',
-              prefixIcon: Icon(
-                Icons.email,
-                color: AppColor.primaryColor,
-              ),
-            ),
-            const SizedBox(
-              height: 13,
-            ),
-          ],
+    );
+  }
+
+  Column _bodyContent(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        AppSpacing.md,
+        const Center(
+          child: CircleAvatar(
+            radius: 75,
+            backgroundImage: AssetImage(ImageAsset.profile2),
+          ),
         ),
+        AppSpacing.md,
+        Center(
+          child: Text(
+            'Rudi Soru',
+            style: context.h3,
+          ),
+        ),
+        AppSpacing.lg,
+        const FieldDataWidget(
+          label: 'Full Name',
+          description: 'Rudi Soru',
+        ),
+        AppSpacing.md,
+        const FieldDataWidget(
+          label: 'Email',
+          description: 'rudisoru@dah.com',
+        ),
+        AppSpacing.md,
+        const FieldDataWidget(
+          label: 'Phone Number',
+          description: '+6282377654557',
+        ),
+        AppSpacing.lg,
+      ],
+    );
+  }
+
+  AppBar _appBar(BuildContext context) {
+    return AppBar(
+      title: Text(
+        'My Profile',
+        style: context.h5.copyWith(color: AppColor.whiteColor),
       ),
+      iconTheme: const IconThemeData(color: Colors.white),
+      centerTitle: true,
+      backgroundColor: AppColor.primaryColor,
     );
   }
 }
