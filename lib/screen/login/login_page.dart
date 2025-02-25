@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:suriota_mobile_gateway/constant/app_color.dart';
 import 'package:suriota_mobile_gateway/constant/app_gap.dart';
-import 'package:suriota_mobile_gateway/constant/font_setup.dart';
 import 'package:suriota_mobile_gateway/constant/image_asset.dart';
+import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
+import 'package:suriota_mobile_gateway/global/widgets/custom_button.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_textfield.dart';
 import 'package:suriota_mobile_gateway/screen/home/home_screen.dart';
 import 'package:suriota_mobile_gateway/screen/login/register.dart';
-import '../../global/widgets/custom_button.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -19,6 +19,7 @@ class _LoginPageState extends State<LoginPage> {
   final _formField = GlobalKey<FormState>();
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
+
   bool passToggle = false;
 
   String? validateEmail(String? value) {
@@ -46,33 +47,40 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    double screenWidth = MediaQuery.of(context).size.width;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+          padding: AppPadding.horizontalMedium,
           child: Form(
             key: _formField,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                AppSpacing.md,
                 SizedBox(
-                  height: 38,
-                  child: Image.asset(ImageAsset.logoSuriota),
+                  width: screenWidth * (screenWidth <= 600 ? 0.4 : 0.2),
+                  child: AspectRatio(
+                    aspectRatio: 16 / 9,
+                    child: Image.asset(
+                      ImageAsset.logoSuriota,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
                 ),
-                AppGap.gap32,
+                AppSpacing.sm,
                 Text(
                   'Welcome to Suriota Mobile Gateway!',
-                  style: FontFamily.titleLarge,
+                  style: context.h2,
                 ),
-                AppGap.gap8,
+                AppSpacing.xs,
                 Text(
                   'Sign in to continue',
-                  style: FontFamily.normal
-                      .copyWith(fontSize: 18, fontWeight: FontWeight.normal),
+                  style: context.h6,
                 ),
-                AppGap.gap32,
+                AppSpacing.lg,
                 CustomTextFormField(
                   keyboardType: TextInputType.emailAddress,
                   onTap: () {},
@@ -82,9 +90,11 @@ class _LoginPageState extends State<LoginPage> {
                   hintTxt: 'Enter your email',
                   prefixIcon: const Icon(
                     Icons.email,
+                    size: 20,
                     color: AppColor.primaryColor,
                   ),
                 ),
+                AppSpacing.md,
                 CustomTextFormField(
                   obscureText: !passToggle,
                   validator: validatePassword,
@@ -93,6 +103,7 @@ class _LoginPageState extends State<LoginPage> {
                   hintTxt: 'Enter your password',
                   prefixIcon: const Icon(
                     Icons.key,
+                    size: 20,
                     color: AppColor.primaryColor,
                   ),
                   suffixIcon: InkWell(
@@ -102,82 +113,47 @@ class _LoginPageState extends State<LoginPage> {
                       });
                     },
                     child: Icon(
+                      size: 20,
                       passToggle ? Icons.visibility : Icons.visibility_off,
                       color: AppColor.primaryColor,
                     ),
                   ),
                 ),
-                AppGap.gap24,
-                CustomButton(
+                AppSpacing.lg,
+                Button(
+                  width: MediaQuery.of(context).size.width,
                   onPressed: () {
-                    // if (_formField.currentState!.validate()) {
-                    //   Navigator.pushAndRemoveUntil(
-                    //     context,
-                    //     MaterialPageRoute(
-                    //         builder: (context) => const HomeScreen(
-                    //             // title: 'Main Menu',
-                    //             )),
-                    //     (Route<dynamic> route) => false,
-                    //   );
-                    // } else {
-                    //   showDialog(
-                    //       context: context,
-                    //       builder: (context) => const CustomDialog());
-                    // }
                     Navigator.pushAndRemoveUntil(
                       context,
                       MaterialPageRoute(
-                          builder: (context) => const HomeScreen(
-                              // title: 'Main Menu',
-                              )),
+                          builder: (context) => const HomeScreen()),
                       (Route<dynamic> route) => false,
                     );
                   },
-                  titleButton: 'SIGN IN',
+                  text: 'Sign In',
                 ),
-                AppGap.gap16,
+                AppSpacing.sm,
                 Center(
                   child: Text(
                     'OR',
-                    style: FontFamily.headlineMedium
-                        .copyWith(color: AppColor.grey),
+                    style: context.bodySmall.copyWith(color: AppColor.grey),
                   ),
                 ),
-                AppGap.gap16,
-                SizedBox(
-                  height: 57,
-                  width: MediaQuery.of(context).size.width * 1,
-                  child: ElevatedButton(
-                    onPressed: () {},
-                    style: const ButtonStyle(
-                        backgroundColor: WidgetStatePropertyAll(Colors.white),
-                        shape: WidgetStatePropertyAll(RoundedRectangleBorder(
-                            borderRadius: BorderRadius.all(Radius.circular(8)),
-                            side: BorderSide(
-                              color: AppColor.primaryColor,
-                              width: 2,
-                            ))),
-                        fixedSize: WidgetStatePropertyAll(Size.infinite)),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        // Icon(Icons.g_mobiledata),
-                        SizedBox(
-                            height: 25,
-                            child: Image.asset(
-                              ImageAsset.iconGoogle,
-                            )),
-                        const SizedBox(width: 30),
-                        Text(
-                          'SIGN IN WITH GOOGLE',
-                          style: FontFamily.headlineMedium
-                              .copyWith(color: AppColor.primaryColor),
-                        ),
-                      ],
-                    ),
-                  ),
+                AppSpacing.sm,
+                ButtonOutline(
+                  width: MediaQuery.of(context).size.width,
+                  onPressed: () {
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const HomeScreen()),
+                      (Route<dynamic> route) => false,
+                    );
+                  },
+                  imagePath: ImageAsset.iconGoogle,
+                  text: 'Sign In with Google',
                 ),
-                AppGap.gap24,
+                AppSpacing.lg,
                 InkWell(
                   onTap: () {
                     Navigator.pushAndRemoveUntil(
@@ -192,18 +168,18 @@ class _LoginPageState extends State<LoginPage> {
                     children: [
                       Text(
                         "Don't have any account? ",
-                        style: FontFamily.headlineMedium.copyWith(
-                            color: AppColor.grey, fontWeight: FontWeight.w300),
+                        style: context.bodySmall.copyWith(color: AppColor.grey),
                       ),
                       Text(
                         "Register Here",
-                        style: FontFamily.headlineMedium.copyWith(
-                          color: AppColor.primaryColor,
-                        ),
+                        style: context.bodySmall.copyWith(
+                            color: AppColor.primaryColor,
+                            fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),
-                )
+                ),
+                AppSpacing.md,
               ],
             ),
           ),
