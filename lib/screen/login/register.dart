@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:suriota_mobile_gateway/constant/app_color.dart';
+import 'package:suriota_mobile_gateway/constant/app_gap.dart';
+import 'package:suriota_mobile_gateway/constant/image_asset.dart';
+import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
+import 'package:suriota_mobile_gateway/global/widgets/custom_button.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_textfield.dart';
-
-import '../../constant/app_color.dart';
-import '../../constant/font_setup.dart';
-import '../../constant/image_asset.dart';
-import '../../global/widgets/custom_button.dart';
-import 'login_page.dart';
+import 'package:suriota_mobile_gateway/screen/login/login_page.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -17,74 +17,86 @@ class RegisterPage extends StatefulWidget {
 class _RegisterPageState extends State<RegisterPage> {
   @override
   Widget build(BuildContext context) {
+    double screenWidth = MediaQuery.of(context).size.width;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+          padding: AppPadding.horizontalMedium,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              AppSpacing.md,
               SizedBox(
-                height: 38,
-                child: Image.asset(ImageAsset.logoSuriota),
+                width: screenWidth * (screenWidth <= 600 ? 0.4 : 0.2),
+                child: AspectRatio(
+                  aspectRatio: 16 / 9,
+                  child: Image.asset(
+                    ImageAsset.logoSuriota,
+                    fit: BoxFit.contain,
+                  ),
+                ),
               ),
-              const SizedBox(
-                height: 32,
-              ),
+              AppSpacing.sm,
               Text(
                 "Let's Get Started!",
-                style: FontFamily.titleLarge,
+                style: context.h2,
               ),
-              const SizedBox(
-                height: 8,
-              ),
+              AppSpacing.xs,
               Text(
                 'Create an account',
-                style: FontFamily.normal
-                    .copyWith(fontSize: 18, fontWeight: FontWeight.normal),
+                style: context.h6,
               ),
-              const SizedBox(height: 16),
+              AppSpacing.lg,
               const CustomTextFormField(
                 labelTxt: 'Full Name',
                 hintTxt: 'Enter your full name',
                 prefixIcon: Icon(
                   Icons.account_circle,
+                  size: 20,
                   color: AppColor.primaryColor,
                 ),
               ),
+              AppSpacing.md,
               const CustomTextFormField(
                   labelTxt: 'Email',
                   hintTxt: 'Enter your email',
                   prefixIcon: Icon(
                     Icons.email,
+                    size: 20,
                     color: AppColor.primaryColor,
                   )),
+              AppSpacing.md,
               const CustomTextFormField(
                   labelTxt: 'Phone Number',
                   hintTxt: 'Enter your phone number',
                   prefixIcon: Icon(
                     Icons.phone_android_rounded,
+                    size: 20,
                     color: AppColor.primaryColor,
                   )),
+              AppSpacing.md,
               const CustomTextFormField(
                   labelTxt: 'Create Password',
                   hintTxt: 'Enter your password',
                   prefixIcon: Icon(
                     Icons.key,
+                    size: 20,
                     color: AppColor.primaryColor,
                   )),
+              AppSpacing.md,
               const CustomTextFormField(
                   labelTxt: 'Confirm Password',
                   hintTxt: 'Confirm your password',
                   prefixIcon: Icon(
                     Icons.lock,
+                    size: 20,
                     color: AppColor.primaryColor,
                   )),
-              const SizedBox(
-                height: 24,
-              ),
-              CustomButton(
+              AppSpacing.lg,
+              Button(
+                width: MediaQuery.of(context).size.width,
                 onPressed: () {
                   Navigator.pushAndRemoveUntil(
                     context,
@@ -92,79 +104,48 @@ class _RegisterPageState extends State<RegisterPage> {
                     (Route<dynamic> route) => false,
                   );
                 },
-                titleButton: 'REGISTER',
+                text: 'Sign Up with Email',
               ),
-              const SizedBox(
-                height: 16,
-              ),
+              AppSpacing.sm,
               Center(
                 child: Text(
                   'OR',
-                  style:
-                      FontFamily.headlineMedium.copyWith(color: AppColor.grey),
+                  style: context.bodySmall.copyWith(color: AppColor.grey),
                 ),
               ),
-              const SizedBox(
-                height: 16,
+              AppSpacing.sm,
+              ButtonOutline(
+                width: MediaQuery.of(context).size.width,
+                onPressed: () {},
+                imagePath: ImageAsset.iconGoogle,
+                text: 'Sign Up with Google',
               ),
-              SizedBox(
-                height: 57,
-                width: MediaQuery.of(context).size.width * 1,
-                child: ElevatedButton(
-                  onPressed: () {},
-                  style: const ButtonStyle(
-                      backgroundColor: WidgetStatePropertyAll(Colors.white),
-                      shape: WidgetStatePropertyAll(RoundedRectangleBorder(
-                          borderRadius: BorderRadius.all(Radius.circular(8)),
-                          side: BorderSide(
-                            color: AppColor.primaryColor,
-                            width: 2,
-                          ))),
-                      fixedSize: WidgetStatePropertyAll(Size.infinite)),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // Icon(Icons.g_mobiledata),
-                      SizedBox(
-                          height: 25,
-                          child: Image.asset(
-                            ImageAsset.iconGoogle,
-                          )),
-                      const SizedBox(width: 30),
-                      Text(
-                        'REGISTER WITH GOOGLE',
-                        style: FontFamily.headlineMedium
-                            .copyWith(color: AppColor.primaryColor),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
+              AppSpacing.lg,
               InkWell(
-                onTap: () {},
+                onTap: () {
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (context) => const LoginPage()),
+                    (Route<dynamic> route) => false,
+                  );
+                },
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      "Already have an account?",
-                      style: FontFamily.normal.copyWith(
-                        fontSize: 16,
-                        color: AppColor.grey,
-                      ),
-                    ),
-                    const SizedBox(
-                      width: 5,
+                      "Already have account? ",
+                      style: context.bodySmall.copyWith(color: AppColor.grey),
                     ),
                     Text(
                       "Sign In Here",
-                      style: FontFamily.headlineMedium.copyWith(
-                        color: AppColor.primaryColor,
-                      ),
+                      style: context.bodySmall.copyWith(
+                          color: AppColor.primaryColor,
+                          fontWeight: FontWeight.bold),
                     ),
                   ],
                 ),
-              )
+              ),
+              AppSpacing.md,
             ],
           ),
         ),
