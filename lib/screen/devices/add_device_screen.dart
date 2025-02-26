@@ -39,6 +39,15 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
       backgroundColor: AppColor.primaryColor,
       title: Text('Add Device',
           style: context.h5.copyWith(color: AppColor.whiteColor)),
+      actions: [
+        Obx(() => IconButton(
+              color: AppColor.primaryColor,
+              icon: controller.isScanning.value
+                  ? const Icon(Icons.stop)
+                  : const Icon(Icons.search),
+              onPressed: controller.startScan,
+            ))
+      ],
     );
   }
 
