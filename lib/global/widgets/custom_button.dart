@@ -92,6 +92,64 @@ class Button extends StatelessWidget {
   }
 }
 
+class ButtonOutline extends StatelessWidget {
+  final void Function()? onPressed;
+  final String text;
+  final TextStyle? customStyle;
+  final Color? btnColor;
+  final double? width;
+  final double? height;
+  final Widget? icons;
+  final String? imagePath;
+
+  const ButtonOutline(
+      {super.key,
+      required this.onPressed,
+      required this.text,
+      this.customStyle,
+      this.btnColor,
+      this.width,
+      this.height,
+      this.icons,
+      this.imagePath});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: width ?? 100,
+      height: height ?? 42,
+      child: ElevatedButton(
+          onPressed: onPressed,
+          style: ElevatedButton.styleFrom(
+              backgroundColor: btnColor ?? AppColor.whiteColor,
+              padding: const EdgeInsets.symmetric(horizontal: 15),
+              side: const BorderSide(color: AppColor.primaryColor, width: 1),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10))),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              icons ?? const SizedBox(),
+              icons != null ? AppSpacing.sm : const SizedBox(),
+              imagePath != null
+                  ? Image.asset(
+                      imagePath!,
+                      height: 25,
+                    )
+                  : const SizedBox(),
+              imagePath != null ? AppSpacing.sm : const SizedBox(),
+              Text(
+                text,
+                style: customStyle ??
+                    FontFamily.headlineMedium
+                        .copyWith(color: AppColor.primaryColor),
+              ),
+            ],
+          )),
+    );
+  }
+}
+
 class BtnButtomNavBar extends StatelessWidget {
   final String title;
   final void Function()? onPressed;
