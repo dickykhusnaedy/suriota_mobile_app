@@ -110,7 +110,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Navigator.push(
                 context,
                 MaterialPageRoute(
-                    builder: (context) => const AddDeviceScreen()));
+                    builder: (context) => AddDeviceScreen()));
           },
           child: const Icon(
             Icons.add_circle,
