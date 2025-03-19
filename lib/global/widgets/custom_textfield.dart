@@ -10,7 +10,7 @@ class CustomTextFormField extends StatelessWidget {
   final void Function()? onTap;
   final void Function(String)? onChanges;
   final bool readOnly;
-  final String labelTxt;
+  final String? labelTxt;
   final String hintTxt;
   final String? errorTxt;
   final TextStyle? labelTxtStyle;
@@ -23,7 +23,7 @@ class CustomTextFormField extends StatelessWidget {
 
   const CustomTextFormField(
       {super.key,
-      required this.labelTxt,
+      this.labelTxt,
       this.hintTxt = "",
       this.labelTxtStyle,
       this.hintTxtStyle,
@@ -45,11 +45,12 @@ class CustomTextFormField extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          labelTxt,
-          style: labelTxtStyle ??
-              context.h6.copyWith(fontWeight: FontWeightTheme.bold),
-        ),
+        if (labelTxt != null)
+          Text(
+            labelTxt!,
+            style: labelTxtStyle ??
+                context.h6.copyWith(fontWeight: FontWeightTheme.bold),
+          ),
         AppSpacing.sm,
         TextFormField(
           obscureText: obscureText ?? false,
