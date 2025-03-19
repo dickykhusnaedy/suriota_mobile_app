@@ -120,32 +120,6 @@ class _FormLoggingConfigScreenState extends State<FormLoggingConfigScreen> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const TitleTile(title: 'Choose Protocol'),
-                        AppSpacing.sm,
-                        CustomRadioTile(
-                          value: "MQTT",
-                          grupValue: protocolSelected,
-                          onChanges: () {
-                            setState(() {
-                              protocolSelected = "MQTT";
-                            });
-                          },
-                        ),
-                        CustomRadioTile(
-                          value: "HTTP",
-                          grupValue: protocolSelected,
-                          onChanges: () {
-                            setState(() {
-                              protocolSelected = "HTTP";
-                            });
-                          },
-                        ),
-                      ],
-                    ),
-                    AppSpacing.md,
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
                         const TitleTile(title: 'Choose Logging Retention'),
                         AppSpacing.sm,
                         CustomRadioTile(
