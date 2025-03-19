@@ -17,7 +17,7 @@ class FormSetupDeviceScreen extends StatefulWidget {
 }
 
 class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
-  String modBusSelected = "RS-485";
+  String modBusSelected = "RS-4851";
   String protocolSelected = "IPv4";
 
   @override
@@ -35,7 +35,7 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
                 labelTxt: "Device Name",
                 hintTxt: "Enter the device name",
               ),
-              if (modBusSelected == "RS-485")
+              if (modBusSelected == "RS-4851" || modBusSelected == "RS-4852")
                 Column(
                   children: [
                     AppSpacing.md,
@@ -61,11 +61,20 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
                   Text("Choose Moodbus Type", style: context.h6),
                   AppSpacing.sm,
                   CustomRadioTile(
-                    value: "RS-485",
+                    value: "RS-4851",
                     grupValue: modBusSelected,
                     onChanges: () {
                       setState(() {
-                        modBusSelected = "RS-485";
+                        modBusSelected = "RS-4851";
+                      });
+                    },
+                  ),
+                  CustomRadioTile(
+                    value: "RS-4852",
+                    grupValue: modBusSelected,
+                    onChanges: () {
+                      setState(() {
+                        modBusSelected = "RS-4852";
                       });
                     },
                   ),
@@ -83,7 +92,7 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
               AppSpacing.md,
               TitleTile(title: "Modbus Setup $modBusSelected"),
               AppSpacing.md,
-              modBusSelected == 'RS-485'
+              modBusSelected == 'RS-4851' || modBusSelected == 'RS-4852'
                   ? _formRS485Wrapper()
                   : _formTCPIPWrapper(),
               AppSpacing.lg,
