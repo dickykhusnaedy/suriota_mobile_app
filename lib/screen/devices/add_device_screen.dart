@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:get/get_core/src/get_main.dart';
 import 'package:suriota_mobile_gateway/constant/app_color.dart';
 import 'package:suriota_mobile_gateway/constant/app_gap.dart';
+import 'package:suriota_mobile_gateway/controller/ble_controller.dart';
 import 'package:suriota_mobile_gateway/controller/bluetooth_controller.dart';
 import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_button.dart';
@@ -20,6 +21,7 @@ class AddDeviceScreen extends StatefulWidget {
 
 class _AddDeviceScreenState extends State<AddDeviceScreen> {
   final BluetoothController controller = Get.put(BluetoothController());
+  final BLEController bleController = Get.put(BLEController());
   List<DeviceModel> deviceList = deviceDummy;
 
   @override
@@ -68,15 +70,15 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
               style: context.body.copyWith(color: AppColor.grey)),
           AppSpacing.xxxl,
           Button(
-              onPressed: controller.startScan,
-              text: 'Search devices',
+              onPressed: bleController.scanAndConnect,
+              text: 'Scan',
               icons: const Icon(
                 Icons.search,
                 color: AppColor.whiteColor,
                 size: 23,
               ),
               height: 50,
-              width: MediaQuery.of(context).size.width * 0.5)
+              width: MediaQuery.of(context).size.width * 0.3),
         ],
       ),
     );
