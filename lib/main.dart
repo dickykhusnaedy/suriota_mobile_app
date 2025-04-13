@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:get/get.dart';
 import 'package:suriota_mobile_gateway/constant/theme.dart';
 import 'package:suriota_mobile_gateway/screen/home/home_screen.dart';
 
@@ -24,7 +25,7 @@ class MyApp extends StatelessWidget {
       designSize: const Size(360, 690),
       minTextAdapt: true,
       splitScreenMode: true,
-      builder: (context, child) => MaterialApp(
+      builder: (context, child) => GetMaterialApp(
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
         title: 'Suriota Mobile Gateway',
