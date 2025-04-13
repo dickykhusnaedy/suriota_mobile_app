@@ -13,7 +13,8 @@ import 'package:suriota_mobile_gateway/screen/devices/server_config/form_config_
 
 class DetailDeviceScreen extends StatelessWidget {
   final String title;
-  const DetailDeviceScreen({super.key, required this.title});
+  final String deviceAddress;
+  const DetailDeviceScreen({super.key, required this.title, required this.deviceAddress});
 
   @override
   Widget build(BuildContext context) {
@@ -82,7 +83,7 @@ class DetailDeviceScreen extends StatelessWidget {
                         ),
                         AppSpacing.xs,
                         Text(
-                          'CC:7B:5C:28:A4:7E',
+                          deviceAddress,
                           style: context.bodySmall,
                           overflow: TextOverflow.ellipsis,
                         ),
