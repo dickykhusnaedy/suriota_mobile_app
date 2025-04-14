@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:suriota_mobile_gateway/constant/app_color.dart';
 import 'package:suriota_mobile_gateway/constant/app_gap.dart';
 import 'package:suriota_mobile_gateway/constant/image_asset.dart';
@@ -12,9 +13,8 @@ import 'package:suriota_mobile_gateway/screen/devices/modbus_config/modbus_scree
 import 'package:suriota_mobile_gateway/screen/devices/server_config/form_config_server_screen.dart';
 
 class DetailDeviceScreen extends StatelessWidget {
-  final String title;
-  final String deviceAddress;
-  const DetailDeviceScreen({super.key, required this.title, required this.deviceAddress});
+   final BluetoothDevice device;
+  const DetailDeviceScreen({super.key, required this.device});
 
   @override
   Widget build(BuildContext context) {
@@ -42,7 +42,7 @@ class DetailDeviceScreen extends StatelessWidget {
     ];
 
     return Scaffold(
-      appBar: _appBar(context, title),
+      appBar: _appBar(context, device.platformName),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: AppPadding.horizontalMedium,
@@ -77,13 +77,13 @@ class DetailDeviceScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          title,
+                          device.platformName != '' ? device.platformName : 'Unknown Device',
                           style: context.h4,
                           overflow: TextOverflow.ellipsis,
                         ),
                         AppSpacing.xs,
                         Text(
-                          deviceAddress,
+                          device.remoteId.toString(),
                           style: context.bodySmall,
                           overflow: TextOverflow.ellipsis,
                         ),
