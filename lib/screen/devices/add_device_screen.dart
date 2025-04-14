@@ -7,8 +7,7 @@ import 'package:suriota_mobile_gateway/controller/ble_controller.dart';
 import 'package:suriota_mobile_gateway/controller/bluetooth_controller.dart';
 import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_button.dart';
-import 'package:suriota_mobile_gateway/global/widgets/device_card.dart';
-import 'package:suriota_mobile_gateway/screen/devices/detail_device_screen.dart';
+import 'package:suriota_mobile_gateway/screen/devices/widgets/device_list_widget.dart';
 
 class AddDeviceScreen extends StatefulWidget {
   const AddDeviceScreen({super.key});
@@ -40,17 +39,9 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
 
   Future<void> _checkBluetoothDevice() async {
     if (isBluetoothOn) {
-      bleController.scanAndConnect();
+      bleController.scanDevice();
     } else {
-      Get.snackbar(
-        'Bluetooth is off',
-        'Please enable Bluetooth to scan devices.',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: AppColor.redColor,
-        colorText: Colors.white,
-        duration: const Duration(seconds: 3),
-        margin: const EdgeInsets.all(16),
-      );
+      bleController.showSnackbar('Bluetooth is off', 'Please enable Bluetooth to scan devices.', AppColor.redColor, AppColor.whiteColor);
     }
   }
 
@@ -88,30 +79,30 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
     return Container(
       height: MediaQuery.of(context).size.height * 0.85,
       alignment: Alignment.center,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            'Find device',
-            style: context.h2,
-          ),
-          AppSpacing.sm,
-          Text('Finding nearby devices with\nBluetooth connectivity...',
-              textAlign: TextAlign.center,
-              style: context.body.copyWith(color: AppColor.grey)),
-          AppSpacing.xxxl,
-          Button(
-              onPressed: _checkBluetoothDevice,
-              text: 'Scan',
-              icons: const Icon(
-                Icons.search,
-                color: AppColor.whiteColor,
-                size: 23,
-              ),
-              height: 50,
-              width: MediaQuery.of(context).size.width * 0.3),
-        ],
-      ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Find device',
+              style: context.h2,
+            ),
+            AppSpacing.sm,
+            Text('Finding nearby devices with\nBluetooth connectivity...',
+                textAlign: TextAlign.center,
+                style: context.body.copyWith(color: AppColor.grey)),
+            AppSpacing.xxxl,
+            Button(
+                onPressed: _checkBluetoothDevice,
+                text: 'Scan',
+                icons: const Icon(
+                  Icons.search,
+                  color: AppColor.whiteColor,
+                  size: 23,
+                ),
+                height: 50,
+                width: MediaQuery.of(context).size.width * 0.3),
+          ],
+        ),
     );
   }
 
@@ -153,7 +144,7 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
     return Obx(() {
       if (bleController.isLoading.value) {
         return _scanningProgress();
-      } else if (bleController.devices.isEmpty) {
+      } else if (bleController.isDeviceListEmpty) {
         return _findDevice(context);
       } else {
         return _deviceList();
@@ -161,8 +152,8 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
     });
   }
 
-  Container _deviceList() {
-    return Container(
+  Widget _deviceList() {
+    return Padding(
       padding: AppPadding.medium,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -190,7 +181,7 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
                   ),
                 );
               }
-
+      
               return ListView.separated(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
@@ -199,61 +190,27 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
                 itemBuilder: (context, index) {
                   final device = bleController.devices[index];
                   final deviceId = device.remoteId.toString();
-                  final isConnected = bleController.getConnectionStatus(deviceId);
-                  final isLoadingConnection = bleController.getLoadingStatus(deviceId);
-
-                  return InkWell(
-                    onTap: () {
-                      if(isConnected) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => DetailDeviceScreen(
-                              title: device.platformName.isNotEmpty
-                            ? device.platformName
-                            : "Unknown Device",
-                            deviceAddress: device.remoteId.toString(),
-                            ),
-                          ),
-                        );
-                      } else {
-                        Get.snackbar(
-                          '',
-                          'Device is not connected, please connect the device first.',
-                          snackPosition: SnackPosition.BOTTOM,
-                          backgroundColor: AppColor.redColor,
-                          colorText: Colors.white,
-                          duration: const Duration(seconds: 3),
-                          margin: const EdgeInsets.all(16),
-                          titleText: const SizedBox(),
-      padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 16.0),
-                        );
-                      } 
-                    },
-                    child: DeviceCard(
-                      deviceTitle: device.platformName.isNotEmpty
-                          ? device.platformName
-                          : "Unknown Device",
-                      deviceAddress: device.remoteId.toString(),
-                      buttonTitle: isLoadingConnection
-                        ? "Loading..." // Tampilkan loading jika sedang menghubungkan
-                        : isConnected
-                            ? 'Disconnect'
-                            : 'Connect',
-                      colorButton: isConnected
-                          ? AppColor.redColor
-                          : AppColor.primaryColor,
-                      onPressed: () async {
-                        if (isLoadingConnection) return;
-
-                        if (isConnected) {
-                          await bleController.disconnectDevice(device);
-                        } else {
+      
+                  return Obx(() {
+                    final isConnected = bleController.getConnectionStatus(deviceId);
+                    final isLoadingConnection = bleController.getLoadingStatus(deviceId);
+    
+                    return DeviceListWidget(
+                      device: device,
+                      isConnected: isConnected,
+                      isLoadingConnection: isLoadingConnection,
+                      onConnect: () async {
+                        if (!isLoadingConnection) {
                           await bleController.connectToDevice(device);
                         }
                       },
-                    ),
-                  );
+                      onDisconnect: () async {
+                        if (!isLoadingConnection) {
+                          await bleController.disconnectDevice(device);
+                        }
+                      },
+                    );
+                  });
                 },
               );
             }),
