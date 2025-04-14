@@ -22,13 +22,13 @@ class SideBarMenu extends StatelessWidget {
           ),
           const Center(
             child: CircleAvatar(
-                radius: 90, backgroundImage: AssetImage(ImageAsset.profile2)),
+              radius: 50, backgroundImage: AssetImage(ImageAsset.profile2)),
           ),
           AppSpacing.md,
           Padding(
             padding: AppPadding.horizontalMedium,
             child: Text(
-              'Cyrilus Rudi Soru',
+              'Fulan bin Fulan',
               style: context.h5,
               textAlign: TextAlign.center,
               overflow: TextOverflow.ellipsis,
