@@ -5,11 +5,10 @@ import 'package:suriota_mobile_gateway/constant/app_gap.dart';
 import 'package:suriota_mobile_gateway/constant/image_asset.dart';
 import 'package:suriota_mobile_gateway/controller/ble_controller.dart';
 import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
-import 'package:suriota_mobile_gateway/global/widgets/device_card.dart';
 import 'package:suriota_mobile_gateway/models/device_dummy.dart';
 import 'package:suriota_mobile_gateway/models/device_model.dart';
-import 'package:suriota_mobile_gateway/screen/devices/detail_device_screen.dart';
 import 'package:suriota_mobile_gateway/screen/devices/add_device_screen.dart';
+import 'package:suriota_mobile_gateway/screen/devices/widgets/device_list_widget.dart';
 import 'package:suriota_mobile_gateway/screen/sidebar_menu/sidebar_menu.dart';
 
 // ignore: must_be_immutable
@@ -96,83 +95,30 @@ class _HomeScreenState extends State<HomeScreen> {
             itemBuilder: (context, index) {
               final device = bleController.devices[index];
               final deviceId = device.remoteId.toString();
-              final isConnected = bleController.getConnectionStatus(deviceId);
+  
+              return Obx(() {
+                final isConnected = bleController.getConnectionStatus(deviceId);
+                final isLoadingConnection = bleController.getLoadingStatus(deviceId);
 
-              return InkWell(
-                onTap: () {
-                  if(isConnected) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => DetailDeviceScreen(
-                              title: device.platformName.isNotEmpty
-                            ? device.platformName
-                            : "Unknown Device",
-                            deviceAddress: device.remoteId.toString(),
-                            ),
-                          ),
-                        );
-                      } else {
-                        Get.snackbar(
-                          '',
-                          'Device is not connected, please connect the device first.',
-                          snackPosition: SnackPosition.BOTTOM,
-                          backgroundColor: AppColor.redColor,
-                          colorText: Colors.white,
-                          duration: const Duration(seconds: 3),
-                          margin: const EdgeInsets.all(16),
-                          titleText: const SizedBox(),
-      padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 16.0),
-                        );
-                      } 
-                },
-                child: DeviceCard(
-                  deviceTitle: device.platformName.isNotEmpty
-                      ? device.platformName
-                      : "Unknown Device",
-                  deviceAddress: device.remoteId.toString(),
-                  buttonTitle: isConnected ? 'Disconnect' : 'Connect',
-                  colorButton:
-                      isConnected ? AppColor.redColor : AppColor.primaryColor,
-                  onPressed: () async {
-                    if (isConnected) {
-                      await bleController.disconnectDevice(device);
-                    } else {
+                return DeviceListWidget(
+                  device: device,
+                  isConnected: isConnected,
+                  isLoadingConnection: isLoadingConnection,
+                  onConnect: () async {
+                    if (!isLoadingConnection) {
                       await bleController.connectToDevice(device);
                     }
                   },
-                ),
-              );
+                  onDisconnect: () async {
+                    if (!isLoadingConnection) {
+                      await bleController.disconnectDevice(device);
+                    }
+                  },
+                );
+              });
             },
           );
         }),
-        // ListView.separated(
-        //   shrinkWrap: true,
-        //   physics: const NeverScrollableScrollPhysics(),
-        //   itemCount: deviceList.length,
-        //   separatorBuilder: (context, index) => AppSpacing.sm,
-        //   itemBuilder: (BuildContext context, int index) {
-        //     return InkWell(
-        //         onTap: () {
-        //           Navigator.push(
-        //               context,
-        //               MaterialPageRoute(
-        //                   builder: (context) => DetailDeviceScreen(
-        //                         title: 'Suriota Gateway ${index + 1}',
-        //                       )));
-        //         },
-        //         child: DeviceCard(
-        //           deviceTitle: deviceList[index].deviceTitle,
-        //           deviceAddress: deviceList[index].deviceAddress,
-        //           buttonTitle:
-        //               deviceList[index].isConnected ? 'Disconnect' : 'Connect',
-        //           colorButton: deviceList[index].isConnected
-        //               ? AppColor.redColor
-        //               : AppColor.primaryColor,
-        //           onPressed: () {},
-        //         ));
-        //   },
-        // ),
         AppSpacing.xxl,
       ],
     );
