@@ -5,48 +5,42 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:get/get.dart';
 import 'package:suriota_mobile_gateway/constant/app_color.dart';
+import 'package:suriota_mobile_gateway/constant/app_gap.dart';
+import 'package:suriota_mobile_gateway/constant/font_setup.dart';
+import 'package:suriota_mobile_gateway/global/widgets/custom_button.dart';
+import 'package:suriota_mobile_gateway/screen/devices/detail_device_screen.dart';
 
 class BLEController extends GetxController {
   final Guid serviceUuid = Guid("12345678-1234-1234-1234-1234567890ab");
   final Guid characteristicUuid = Guid("abcd1234-1234-1234-1234-abcdef123456");
 
-  // State reaktif untuk BluetoothDevice dan BluetoothCharacteristic
+  var isLoading = false.obs;
+  final devices = <BluetoothDevice>[].obs;
   BluetoothCharacteristic? _characteristic;
+  bool get isDeviceListEmpty => devices.isEmpty;
 
-  // StreamController untuk status dan daftar perangkat
-  final StreamController<String> _statusController =
-      StreamController<String>.broadcast();
+  final StreamController<String> _statusController = StreamController<String>.broadcast();
   Stream<String> get statusStream => _statusController.stream;
 
-  // Daftar perangkat BLE (reaktif)
-  final devices = <BluetoothDevice>[].obs;
-
-  // Indikator loading (reaktif)
-  var isLoading = false.obs;
-
-  // Map reaktif untuk status koneksi perangkat
   final RxMap<String, bool> _connectionStatus = <String, bool>{}.obs;
-  Map<String, bool> get connectionStatus => _connectionStatus;
+  RxMap<String, bool> get connectionStatus => _connectionStatus;
 
-  // Map reaktif untuk status loading perangkat
   final RxMap<String, bool> _loadingStatus = <String, bool>{}.obs;
-  Map<String, bool> get loadingStatus => _loadingStatus;
+  RxMap<String, bool> get loadingStatus => _loadingStatus;
 
-  // Map reaktif untuk status koneksi (terhubung atau tidak)
   final RxMap<String, bool> _isConnected = <String, bool>{}.obs;
-  Map<String, bool> get isConnected => _isConnected;
+  RxMap<String, bool> get isConnected => _isConnected;
 
-  // Notifikasi status
   void _notifyStatus(String status) {
     _statusController.add(status);
 
     Get.snackbar(
       '',
-      status, // Pesan status
-      snackPosition: SnackPosition.BOTTOM, // Posisi snackbar
-      backgroundColor: AppColor.grey, // Warna latar belakang
-      colorText: AppColor.whiteColor, // Warna teks
-      duration: const Duration(seconds: 3), // Durasi tampilan snackbar
+      status,
+      snackPosition: SnackPosition.BOTTOM, 
+      backgroundColor: AppColor.grey,
+      colorText: AppColor.whiteColor,
+      duration: const Duration(seconds: 3),
       margin: const EdgeInsets.all(16),
       titleText: const SizedBox(),
       padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 16.0),
@@ -63,9 +57,9 @@ class BLEController extends GetxController {
     return _loadingStatus[deviceId] ?? false;
   }
 
-  /// Memulai pemindaian BLE
-  void scanAndConnect() async {
-    if (isLoading.value) return; // Hindari pemindaian ganda
+  /// Scan device
+  void scanDevice() async {
+    if (isLoading.value) return;
 
     _startLoading();
     devices.clear();
@@ -74,7 +68,7 @@ class BLEController extends GetxController {
     final subscription = FlutterBluePlus.scanResults.listen((results) async {
       for (ScanResult r in results) {
         if (!devices.contains(r.device)) {
-          devices.add(r.device); // Tambahkan perangkat ke daftar reaktif
+          devices.add(r.device);
           _connectionStatus[r.device.remoteId.toString()] = false;
         }
 
@@ -92,32 +86,89 @@ class BLEController extends GetxController {
     });
   }
 
-  /// Menangani koneksi ke perangkat BLE
+  /// Connect to device
   Future<void> connectToDevice(BluetoothDevice device) async {
-    await _handleDeviceConnection(device);
-  }
-
-  /// Memutuskan koneksi dari perangkat BLE
-  Future<void> disconnectDevice(BluetoothDevice device) async {
     final deviceId = device.remoteId.toString();
-      _loadingStatus[deviceId] = true; // Mulai loading untuk perangkat ini
-    try {      
-      await device.disconnect();
+    _loadingStatus[deviceId] = true;
 
-      _connectionStatus[deviceId] = false; // Update status: disconnected
+    try {
+      await FlutterBluePlus.stopScan();
+      await device.connect();
+
+      _connectionStatus[deviceId] = true;
+      _isConnected[deviceId] = true;
+
+      bool isServiceDiscovered = await _discoverServices(device);
+      if(isServiceDiscovered) {
+        showConnectedBottomSheet(device);
+      } else {
+        await disconnectDevice(device);
+      }
+    } catch (e) {
+      _connectionStatus[deviceId] = false;
       _isConnected[deviceId] = false;
 
-      _notifyStatus("Loss connection ${device.platformName}");
-    } catch (e) {
-      _notifyStatus("Failed to loss connection: $e");
-        _isConnected[deviceId] = true;
-       _connectionStatus[deviceId] = true;
+      _notifyStatus("Failed to connect: $e");
     } finally {
-      _loadingStatus[deviceId] = false; // Hentikan loading untuk perangkat ini
+      _loadingStatus[deviceId] = false; 
     }
   }
 
-  /// Mengirim perintah ke perangkat BLE
+  /// Disconnect to device
+  Future<void> disconnectDevice(BluetoothDevice device) async {
+    final deviceId = device.remoteId.toString();
+    final deviceName = device.platformName != '' ? device.platformName : deviceId;
+    _loadingStatus[deviceId] = true;
+
+    try {      
+      await device.disconnect();
+
+      _connectionStatus[deviceId] = false;
+      _isConnected[deviceId] = false;
+
+      _notifyStatus("Disconnected from $deviceName due to service discovery failure.");
+    } catch (e) {
+      _notifyStatus("Failed to disconnect: $e");
+    } finally {
+      _loadingStatus[deviceId] = false;
+    }
+  }
+
+  /// Get characteristic device
+  Future<bool> _discoverServices(BluetoothDevice device) async {
+    try {
+      List<BluetoothService> services = await device.discoverServices().timeout(
+        const Duration(seconds: 15),
+        onTimeout: () {
+          throw TimeoutException("Service discovery timed out.");
+        },
+      );
+
+      for (var service in services) {
+        if (service.serviceUuid == serviceUuid) {
+          for (var c in service.characteristics) {
+            if (c.characteristicUuid == characteristicUuid) {
+              _characteristic = c;
+              await c.setNotifyValue(true);
+
+              c.onValueReceived.listen((value) {
+                _notifyStatus("Response: ${String.fromCharCodes(value)}");
+              });
+
+              return true;
+            }
+          }
+        }
+      }
+      _notifyStatus("Service UUID: $serviceUuid or Characteristic UUID: $characteristicUuid not found on ${device.platformName != '' ? device.platformName : device.remoteId.toString()}");
+      return false;
+    } catch (e) {
+      _notifyStatus("Failed to discover service/characteristic: $e");
+      return false;
+    }
+  }
+
+  /// Send command to device
   void sendCommand(String command) async {
     if (_characteristic == null) {
       _notifyStatus("Characteristic not found.");
@@ -132,69 +183,90 @@ class BLEController extends GetxController {
     }
   }
 
-  /// Menangani koneksi ke perangkat BLE
-  Future<void> _handleDeviceConnection(BluetoothDevice device) async {
-    final deviceId = device.remoteId.toString();
-    _loadingStatus[deviceId] = true; 
-
-    try {
-      print('start connect');
-      await FlutterBluePlus.stopScan();
-      await device.connect();
-
-      // _device = device;
-      _connectionStatus[deviceId] = true; // Update status: connected
-      _isConnected[deviceId] = true;
-
-      await _discoverServices(device);
-
-      _notifyStatus("Connected to ${device.platformName}");
-    } catch (e) {
-      _connectionStatus[deviceId] = false; // Update status: not connect
-      _isConnected[deviceId] = false;
-
-      _notifyStatus("Failed to connect: $e");
-    } finally {
-      _stopLoading();
-      _loadingStatus[deviceId] = false; 
-    }
-  }
-
-  /// Mencari layanan dan karakteristik BLE
-  Future<void> _discoverServices(BluetoothDevice device) async {
-    try {
-      List<BluetoothService> services = await device.discoverServices();
-      for (var service in services) {
-        if (service.serviceUuid == serviceUuid) {
-          for (var c in service.characteristics) {
-            if (c.characteristicUuid == characteristicUuid) {
-              _characteristic = c;
-              await c.setNotifyValue(true);
-
-              c.onValueReceived.listen((value) {
-                _notifyStatus("Response: ${String.fromCharCodes(value)}");
-              });
-
-              _notifyStatus("Characteristics discovered.");
-              return;
-            }
-          }
-        }
-      }
-      _notifyStatus("Service or characteristic not found.");
-    } catch (e) {
-      _notifyStatus("Failed to discover service/characteristic: $e");
-    }
-  }
-
-  /// Mulai loading
   void _startLoading() {
     isLoading.value = true;
   }
 
-  /// Hentikan loading
   void _stopLoading() {
     isLoading.value = false;
+  }
+
+  void showSnackbar(String title, String message, Color? bgColor, Color? textColor) {
+    if(title == '') {
+      Get.snackbar(
+        '',
+        message,
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: bgColor ?? AppColor.redColor,
+        colorText: textColor ?? AppColor.whiteColor,
+        duration: const Duration(seconds: 3),
+        margin: const EdgeInsets.all(16),
+        titleText: const SizedBox(),
+        padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 16.0),
+      );
+    } else {
+      Get.snackbar(
+        title,
+        message,
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: bgColor ?? AppColor.redColor,
+        colorText: textColor ?? AppColor.whiteColor,
+        duration: const Duration(seconds: 3),
+        margin: const EdgeInsets.all(16),
+      );
+    }
+  }
+
+  void showConnectedBottomSheet(BluetoothDevice device) {
+    Get.bottomSheet(
+      Container(
+        padding: const EdgeInsets.all(20),
+        decoration: const BoxDecoration(
+          color: AppColor.whiteColor,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Wrap(
+          children: [
+            Center(
+              child: Column(
+                children: [
+                  Text(
+                    "Device Connected",
+                    style: FontFamily.tittleSmall,
+                  ),
+                  const SizedBox(height: 10),
+                  Text("Do you want to open device (${device.remoteId.toString()}) page detail?", style: FontFamily.normal),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Button(
+                          onPressed: () => Navigator.of(Get.overlayContext!).pop(), // hanya tutup bottom sheet
+                          text: "No",
+                          btnColor: AppColor.grey
+                        ),
+                      ),
+                      AppSpacing.md,
+                      Expanded(
+                        child: Button(
+                          onPressed: () {
+                            Navigator.of(Get.overlayContext!).pop(); 
+                            Get.to(DetailDeviceScreen(device: device));
+                          },
+                          text: "Yes",
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+      isDismissible: false,
+      enableDrag: false,
+    );
   }
 
   @override
