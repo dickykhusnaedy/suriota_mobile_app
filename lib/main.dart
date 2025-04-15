@@ -16,7 +16,7 @@ Future<void> main() async {
       [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]).then((_) {
     runApp(
       ChangeNotifierProvider(
-        create: (context) => LoadingProvider(),
+        create: (_) => LoadingProvider(),
         child: const MyApp(),
       ),
     );
