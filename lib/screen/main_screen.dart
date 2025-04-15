@@ -118,7 +118,7 @@ class _MainScreenState extends State<MainScreen> {
       ),
       body: IndexedStack(
         index: bottomSelectedIndex,
-        children: [
+        children: const [
           HomeScreen(),
           ProfilePage(),
           AboutUsPage(),
