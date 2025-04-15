@@ -6,7 +6,6 @@ import 'package:provider/provider.dart';
 import 'package:suriota_mobile_gateway/constant/theme.dart';
 import 'package:suriota_mobile_gateway/global/widgets/loading_overlay.dart';
 import 'package:suriota_mobile_gateway/provider/LoadingProvider.dart';
-import 'package:suriota_mobile_gateway/screen/home/home_screen.dart';
 import 'package:suriota_mobile_gateway/screen/splash_screen.dart';
 
 Future<void> main() async {
