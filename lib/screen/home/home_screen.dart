@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:provider/provider.dart';
 import 'package:suriota_mobile_gateway/constant/app_color.dart';
 import 'package:suriota_mobile_gateway/constant/app_gap.dart';
 import 'package:suriota_mobile_gateway/constant/image_asset.dart';
@@ -7,6 +8,7 @@ import 'package:suriota_mobile_gateway/controller/ble_controller.dart';
 import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
 import 'package:suriota_mobile_gateway/models/device_dummy.dart';
 import 'package:suriota_mobile_gateway/models/device_model.dart';
+import 'package:suriota_mobile_gateway/provider/LoadingProvider.dart';
 import 'package:suriota_mobile_gateway/screen/devices/add_device_screen.dart';
 import 'package:suriota_mobile_gateway/screen/devices/widgets/device_list_widget.dart';
 import 'package:suriota_mobile_gateway/screen/sidebar_menu/sidebar_menu.dart';
@@ -27,17 +29,21 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     double screenWidth = MediaQuery.of(context).size.width;
 
-    return Scaffold(
-      appBar: _appBar(screenWidth),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: AppPadding.screenPadding,
-          child: _homeContent(context),
+    return Consumer<LoadingProvider>(builder: (context, provider, child) {
+      return Scaffold(
+        appBar: _appBar(screenWidth),
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: AppPadding.screenPadding,
+            child: provider.isLoading
+                ? const CircularProgressIndicator()
+                : _homeContent(context),
+          ),
         ),
-      ),
-      endDrawer: const SideBarMenu(),
-      floatingActionButton: _floatingButtonCustom(context),
-    );
+        endDrawer: const SideBarMenu(),
+        floatingActionButton: _floatingButtonCustom(context),
+      );
+    });
   }
 
   AppBar _appBar(double screenWidth) {
@@ -57,6 +63,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Column _homeContent(BuildContext context) {
+    final loadingProvider = Provider.of<LoadingProvider>(context);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -68,7 +76,9 @@ class _HomeScreenState extends State<HomeScreen> {
         AppSpacing.sm,
         Obx(() {
           // ignore: prefer_is_empty
-          if (bleController.devices.isEmpty || bleController.devices.length == 0) {
+          if (bleController.devices.isEmpty ||
+              // ignore: prefer_is_empty
+              bleController.devices.length == 0) {
             return Container(
               height: MediaQuery.of(context).size.height * 0.55,
               alignment: Alignment.center,
@@ -95,10 +105,11 @@ class _HomeScreenState extends State<HomeScreen> {
             itemBuilder: (context, index) {
               final device = bleController.devices[index];
               final deviceId = device.remoteId.toString();
-  
+
               return Obx(() {
                 final isConnected = bleController.getConnectionStatus(deviceId);
-                final isLoadingConnection = bleController.getLoadingStatus(deviceId);
+                final isLoadingConnection =
+                    bleController.getLoadingStatus(deviceId);
 
                 return DeviceListWidget(
                   device: device,
@@ -120,6 +131,16 @@ class _HomeScreenState extends State<HomeScreen> {
           );
         }),
         AppSpacing.xxl,
+        ElevatedButton(
+          onPressed: () {
+            loadingProvider.startLoading(true);
+
+            Future.delayed(const Duration(seconds: 3), () {
+              loadingProvider.stopLoading();
+            });
+          },
+          child: const Text("Start Loading"),
+        ),
       ],
     );
   }
