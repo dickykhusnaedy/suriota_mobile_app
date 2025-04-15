@@ -7,6 +7,7 @@ import 'package:get/get.dart';
 import 'package:suriota_mobile_gateway/constant/app_color.dart';
 import 'package:suriota_mobile_gateway/constant/app_gap.dart';
 import 'package:suriota_mobile_gateway/constant/font_setup.dart';
+import 'package:suriota_mobile_gateway/global/utils/helper.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_button.dart';
 import 'package:suriota_mobile_gateway/screen/devices/detail_device_screen.dart';
 
@@ -19,7 +20,8 @@ class BLEController extends GetxController {
   BluetoothCharacteristic? _characteristic;
   bool get isDeviceListEmpty => devices.isEmpty;
 
-  final StreamController<String> _statusController = StreamController<String>.broadcast();
+  final StreamController<String> _statusController =
+      StreamController<String>.broadcast();
   Stream<String> get statusStream => _statusController.stream;
 
   final RxMap<String, bool> _connectionStatus = <String, bool>{}.obs;
@@ -37,7 +39,7 @@ class BLEController extends GetxController {
     Get.snackbar(
       '',
       status,
-      snackPosition: SnackPosition.BOTTOM, 
+      snackPosition: SnackPosition.BOTTOM,
       backgroundColor: AppColor.grey,
       colorText: AppColor.whiteColor,
       duration: const Duration(seconds: 3),
@@ -52,7 +54,7 @@ class BLEController extends GetxController {
     return _connectionStatus[deviceId] ?? false;
   }
 
-   /// Mendapatkan status loading perangkat
+  /// Mendapatkan status loading perangkat
   bool getLoadingStatus(String deviceId) {
     return _loadingStatus[deviceId] ?? false;
   }
@@ -89,6 +91,9 @@ class BLEController extends GetxController {
   /// Connect to device
   Future<void> connectToDevice(BluetoothDevice device) async {
     final deviceId = device.remoteId.toString();
+    final deviceName =
+        device.platformName != '' ? device.platformName : deviceId;
+
     _loadingStatus[deviceId] = true;
 
     try {
@@ -99,7 +104,7 @@ class BLEController extends GetxController {
       _isConnected[deviceId] = true;
 
       bool isServiceDiscovered = await _discoverServices(device);
-      if(isServiceDiscovered) {
+      if (isServiceDiscovered) {
         showConnectedBottomSheet(device);
       } else {
         await disconnectDevice(device);
@@ -108,27 +113,31 @@ class BLEController extends GetxController {
       _connectionStatus[deviceId] = false;
       _isConnected[deviceId] = false;
 
-      _notifyStatus("Failed to connect: $e");
+      AppHelpers.debugLog("Failed to connect: $e");
+      _notifyStatus("Failed to connect the device: $deviceName");
     } finally {
-      _loadingStatus[deviceId] = false; 
+      _loadingStatus[deviceId] = false;
     }
   }
 
   /// Disconnect to device
   Future<void> disconnectDevice(BluetoothDevice device) async {
     final deviceId = device.remoteId.toString();
-    final deviceName = device.platformName != '' ? device.platformName : deviceId;
+    final deviceName =
+        device.platformName != '' ? device.platformName : deviceId;
     _loadingStatus[deviceId] = true;
 
-    try {      
+    try {
       await device.disconnect();
 
       _connectionStatus[deviceId] = false;
       _isConnected[deviceId] = false;
 
-      _notifyStatus("Disconnected from $deviceName due to service discovery failure.");
+      _notifyStatus(
+          "Disconnected from $deviceName due to service discovery failure.");
     } catch (e) {
-      _notifyStatus("Failed to disconnect: $e");
+      AppHelpers.debugLog("Failed to disconnect: $e");
+      _notifyStatus("Failed to connect the device: $deviceName");
     } finally {
       _loadingStatus[deviceId] = false;
     }
@@ -160,10 +169,13 @@ class BLEController extends GetxController {
           }
         }
       }
-      _notifyStatus("Service UUID: $serviceUuid or Characteristic UUID: $characteristicUuid not found on ${device.platformName != '' ? device.platformName : device.remoteId.toString()}");
+      _notifyStatus(
+          "Service UUID: $serviceUuid or Characteristic UUID: $characteristicUuid not found on ${device.platformName != '' ? device.platformName : device.remoteId.toString()}");
       return false;
     } catch (e) {
-      _notifyStatus("Failed to discover service/characteristic: $e");
+      _notifyStatus(
+          "Failed to discover service/characteristic on ${device.platformName != '' ? device.platformName : device.remoteId.toString()}");
+      AppHelpers.debugLog("Failed to discover service/characteristic: $e");
       return false;
     }
   }
@@ -179,7 +191,8 @@ class BLEController extends GetxController {
       await _characteristic!.write(command.codeUnits, withoutResponse: false);
       _notifyStatus("Send command: $command");
     } catch (e) {
-      _notifyStatus("Failed to send command: $e");
+      _notifyStatus("Failed to send command");
+      AppHelpers.debugLog("Failed to send command: $e");
     }
   }
 
@@ -191,8 +204,9 @@ class BLEController extends GetxController {
     isLoading.value = false;
   }
 
-  void showSnackbar(String title, String message, Color? bgColor, Color? textColor) {
-    if(title == '') {
+  void showSnackbar(
+      String title, String message, Color? bgColor, Color? textColor) {
+    if (title == '') {
       Get.snackbar(
         '',
         message,
@@ -235,22 +249,24 @@ class BLEController extends GetxController {
                     style: FontFamily.tittleSmall,
                   ),
                   const SizedBox(height: 10),
-                  Text("Do you want to open device (${device.remoteId.toString()}) page detail?", style: FontFamily.normal),
+                  Text(
+                      "Do you want to open device (${device.remoteId.toString()}) page detail?",
+                      style: FontFamily.normal),
                   const SizedBox(height: 20),
                   Row(
                     children: [
                       Expanded(
                         child: Button(
-                          onPressed: () => Navigator.of(Get.overlayContext!).pop(), // hanya tutup bottom sheet
-                          text: "No",
-                          btnColor: AppColor.grey
-                        ),
+                            onPressed: () => Navigator.of(Get.overlayContext!)
+                                .pop(), // hanya tutup bottom sheet
+                            text: "No",
+                            btnColor: AppColor.grey),
                       ),
                       AppSpacing.md,
                       Expanded(
                         child: Button(
                           onPressed: () {
-                            Navigator.of(Get.overlayContext!).pop(); 
+                            Navigator.of(Get.overlayContext!).pop();
                             Get.to(DetailDeviceScreen(device: device));
                           },
                           text: "Yes",
