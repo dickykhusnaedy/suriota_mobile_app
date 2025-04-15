@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:get/get.dart';
 import 'package:suriota_mobile_gateway/constant/app_color.dart';
 import 'package:suriota_mobile_gateway/constant/app_gap.dart';
 import 'package:suriota_mobile_gateway/constant/image_asset.dart';
+import 'package:suriota_mobile_gateway/controller/ble_controller.dart';
+import 'package:suriota_mobile_gateway/global/utils/helper.dart';
 import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_button.dart';
 import 'package:suriota_mobile_gateway/global/widgets/device_card.dart';
@@ -12,9 +15,32 @@ import 'package:suriota_mobile_gateway/screen/devices/logging_config/form_loggin
 import 'package:suriota_mobile_gateway/screen/devices/modbus_config/modbus_screen.dart';
 import 'package:suriota_mobile_gateway/screen/devices/server_config/form_config_server_screen.dart';
 
-class DetailDeviceScreen extends StatelessWidget {
-   final BluetoothDevice device;
+class DetailDeviceScreen extends StatefulWidget {
   const DetailDeviceScreen({super.key, required this.device});
+  final BluetoothDevice device;
+
+  @override
+  State<DetailDeviceScreen> createState() => _DetailDeviceScreenState();
+}
+
+class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
+  final BLEController bleController = Get.put(BLEController());
+
+  @override
+  void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ever(bleController.connectionStatus, (Map<String, bool> status) {
+        final isConnected = status[widget.device.remoteId.toString()] ?? false;
+        AppHelpers.debugLog('is connect $isConnected');
+
+        if (!isConnected && Get.isOverlaysOpen) {
+          Get.back();
+        }
+      });
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -42,7 +68,7 @@ class DetailDeviceScreen extends StatelessWidget {
     ];
 
     return Scaffold(
-      appBar: _appBar(context, device.platformName),
+      appBar: _appBar(context, widget.device.platformName),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: AppPadding.horizontalMedium,
@@ -55,6 +81,7 @@ class DetailDeviceScreen extends StatelessWidget {
   Column _bodyContent(
       BuildContext context, List<Map<String, dynamic>> menuItems) {
     double screenWidth = MediaQuery.of(context).size.width;
+    final BLEController bleController = Get.put(BLEController());
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -77,13 +104,15 @@ class DetailDeviceScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          device.platformName != '' ? device.platformName : 'Unknown Device',
+                          widget.device.platformName != ''
+                              ? widget.device.platformName
+                              : 'Unknown Device',
                           style: context.h4,
                           overflow: TextOverflow.ellipsis,
                         ),
                         AppSpacing.xs,
                         Text(
-                          device.remoteId.toString(),
+                          widget.device.remoteId.toString(),
                           style: context.bodySmall,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -100,18 +129,34 @@ class DetailDeviceScreen extends StatelessWidget {
               ),
             ),
             AppSpacing.sm,
-            Flexible(
-              flex: 1,
-              child: SizedBox(
-                height: 30,
-                child: Button(
-                    width: double.infinity,
-                    onPressed: () {},
-                    text: 'Disconnect',
-                    btnColor: AppColor.redColor,
-                    customStyle: context.buttonTextSmallest),
-              ),
-            ),
+            Obx(() {
+              final isConnected = bleController
+                  .getConnectionStatus(widget.device.remoteId.toString());
+              final isLoadingConnection = bleController
+                  .getLoadingStatus(widget.device.remoteId.toString());
+
+              return Flexible(
+                flex: 1,
+                child: SizedBox(
+                  height: 30,
+                  child: Button(
+                      width: double.infinity,
+                      onPressed: () async {
+                        await bleController
+                            .showDisconnectedBottomSheet(widget.device);
+                      },
+                      text: isLoadingConnection
+                          ? "Disconnecting..."
+                          : isConnected
+                              ? 'Disconnect'
+                              : 'Connect',
+                      btnColor: isConnected
+                          ? AppColor.redColor
+                          : AppColor.primaryColor,
+                      customStyle: context.buttonTextSmallest),
+                ),
+              );
+            })
           ],
         ),
         AppSpacing.xl,
