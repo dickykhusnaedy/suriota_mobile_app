@@ -143,6 +143,34 @@ class BLEController extends GetxController {
     }
   }
 
+  // Disconnect device with redirect page
+  Future<void> disconnectDeviceWithRedirect(BluetoothDevice device) async {
+    final deviceId = device.remoteId.toString();
+    final deviceName =
+        device.platformName != '' ? device.platformName : deviceId;
+    _loadingStatus[deviceId] = true;
+
+    try {
+      await device.disconnect();
+
+      _connectionStatus[deviceId] = false;
+      _isConnected[deviceId] = false;
+
+      _notifyStatus(
+          "Disconnected from $deviceName due to service discovery failure.");
+
+      if (Get.isOverlaysOpen) {
+        Get.back(); // ini menutup bottom sheet
+        Get.back();
+      }
+    } catch (e) {
+      AppHelpers.debugLog("Failed to disconnect: $e");
+      _notifyStatus("Failed to connect the device: $deviceName");
+    } finally {
+      _loadingStatus[deviceId] = false;
+    }
+  }
+
   /// Get characteristic device
   Future<bool> _discoverServices(BluetoothDevice device) async {
     try {
@@ -234,7 +262,7 @@ class BLEController extends GetxController {
   void showConnectedBottomSheet(BluetoothDevice device) {
     Get.bottomSheet(
       Container(
-        padding: const EdgeInsets.all(20),
+        padding: AppPadding.medium,
         decoration: const BoxDecoration(
           color: AppColor.whiteColor,
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -246,13 +274,13 @@ class BLEController extends GetxController {
                 children: [
                   Text(
                     "Device Connected",
-                    style: FontFamily.tittleSmall,
+                    style: FontFamily.headlineLarge,
                   ),
-                  const SizedBox(height: 10),
+                  AppSpacing.sm,
                   Text(
                       "Do you want to open device (${device.remoteId.toString()}) page detail?",
                       style: FontFamily.normal),
-                  const SizedBox(height: 20),
+                  AppSpacing.md,
                   Row(
                     children: [
                       Expanded(
@@ -267,7 +295,63 @@ class BLEController extends GetxController {
                         child: Button(
                           onPressed: () {
                             Navigator.of(Get.overlayContext!).pop();
-                            Get.to(DetailDeviceScreen(device: device));
+                            Get.to(() => DetailDeviceScreen(device: device));
+                          },
+                          text: "Yes",
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+      isDismissible: false,
+      enableDrag: false,
+    );
+  }
+
+  Future<void> showDisconnectedBottomSheet(BluetoothDevice device) async {
+    final deviceName = device.platformName != ''
+        ? device.platformName
+        : device.remoteId.toString();
+
+    Get.bottomSheet(
+      Container(
+        padding: AppPadding.medium,
+        decoration: const BoxDecoration(
+          color: AppColor.whiteColor,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Wrap(
+          children: [
+            Center(
+              child: Column(
+                children: [
+                  Text(
+                    "Disconnect Device",
+                    style: FontFamily.headlineLarge,
+                  ),
+                  AppSpacing.sm,
+                  Text("Do you want to disconnect the device ($deviceName)?",
+                      style: FontFamily.normal),
+                  AppSpacing.md,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Button(
+                            onPressed: () => Navigator.of(Get.overlayContext!)
+                                .pop(), // hanya tutup bottom sheet
+                            text: "No",
+                            btnColor: AppColor.grey),
+                      ),
+                      AppSpacing.md,
+                      Expanded(
+                        child: Button(
+                          onPressed: () async {
+                            await disconnectDeviceWithRedirect(device);
                           },
                           text: "Yes",
                         ),
