@@ -35,9 +35,7 @@ class _HomeScreenState extends State<HomeScreen> {
         body: SafeArea(
           child: SingleChildScrollView(
             padding: AppPadding.screenPadding,
-            child: provider.isLoading
-                ? const CircularProgressIndicator()
-                : _homeContent(context),
+            child: _homeContent(context),
           ),
         ),
         endDrawer: const SideBarMenu(),
@@ -130,17 +128,6 @@ class _HomeScreenState extends State<HomeScreen> {
             },
           );
         }),
-        AppSpacing.xxl,
-        ElevatedButton(
-          onPressed: () {
-            loadingProvider.startLoading(true);
-
-            Future.delayed(const Duration(seconds: 3), () {
-              loadingProvider.stopLoading();
-            });
-          },
-          child: const Text("Start Loading"),
-        ),
       ],
     );
   }
