@@ -25,11 +25,15 @@ class DeviceListWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final BLEController bleController = Get.put(BLEController());
-    
+
     return InkWell(
       onTap: () {
         if (!isConnected) {
-          bleController.showSnackbar('','Device is not connected, please connect the device first.', AppColor.redColor, AppColor.whiteColor);
+          bleController.showSnackbar(
+              '',
+              'Device is not connected, please connect the device first.',
+              AppColor.redColor,
+              AppColor.whiteColor);
         } else {
           Navigator.push(
             context,
