@@ -37,9 +37,7 @@ class MyApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
         title: 'Suriota Mobile Gateway',
-        home: const LoadingOverlay(
-          child: SplashScreen(),
-        ),
+        home: const SplashScreen(),
         // home: const LoginPage(),
       ),
     );
