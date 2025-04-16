@@ -6,6 +6,7 @@ import 'package:suriota_mobile_gateway/constant/app_gap.dart';
 import 'package:suriota_mobile_gateway/controller/ble_controller.dart';
 import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_button.dart';
+import 'package:suriota_mobile_gateway/global/widgets/loading_overlay.dart';
 import 'package:suriota_mobile_gateway/screen/devices/widgets/device_list_widget.dart';
 
 class AddDeviceScreen extends StatefulWidget {
@@ -49,11 +50,24 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: _appBar(),
-      body: SafeArea(
-        child: _body(),
-      ),
+    return Stack(
+      children: [
+        Scaffold(
+          appBar: _appBar(),
+          body: SafeArea(
+            child: SingleChildScrollView(
+              child: _body(),
+            ),
+          ),
+        ),
+        Obx(() {
+          final isAnyDeviceLoading = bleController.isAnyDeviceLoading;
+          return LoadingOverlay(
+            isLoading: isAnyDeviceLoading,
+            message: "Connecting device...",
+          );
+        }),
+      ],
     );
   }
 
@@ -75,6 +89,18 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
             : const SizedBox.shrink())
       ],
     );
+  }
+
+  Obx _body() {
+    return Obx(() {
+      if (bleController.isLoading.value) {
+        return _scanningProgress();
+      } else if (bleController.isDeviceListEmpty) {
+        return _findDevice(context);
+      } else {
+        return _deviceList();
+      }
+    });
   }
 
   Container _findDevice(BuildContext context) {
@@ -142,18 +168,6 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
     );
   }
 
-  Obx _body() {
-    return Obx(() {
-      if (bleController.isLoading.value) {
-        return _scanningProgress();
-      } else if (bleController.isDeviceListEmpty) {
-        return _findDevice(context);
-      } else {
-        return _deviceList();
-      }
-    });
-  }
-
   Widget _deviceList() {
     return Padding(
       padding: AppPadding.medium,
@@ -163,8 +177,8 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
           AppSpacing.sm,
           Text('Device List', style: context.h4),
           AppSpacing.sm,
-          Expanded(
-            child: Obx(() {
+          LayoutBuilder(builder: (context, constraints) {
+            return Obx(() {
               if (bleController.devices.isEmpty) {
                 return Container(
                   height: MediaQuery.of(context).size.height * 0.55,
@@ -205,7 +219,8 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
                       isLoadingConnection: isLoadingConnection,
                       onConnect: () async {
                         if (!isLoadingConnection) {
-                          await bleController.connectToDevice(device);
+                          await bleController.connectToDevice(
+                              device); // Panggil fungsi connect
                         }
                       },
                       onDisconnect: () async {
@@ -217,8 +232,15 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
                   });
                 },
               );
-            }),
-          ),
+            });
+          }),
+          AppSpacing.md,
+          Center(
+            child: Text(
+              'A total of ${bleController.devices.length} devices were successfully discovered.',
+              style: context.bodySmall,
+            ),
+          )
         ],
       ),
     );
