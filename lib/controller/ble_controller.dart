@@ -276,7 +276,7 @@ class BLEController extends GetxController {
                   ),
                   AppSpacing.sm,
                   Text(
-                      "Do you want to open device (${device.remoteId.toString()}) page detail?",
+                      "Do you want to open device (${device.platformName != '' ? device.platformName : device.remoteId.toString()}) page detail?",
                       style: FontFamily.normal),
                   AppSpacing.md,
                   Row(
