@@ -6,6 +6,7 @@ import 'package:suriota_mobile_gateway/constant/app_gap.dart';
 import 'package:suriota_mobile_gateway/constant/image_asset.dart';
 import 'package:suriota_mobile_gateway/controller/ble_controller.dart';
 import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
+import 'package:suriota_mobile_gateway/global/widgets/loading_overlay.dart';
 import 'package:suriota_mobile_gateway/models/device_dummy.dart';
 import 'package:suriota_mobile_gateway/models/device_model.dart';
 import 'package:suriota_mobile_gateway/provider/LoadingProvider.dart';
@@ -29,19 +30,28 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     double screenWidth = MediaQuery.of(context).size.width;
 
-    return Consumer<LoadingProvider>(builder: (context, provider, child) {
-      return Scaffold(
-        appBar: _appBar(screenWidth),
-        body: SafeArea(
-          child: SingleChildScrollView(
-            padding: AppPadding.screenPadding,
-            child: _homeContent(context),
+    return Stack(
+      children: [
+        Scaffold(
+          appBar: _appBar(screenWidth),
+          body: SafeArea(
+            child: SingleChildScrollView(
+              padding: AppPadding.screenPadding,
+              child: _homeContent(context),
+            ),
           ),
+          endDrawer: const SideBarMenu(),
+          floatingActionButton: _floatingButtonCustom(context),
         ),
-        endDrawer: const SideBarMenu(),
-        floatingActionButton: _floatingButtonCustom(context),
-      );
-    });
+        Obx(() {
+          final isAnyDeviceLoading = bleController.isAnyDeviceLoading;
+          return LoadingOverlay(
+            isLoading: isAnyDeviceLoading,
+            message: 'Connecting device...',
+          );
+        })
+      ],
+    );
   }
 
   AppBar _appBar(double screenWidth) {
@@ -61,8 +71,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Column _homeContent(BuildContext context) {
-    final loadingProvider = Provider.of<LoadingProvider>(context);
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
