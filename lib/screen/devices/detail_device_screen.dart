@@ -146,7 +146,7 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
                             .showDisconnectedBottomSheet(widget.device);
                       },
                       text: isLoadingConnection
-                          ? "Disconnecting..."
+                          ? "DisConnecting device..."
                           : isConnected
                               ? 'Disconnect'
                               : 'Connect',
@@ -181,6 +181,22 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
                 .toList(),
           );
         }),
+        AppSpacing.md,
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            Button(
+              onPressed: () => bleController.sendCommand('OFF'),
+              text: 'OFF LED',
+              btnColor: AppColor.redColor,
+            ),
+            AppSpacing.md,
+            Button(
+              onPressed: () => bleController.sendCommand('ON'),
+              text: 'ON LED',
+            )
+          ],
+        ),
         AppSpacing.lg,
       ],
     );
