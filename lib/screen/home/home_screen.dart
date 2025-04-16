@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:provider/provider.dart';
 import 'package:suriota_mobile_gateway/constant/app_color.dart';
 import 'package:suriota_mobile_gateway/constant/app_gap.dart';
 import 'package:suriota_mobile_gateway/constant/image_asset.dart';
@@ -9,7 +8,6 @@ import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
 import 'package:suriota_mobile_gateway/global/widgets/loading_overlay.dart';
 import 'package:suriota_mobile_gateway/models/device_dummy.dart';
 import 'package:suriota_mobile_gateway/models/device_model.dart';
-import 'package:suriota_mobile_gateway/provider/LoadingProvider.dart';
 import 'package:suriota_mobile_gateway/screen/devices/add_device_screen.dart';
 import 'package:suriota_mobile_gateway/screen/devices/widgets/device_list_widget.dart';
 import 'package:suriota_mobile_gateway/screen/sidebar_menu/sidebar_menu.dart';
