@@ -15,48 +15,37 @@ class BLEController extends GetxController {
   final Guid serviceUuid = Guid("12345678-1234-1234-1234-1234567890ab");
   final Guid characteristicUuid = Guid("abcd1234-1234-1234-1234-abcdef123456");
 
-  var isLoading = false.obs;
   final devices = <BluetoothDevice>[].obs;
+  final isLoading = false.obs;
+
+  final RxMap<String, bool> _connectionStatus = <String, bool>{}.obs;
+  final RxMap<String, bool> _loadingStatus = <String, bool>{}.obs;
+  final RxMap<String, bool> _isConnected = <String, bool>{}.obs;
+
   BluetoothCharacteristic? _characteristic;
-  bool get isDeviceListEmpty => devices.isEmpty;
 
   final StreamController<String> _statusController =
       StreamController<String>.broadcast();
   Stream<String> get statusStream => _statusController.stream;
 
-  final RxMap<String, bool> _connectionStatus = <String, bool>{}.obs;
+  // Getters
+  bool get isDeviceListEmpty => devices.isEmpty;
   RxMap<String, bool> get connectionStatus => _connectionStatus;
-
-  final RxMap<String, bool> _loadingStatus = <String, bool>{}.obs;
   RxMap<String, bool> get loadingStatus => _loadingStatus;
-
-  final RxMap<String, bool> _isConnected = <String, bool>{}.obs;
   RxMap<String, bool> get isConnected => _isConnected;
 
-  void _notifyStatus(String status) {
-    _statusController.add(status);
+  // Utility Getters
+  bool getConnectionStatus(String deviceId) =>
+      _connectionStatus[deviceId] ?? false;
+  bool getLoadingStatus(String deviceId) => _loadingStatus[deviceId] ?? false;
 
-    Get.snackbar(
-      '',
-      status,
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: AppColor.grey,
-      colorText: AppColor.whiteColor,
-      duration: const Duration(seconds: 3),
-      margin: const EdgeInsets.all(16),
-      titleText: const SizedBox(),
-      padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 16.0),
-    );
+  void setLoadingStatus(String deviceId, bool isLoading) {
+    _loadingStatus[deviceId] = isLoading;
+    update(); // Beritahu GetX bahwa state telah berubah
   }
 
-  /// Mendapatkan status koneksi perangkat
-  bool getConnectionStatus(String deviceId) {
-    return _connectionStatus[deviceId] ?? false;
-  }
-
-  /// Mendapatkan status loading perangkat
-  bool getLoadingStatus(String deviceId) {
-    return _loadingStatus[deviceId] ?? false;
+  bool get isAnyDeviceLoading {
+    return _loadingStatus.values.any((isLoading) => isLoading);
   }
 
   /// Scan device
@@ -66,26 +55,32 @@ class BLEController extends GetxController {
     _startLoading();
     devices.clear();
 
-    await FlutterBluePlus.startScan(timeout: const Duration(seconds: 5));
-    final subscription = FlutterBluePlus.scanResults.listen((results) async {
-      for (ScanResult r in results) {
-        if (!devices.contains(r.device)) {
-          devices.add(r.device);
-          _connectionStatus[r.device.remoteId.toString()] = false;
-        }
+    await FlutterBluePlus.stopScan();
 
-        // Disabled temporary
-        // if (r.device.platformName == "ESP32-BLE-LED") {
-        //   await _handleDeviceConnection(r.device);
-        //   return; // Hentikan proses setelah menemukan perangkat.
-        // }
+    final seenDeviceIds = <String>{};
+    late final StreamSubscription<List<ScanResult>> subscription;
+
+    subscription = FlutterBluePlus.scanResults.listen((results) {
+      for (ScanResult r in results) {
+        final id = r.device.remoteId.toString();
+
+        if (r.device.platformName.isNotEmpty && !seenDeviceIds.contains(id)) {
+          seenDeviceIds.add(id);
+          devices.add(r.device);
+          _connectionStatus[id] = false;
+        }
       }
     });
 
-    Future.delayed(const Duration(seconds: 5), () {
-      subscription.cancel();
+    try {
+      await FlutterBluePlus.startScan(timeout: const Duration(seconds: 5));
+    } catch (e) {
+      _notifyStatus("Scan failed: $e");
+    } finally {
+      await Future.delayed(const Duration(seconds: 5));
+      await subscription.cancel();
       _stopLoading();
-    });
+    }
   }
 
   /// Connect to device
@@ -94,7 +89,7 @@ class BLEController extends GetxController {
     final deviceName =
         device.platformName != '' ? device.platformName : deviceId;
 
-    _loadingStatus[deviceId] = true;
+    setLoadingStatus(deviceId, true);
 
     try {
       await FlutterBluePlus.stopScan();
@@ -116,7 +111,7 @@ class BLEController extends GetxController {
       AppHelpers.debugLog("Failed to connect: $e");
       _notifyStatus("Failed to connect the device: $deviceName");
     } finally {
-      _loadingStatus[deviceId] = false;
+      setLoadingStatus(deviceId, false);
     }
   }
 
@@ -125,7 +120,7 @@ class BLEController extends GetxController {
     final deviceId = device.remoteId.toString();
     final deviceName =
         device.platformName != '' ? device.platformName : deviceId;
-    _loadingStatus[deviceId] = true;
+    setLoadingStatus(deviceId, true);
 
     try {
       await device.disconnect();
@@ -133,13 +128,12 @@ class BLEController extends GetxController {
       _connectionStatus[deviceId] = false;
       _isConnected[deviceId] = false;
 
-      _notifyStatus(
-          "Disconnected from $deviceName due to service discovery failure.");
+      _notifyStatus("Disconnected from $deviceName.");
     } catch (e) {
       AppHelpers.debugLog("Failed to disconnect: $e");
       _notifyStatus("Failed to connect the device: $deviceName");
     } finally {
-      _loadingStatus[deviceId] = false;
+      setLoadingStatus(deviceId, false);
     }
   }
 
@@ -156,13 +150,16 @@ class BLEController extends GetxController {
       _connectionStatus[deviceId] = false;
       _isConnected[deviceId] = false;
 
-      _notifyStatus(
-          "Disconnected from $deviceName due to service discovery failure.");
+      _notifyStatus("Disconnected from $deviceName.");
 
       if (Get.isOverlaysOpen) {
-        Get.back(); // ini menutup bottom sheet
         Get.back();
       }
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (Get.currentRoute != '/') {
+          Get.back(); // Kembali ke halaman sebelumnya
+        }
+      });
     } catch (e) {
       AppHelpers.debugLog("Failed to disconnect: $e");
       _notifyStatus("Failed to connect the device: $deviceName");
@@ -197,6 +194,7 @@ class BLEController extends GetxController {
           }
         }
       }
+
       _notifyStatus(
           "Service UUID: $serviceUuid or Characteristic UUID: $characteristicUuid not found on ${device.platformName != '' ? device.platformName : device.remoteId.toString()}");
       return false;
@@ -217,7 +215,7 @@ class BLEController extends GetxController {
 
     try {
       await _characteristic!.write(command.codeUnits, withoutResponse: false);
-      _notifyStatus("Send command: $command");
+      // _notifyStatus("Send command: $command");
     } catch (e) {
       _notifyStatus("Failed to send command");
       AppHelpers.debugLog("Failed to send command: $e");
@@ -366,6 +364,22 @@ class BLEController extends GetxController {
       ),
       isDismissible: false,
       enableDrag: false,
+    );
+  }
+
+  void _notifyStatus(String status) {
+    _statusController.add(status);
+
+    Get.snackbar(
+      '',
+      status,
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: AppColor.grey,
+      colorText: AppColor.whiteColor,
+      duration: const Duration(seconds: 3),
+      margin: const EdgeInsets.all(16),
+      titleText: const SizedBox(),
+      padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 16.0),
     );
   }
 
