@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
@@ -15,14 +16,15 @@ class BLEController extends GetxController {
   final Guid serviceUuid = Guid("12345678-1234-1234-1234-1234567890ab");
   final Guid characteristicUuid = Guid("abcd1234-1234-1234-1234-abcdef123456");
 
+  BluetoothService? _selectedService;
+  BluetoothCharacteristic? _selectedCharacteristic;
+
   final devices = <BluetoothDevice>[].obs;
   final isLoading = false.obs;
 
   final RxMap<String, bool> _connectionStatus = <String, bool>{}.obs;
   final RxMap<String, bool> _loadingStatus = <String, bool>{}.obs;
   final RxMap<String, bool> _isConnected = <String, bool>{}.obs;
-
-  BluetoothCharacteristic? _characteristic;
 
   final StreamController<String> _statusController =
       StreamController<String>.broadcast();
@@ -33,6 +35,9 @@ class BLEController extends GetxController {
   RxMap<String, bool> get connectionStatus => _connectionStatus;
   RxMap<String, bool> get loadingStatus => _loadingStatus;
   RxMap<String, bool> get isConnected => _isConnected;
+  BluetoothService? get selectedService => _selectedService;
+  BluetoothCharacteristic? get selectedCharacteristic =>
+      _selectedCharacteristic;
 
   // Utility Getters
   bool getConnectionStatus(String deviceId) =>
@@ -87,13 +92,13 @@ class BLEController extends GetxController {
   Future<void> connectToDevice(BluetoothDevice device) async {
     final deviceId = device.remoteId.toString();
     final deviceName =
-        device.platformName != '' ? device.platformName : deviceId;
+        device.platformName.isNotEmpty ? device.platformName : deviceId;
 
     setLoadingStatus(deviceId, true);
 
     try {
       await FlutterBluePlus.stopScan();
-      await device.connect();
+      await device.connect(timeout: const Duration(seconds: 10));
 
       _connectionStatus[deviceId] = true;
       _isConnected[deviceId] = true;
@@ -119,7 +124,7 @@ class BLEController extends GetxController {
   Future<void> disconnectDevice(BluetoothDevice device) async {
     final deviceId = device.remoteId.toString();
     final deviceName =
-        device.platformName != '' ? device.platformName : deviceId;
+        device.platformName.isNotEmpty ? device.platformName : deviceId;
     setLoadingStatus(deviceId, true);
 
     try {
@@ -141,7 +146,7 @@ class BLEController extends GetxController {
   Future<void> disconnectDeviceWithRedirect(BluetoothDevice device) async {
     final deviceId = device.remoteId.toString();
     final deviceName =
-        device.platformName != '' ? device.platformName : deviceId;
+        device.platformName.isNotEmpty ? device.platformName : deviceId;
     _loadingStatus[deviceId] = true;
 
     try {
@@ -178,43 +183,72 @@ class BLEController extends GetxController {
         },
       );
 
+      if (services.isEmpty) {
+        _notifyStatus("No services found on ${device.platformName}");
+        return false;
+      }
+
       for (var service in services) {
-        if (service.serviceUuid == serviceUuid) {
-          for (var c in service.characteristics) {
-            if (c.characteristicUuid == characteristicUuid) {
-              _characteristic = c;
-              await c.setNotifyValue(true);
+        for (var characteristic in service.characteristics) {
+          final props = characteristic.properties;
 
-              c.onValueReceived.listen((value) {
-                _notifyStatus("Response: ${String.fromCharCodes(value)}");
-              });
+          if (props.notify || props.write || props.read) {
+            _selectedService = service;
+            _selectedCharacteristic = characteristic;
 
-              return true;
-            }
+            await characteristic.setNotifyValue(true);
+
+            characteristic.onValueReceived.listen((value) {
+              final received = utf8.decode(value);
+              _notifyStatus("'Dari ESP32: $received'");
+              // _notifyStatus(
+              //     "Notify from ${characteristic.characteristicUuid}: ${String.fromCharCodes(value)}");
+            });
+
+            _notifyStatus(
+              "Connected with:\n"
+              "- Service UUID: ${service.serviceUuid}\n"
+              "- Characteristic UUID: ${characteristic.characteristicUuid}\n"
+              "- Properties: ${_getPropertiesString(props)}",
+            );
+
+            return true;
           }
         }
       }
 
-      _notifyStatus(
-          "Service UUID: $serviceUuid or Characteristic UUID: $characteristicUuid not found on ${device.platformName != '' ? device.platformName : device.remoteId.toString()}");
+      _notifyStatus("No valid characteristic with notify/write/read found.");
       return false;
     } catch (e) {
       _notifyStatus(
-          "Failed to discover service/characteristic on ${device.platformName != '' ? device.platformName : device.remoteId.toString()}");
+          "Failed to discover service/characteristic on ${device.platformName}");
       AppHelpers.debugLog("Failed to discover service/characteristic: $e");
       return false;
     }
   }
 
+  String _getPropertiesString(CharacteristicProperties props) {
+    final List<String> result = [];
+
+    if (props.read) result.add("read");
+    if (props.write) result.add("write");
+    if (props.notify) result.add("notify");
+    if (props.writeWithoutResponse) result.add("writeWithoutResponse");
+    if (props.indicate) result.add("indicate");
+
+    return result.join(", ");
+  }
+
   /// Send command to device
   void sendCommand(String command) async {
-    if (_characteristic == null) {
+    if (_selectedCharacteristic == null) {
       _notifyStatus("Characteristic not found.");
       return;
     }
 
     try {
-      await _characteristic!.write(command.codeUnits, withoutResponse: false);
+      await _selectedCharacteristic!
+          .write(command.codeUnits, withoutResponse: false);
       // _notifyStatus("Send command: $command");
     } catch (e) {
       _notifyStatus("Failed to send command");
@@ -276,7 +310,7 @@ class BLEController extends GetxController {
                   ),
                   AppSpacing.sm,
                   Text(
-                      "Do you want to open device (${device.platformName != '' ? device.platformName : device.remoteId.toString()}) page detail?",
+                      "Do you want to open device (${device.platformName.isNotEmpty ? device.platformName : device.remoteId.toString()}) page detail?",
                       style: FontFamily.normal),
                   AppSpacing.md,
                   Row(
@@ -312,7 +346,7 @@ class BLEController extends GetxController {
   }
 
   Future<void> showDisconnectedBottomSheet(BluetoothDevice device) async {
-    final deviceName = device.platformName != ''
+    final deviceName = device.platformName.isNotEmpty
         ? device.platformName
         : device.remoteId.toString();
 
