@@ -1,30 +1,42 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:suriota_mobile_gateway/provider/LoadingProvider.dart';
+import 'package:suriota_mobile_gateway/constant/app_color.dart';
+import 'package:suriota_mobile_gateway/constant/app_gap.dart';
+import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
 
 class LoadingOverlay extends StatelessWidget {
-  final Widget child;
+  final bool isLoading;
+  final String? message;
 
-  const LoadingOverlay({Key? key, required this.child}) : super(key: key);
+  const LoadingOverlay({
+    super.key,
+    required this.isLoading,
+    this.message,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final loadingProvider = Provider.of<LoadingProvider>(context);
+    if (!isLoading) return const SizedBox.shrink();
 
-    return Stack(
-      children: [
-        child,
-        if (loadingProvider.isLoading)
-          Container(
-            color: Colors.black54,
-            child: const Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                strokeWidth: 2.0,
-              ),
+    return Container(
+      color: Colors.black54, // Latar belakang gelap semi-transparan
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(AppColor.whiteColor),
             ),
-          ),
-      ],
+            if (message != null)
+              Padding(
+                padding: AppPadding.medium,
+                child: Text(
+                  message!,
+                  style: context.h6.copyWith(color: AppColor.whiteColor),
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }
