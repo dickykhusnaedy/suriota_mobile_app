@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:suriota_mobile_gateway/constant/app_color.dart';
 import 'package:suriota_mobile_gateway/constant/app_gap.dart';
 import 'package:suriota_mobile_gateway/constant/image_asset.dart';
+import 'package:suriota_mobile_gateway/controller/ble_controller.dart';
 import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
-import 'package:suriota_mobile_gateway/global/widgets/device_card.dart';
+import 'package:suriota_mobile_gateway/global/widgets/loading_overlay.dart';
 import 'package:suriota_mobile_gateway/models/device_dummy.dart';
 import 'package:suriota_mobile_gateway/models/device_model.dart';
-import 'package:suriota_mobile_gateway/screen/devices/detail_device_screen.dart';
 import 'package:suriota_mobile_gateway/screen/devices/add_device_screen.dart';
+import 'package:suriota_mobile_gateway/screen/devices/widgets/device_list_widget.dart';
 import 'package:suriota_mobile_gateway/screen/sidebar_menu/sidebar_menu.dart';
 
 // ignore: must_be_immutable
@@ -20,62 +22,32 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   List<DeviceModel> deviceList = deviceDummy;
+  final BLEController bleController = Get.put(BLEController());
 
   @override
   Widget build(BuildContext context) {
     double screenWidth = MediaQuery.of(context).size.width;
 
-    return Scaffold(
-      appBar: _appBar(screenWidth),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: AppPadding.screenPadding,
-          child: _homeContent(context),
-        ),
-      ),
-      endDrawer: const SideBarMenu(),
-      floatingActionButton: _floatingButtonCustom(context),
-    );
-  }
-
-  Column _homeContent(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Stack(
       children: [
-        Text('Hallo, Soru👋', style: context.h1),
-        AppSpacing.xs,
-        Text('Connecting the device near you', style: context.body),
-        AppSpacing.xxl,
-        Text('Device List', style: context.h4),
-        AppSpacing.sm,
-        ListView.separated(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: deviceList.length,
-          separatorBuilder: (context, index) => AppSpacing.sm,
-          itemBuilder: (BuildContext context, int index) {
-            return InkWell(
-                onTap: () {
-                  Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => DetailDeviceScreen(
-                                title: 'Suriota Gateway ${index + 1}',
-                              )));
-                },
-                child: DeviceCard(
-                  deviceTitle: deviceList[index].deviceTitle,
-                  deviceAddress: deviceList[index].deviceAddress,
-                  buttonTitle:
-                      deviceList[index].isConnected ? 'Disconnect' : 'Connect',
-                  colorButton: deviceList[index].isConnected
-                      ? AppColor.redColor
-                      : AppColor.primaryColor,
-                  onPressed: () {},
-                ));
-          },
+        Scaffold(
+          appBar: _appBar(screenWidth),
+          body: SafeArea(
+            child: SingleChildScrollView(
+              padding: AppPadding.screenPadding,
+              child: _homeContent(context),
+            ),
+          ),
+          endDrawer: const SideBarMenu(),
+          floatingActionButton: _floatingButtonCustom(context),
         ),
-        AppSpacing.xxl,
+        Obx(() {
+          final isAnyDeviceLoading = bleController.isAnyDeviceLoading;
+          return LoadingOverlay(
+            isLoading: isAnyDeviceLoading,
+            message: 'Connecting device...',
+          );
+        })
       ],
     );
   }
@@ -96,6 +68,76 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Column _homeContent(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Hallo, Fulan👋', style: context.h1),
+        AppSpacing.xs,
+        Text('Connecting the device near you', style: context.body),
+        AppSpacing.xxl,
+        Text('Device List', style: context.h4),
+        AppSpacing.sm,
+        Obx(() {
+          // ignore: prefer_is_empty
+          if (bleController.devices.isEmpty ||
+              // ignore: prefer_is_empty
+              bleController.devices.length == 0) {
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.55,
+              alignment: Alignment.center,
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'No device found.\nFind devices near you by clicking the (+) button.',
+                      textAlign: TextAlign.center,
+                      style: context.body.copyWith(color: AppColor.grey),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          return ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            separatorBuilder: (context, index) => AppSpacing.sm,
+            itemCount: bleController.devices.length,
+            itemBuilder: (context, index) {
+              final device = bleController.devices[index];
+              final deviceId = device.remoteId.toString();
+
+              return Obx(() {
+                final isConnected = bleController.getConnectionStatus(deviceId);
+                final isLoadingConnection =
+                    bleController.getLoadingStatus(deviceId);
+
+                return DeviceListWidget(
+                  device: device,
+                  isConnected: isConnected,
+                  isLoadingConnection: isLoadingConnection,
+                  onConnect: () async {
+                    if (!isLoadingConnection) {
+                      await bleController.connectToDevice(device);
+                    }
+                  },
+                  onDisconnect: () async {
+                    if (!isLoadingConnection) {
+                      await bleController.disconnectDevice(device);
+                    }
+                  },
+                );
+              });
+            },
+          );
+        }),
+      ],
+    );
+  }
+
   Container _floatingButtonCustom(BuildContext context) {
     return Container(
         width: 50,
@@ -110,7 +152,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Navigator.push(
                 context,
                 MaterialPageRoute(
-                    builder: (context) => AddDeviceScreen()));
+                    builder: (context) => const AddDeviceScreen()));
           },
           child: const Icon(
             Icons.add_circle,

@@ -1,15 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:get/get.dart';
-import 'package:get/get_core/src/get_main.dart';
 import 'package:suriota_mobile_gateway/constant/app_color.dart';
 import 'package:suriota_mobile_gateway/constant/app_gap.dart';
-import 'package:suriota_mobile_gateway/controller/bluetooth_controller.dart';
+import 'package:suriota_mobile_gateway/controller/ble_controller.dart';
 import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_button.dart';
-import 'package:suriota_mobile_gateway/global/widgets/device_card.dart';
-import 'package:suriota_mobile_gateway/models/device_dummy.dart';
-import 'package:suriota_mobile_gateway/models/device_model.dart';
-import 'package:suriota_mobile_gateway/screen/devices/detail_device_screen.dart';
+import 'package:suriota_mobile_gateway/global/widgets/loading_overlay.dart';
+import 'package:suriota_mobile_gateway/screen/devices/widgets/device_list_widget.dart';
 
 class AddDeviceScreen extends StatefulWidget {
   const AddDeviceScreen({super.key});
@@ -19,16 +17,57 @@ class AddDeviceScreen extends StatefulWidget {
 }
 
 class _AddDeviceScreenState extends State<AddDeviceScreen> {
-  final BluetoothController controller = Get.put(BluetoothController());
-  List<DeviceModel> deviceList = deviceDummy;
+  final BLEController bleController = Get.put(BLEController());
+
+  bool isBluetoothOn = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkBluetoothStatus();
+  }
+
+  Future<void> _checkBluetoothStatus() async {
+    // Mendengarkan status adapter Bluetooth
+    FlutterBluePlus.adapterState.listen((state) {
+      setState(() {
+        isBluetoothOn = state == BluetoothAdapterState.on;
+      });
+    });
+  }
+
+  Future<void> _checkBluetoothDevice() async {
+    if (isBluetoothOn) {
+      bleController.scanDevice();
+    } else {
+      bleController.showSnackbar(
+          'Bluetooth is off',
+          'Please enable Bluetooth to scan devices.',
+          AppColor.redColor,
+          AppColor.whiteColor);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: _appBar(),
-      body: SafeArea(
-        child: _body(),
-      ),
+    return Stack(
+      children: [
+        Scaffold(
+          appBar: _appBar(),
+          body: SafeArea(
+            child: SingleChildScrollView(
+              child: _body(),
+            ),
+          ),
+        ),
+        Obx(() {
+          final isAnyDeviceLoading = bleController.isAnyDeviceLoading;
+          return LoadingOverlay(
+            isLoading: isAnyDeviceLoading,
+            message: "Connecting device...",
+          );
+        }),
+      ],
     );
   }
 
@@ -40,15 +79,28 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
       title: Text('Add Device',
           style: context.h5.copyWith(color: AppColor.whiteColor)),
       actions: [
-        Obx(() => IconButton(
-              color: AppColor.primaryColor,
-              icon: controller.isScanning.value
-                  ? const Icon(Icons.stop)
-                  : const Icon(Icons.search),
-              onPressed: controller.startScan,
-            ))
+        Obx(() => bleController.devices.isNotEmpty
+            ? IconButton(
+                onPressed: _checkBluetoothDevice,
+                icon: const Icon(
+                  Icons.search,
+                  size: 24,
+                ))
+            : const SizedBox.shrink())
       ],
     );
+  }
+
+  Obx _body() {
+    return Obx(() {
+      if (bleController.isLoading.value) {
+        return _scanningProgress();
+      } else if (bleController.isDeviceListEmpty) {
+        return _findDevice(context);
+      } else {
+        return _deviceList();
+      }
+    });
   }
 
   Container _findDevice(BuildContext context) {
@@ -68,70 +120,129 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
               style: context.body.copyWith(color: AppColor.grey)),
           AppSpacing.xxxl,
           Button(
-              onPressed: controller.startScan,
-              text: 'Search devices',
+              onPressed: _checkBluetoothDevice,
+              text: 'Scan',
               icons: const Icon(
                 Icons.search,
                 color: AppColor.whiteColor,
                 size: 23,
               ),
               height: 50,
-              width: MediaQuery.of(context).size.width * 0.5)
+              width: MediaQuery.of(context).size.width * 0.3),
         ],
       ),
     );
   }
 
-  Obx _body() {
-    return Obx(() => controller.devices.isEmpty
-        ? _findDevice(context)
-        : Padding(
-            padding: AppPadding.screenPadding,
-            child: _deviceList(),
-          ));
-  }
-
-  Column _deviceList() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        AppSpacing.sm,
-        Text('Device List', style: context.h4),
-        AppSpacing.sm,
-        Expanded(
-          child: ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            separatorBuilder: (context, index) => AppSpacing.sm,
-            itemCount: controller.devices.length,
-            itemBuilder: (context, index) {
-              final device = controller.devices[index];
-              return InkWell(
-                onTap: () {
-                  Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => DetailDeviceScreen(
-                                title: 'Suriota Gateway ${index + 1}',
-                              )));
-                },
-                child: DeviceCard(
-                  deviceTitle: device.platformName.isNotEmpty
-                      ? device.platformName
-                      : "Unknown Device",
-                  deviceAddress: device.remoteId.toString(),
-                  buttonTitle:
-                      deviceList[index].isConnected ? 'Disconnect' : 'Connect',
-                  colorButton: deviceList[index].isConnected
-                      ? AppColor.redColor
-                      : AppColor.primaryColor,
-                  onPressed: () {},
+  Container _scanningProgress() {
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.85,
+      alignment: Alignment.center,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Obx(() {
+            if (bleController.isLoading.value) {
+              return const CircularProgressIndicator(
+                color: AppColor.primaryColor,
+              );
+            } else {
+              return const SizedBox.shrink();
+            }
+          }),
+          AppSpacing.md,
+          StreamBuilder<String>(
+            stream: bleController.statusStream,
+            builder: (context, snapshot) {
+              return Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Text(
+                  snapshot.data ?? "Scanning device...",
+                  style: context.body.copyWith(color: AppColor.grey),
                 ),
               );
             },
           ),
-        )
-      ],
+        ],
+      ),
+    );
+  }
+
+  Widget _deviceList() {
+    return Padding(
+      padding: AppPadding.medium,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AppSpacing.sm,
+          Text('Device List', style: context.h4),
+          AppSpacing.sm,
+          LayoutBuilder(builder: (context, constraints) {
+            return Obx(() {
+              if (bleController.devices.isEmpty) {
+                return Container(
+                  height: MediaQuery.of(context).size.height * 0.55,
+                  alignment: Alignment.center,
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'No device found.\nFind device near you.',
+                          textAlign: TextAlign.center,
+                          style: context.body.copyWith(color: AppColor.grey),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+
+              return ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                separatorBuilder: (context, index) => AppSpacing.sm,
+                itemCount: bleController.devices.length,
+                itemBuilder: (context, index) {
+                  final device = bleController.devices[index];
+                  final deviceId = device.remoteId.toString();
+
+                  return Obx(() {
+                    final isConnected =
+                        bleController.getConnectionStatus(deviceId);
+                    final isLoadingConnection =
+                        bleController.getLoadingStatus(deviceId);
+
+                    return DeviceListWidget(
+                      device: device,
+                      isConnected: isConnected,
+                      isLoadingConnection: isLoadingConnection,
+                      onConnect: () async {
+                        if (!isLoadingConnection) {
+                          await bleController.connectToDevice(
+                              device); // Panggil fungsi connect
+                        }
+                      },
+                      onDisconnect: () async {
+                        if (!isLoadingConnection) {
+                          await bleController.disconnectDevice(device);
+                        }
+                      },
+                    );
+                  });
+                },
+              );
+            });
+          }),
+          AppSpacing.md,
+          Center(
+            child: Text(
+              'A total of ${bleController.devices.length} devices were successfully discovered.',
+              style: context.bodySmall,
+            ),
+          )
+        ],
+      ),
     );
   }
 }
