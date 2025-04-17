@@ -13,11 +13,10 @@ import 'package:suriota_mobile_gateway/global/widgets/custom_button.dart';
 import 'package:suriota_mobile_gateway/screen/devices/detail_device_screen.dart';
 
 class BLEController extends GetxController {
-  final Guid serviceUuid = Guid("12345678-1234-1234-1234-1234567890ab");
-  final Guid characteristicUuid = Guid("abcd1234-1234-1234-1234-abcdef123456");
-
   BluetoothService? _selectedService;
   BluetoothCharacteristic? _selectedCharacteristic;
+  BluetoothCharacteristic? _writeChar;
+  BluetoothCharacteristic? _notifyChar;
 
   final devices = <BluetoothDevice>[].obs;
   final isLoading = false.obs;
@@ -38,6 +37,8 @@ class BLEController extends GetxController {
   BluetoothService? get selectedService => _selectedService;
   BluetoothCharacteristic? get selectedCharacteristic =>
       _selectedCharacteristic;
+  BluetoothCharacteristic? get writeChar => _writeChar;
+  BluetoothCharacteristic? get notifyChar => _notifyChar;
 
   // Utility Getters
   bool getConnectionStatus(String deviceId) =>
@@ -189,29 +190,26 @@ class BLEController extends GetxController {
       }
 
       for (var service in services) {
-        for (var characteristic in service.characteristics) {
-          final props = characteristic.properties;
+        for (var char in service.characteristics) {
+          final props = char.properties;
 
-          if (props.notify || props.write || props.read) {
-            _selectedService = service;
-            _selectedCharacteristic = characteristic;
+          if (props.write && _writeChar == null) {
+            _writeChar = char;
+          }
 
-            await characteristic.setNotifyValue(true);
+          if (props.notify && _notifyChar == null) {
+            _notifyChar = char;
 
-            characteristic.onValueReceived.listen((value) {
+            await _notifyChar!.setNotifyValue(true);
+            _notifyChar!.onValueReceived.listen((value) {
               final received = utf8.decode(value);
-              _notifyStatus("'Dari ESP32: $received'");
-              // _notifyStatus(
-              //     "Notify from ${characteristic.characteristicUuid}: ${String.fromCharCodes(value)}");
+              _notifyStatus("Notify from ESP32: $received");
             });
+          }
 
-            _notifyStatus(
-              "Connected with:\n"
-              "- Service UUID: ${service.serviceUuid}\n"
-              "- Characteristic UUID: ${characteristic.characteristicUuid}\n"
-              "- Properties: ${_getPropertiesString(props)}",
-            );
-
+          // Jika sudah dapat keduanya, kita lanjut
+          if (_writeChar != null && _notifyChar != null) {
+            _selectedService = service;
             return true;
           }
         }
@@ -227,32 +225,18 @@ class BLEController extends GetxController {
     }
   }
 
-  String _getPropertiesString(CharacteristicProperties props) {
-    final List<String> result = [];
-
-    if (props.read) result.add("read");
-    if (props.write) result.add("write");
-    if (props.notify) result.add("notify");
-    if (props.writeWithoutResponse) result.add("writeWithoutResponse");
-    if (props.indicate) result.add("indicate");
-
-    return result.join(", ");
-  }
-
   /// Send command to device
   void sendCommand(String command) async {
-    if (_selectedCharacteristic == null) {
-      _notifyStatus("Characteristic not found.");
+    if (_writeChar == null) {
+      _notifyStatus("Characteristic Write tidak ditemukan.");
       return;
     }
 
     try {
-      await _selectedCharacteristic!
-          .write(command.codeUnits, withoutResponse: false);
-      // _notifyStatus("Send command: $command");
+      await _writeChar!.write(command.codeUnits, withoutResponse: false);
     } catch (e) {
-      _notifyStatus("Failed to send command");
-      AppHelpers.debugLog("Failed to send command: $e");
+      _notifyStatus("Gagal kirim command");
+      AppHelpers.debugLog("Gagal kirim command: $e");
     }
   }
 
