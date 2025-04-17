@@ -186,13 +186,13 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
             Button(
-              onPressed: () => bleController.sendCommand('OFF'),
+              onPressed: () => bleController.sendCommand('off'),
               text: 'OFF LED',
               btnColor: AppColor.redColor,
             ),
             AppSpacing.md,
             Button(
-              onPressed: () => bleController.sendCommand('ON'),
+              onPressed: () => bleController.sendCommand('on'),
               text: 'ON LED',
             )
           ],
