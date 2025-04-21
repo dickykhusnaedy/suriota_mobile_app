@@ -35,19 +35,19 @@ class ProfilePage extends StatelessWidget {
         AppSpacing.md,
         Center(
           child: Text(
-            'Rudi Soru',
+            'Fulan bin Fulan',
             style: context.h3,
           ),
         ),
         AppSpacing.lg,
         const FieldDataWidget(
           label: 'Full Name',
-          description: 'Rudi Soru',
+          description: 'Fulan bin Fulan',
         ),
         AppSpacing.md,
         const FieldDataWidget(
           label: 'Email',
-          description: 'rudisoru@dah.com',
+          description: 'fulan@fulan.com',
         ),
         AppSpacing.md,
         const FieldDataWidget(

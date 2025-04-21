@@ -44,7 +44,7 @@ class _MainScreenState extends State<MainScreen> {
               const SizedBox(height: 10),
               Center(
                 child: Text(
-                  'Rudi Soru',
+                  'Fulan bin Fulan',
                   style: FontFamily.headlineLarge,
                 ),
               ),
