@@ -182,22 +182,22 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
           );
         }),
         AppSpacing.md,
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            Button(
-              onPressed: () => bleController.sendCommand('off'),
-              text: 'OFF LED',
-              btnColor: AppColor.redColor,
-            ),
-            AppSpacing.md,
-            Button(
-              onPressed: () => bleController.sendCommand('on'),
-              text: 'ON LED',
-            )
-          ],
-        ),
-        AppSpacing.lg,
+        // Row(
+        //   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        //   children: [
+        //     Button(
+        //       onPressed: () => bleController.sendCommand('off'),
+        //       text: 'OFF LED',
+        //       btnColor: AppColor.redColor,
+        //     ),
+        //     AppSpacing.md,
+        //     Button(
+        //       onPressed: () => bleController.sendCommand('on'),
+        //       text: 'ON LED',
+        //     )
+        //   ],
+        // ),
+        // AppSpacing.lg,
       ],
     );
   }
