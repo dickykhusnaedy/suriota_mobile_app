@@ -235,8 +235,8 @@ class BLEController extends GetxController {
     try {
       await _writeChar!.write(command.codeUnits, withoutResponse: false);
     } catch (e) {
-      _notifyStatus("Gagal kirim command");
-      AppHelpers.debugLog("Gagal kirim command: $e");
+      _notifyStatus("Failde send a command");
+      AppHelpers.debugLog("Failde send a command: $e");
     }
   }
 
@@ -250,29 +250,26 @@ class BLEController extends GetxController {
 
   void showSnackbar(
       String title, String message, Color? bgColor, Color? textColor) {
-    if (title == '') {
-      Get.snackbar(
-        '',
+    final snackbar = GetSnackBar(
+      title: title.isEmpty ? null : title,
+      message: message,
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: bgColor ?? AppColor.redColor,
+      messageText: Text(
         message,
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: bgColor ?? AppColor.redColor,
-        colorText: textColor ?? AppColor.whiteColor,
-        duration: const Duration(seconds: 3),
-        margin: const EdgeInsets.all(16),
-        titleText: const SizedBox(),
-        padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 16.0),
-      );
-    } else {
-      Get.snackbar(
-        title,
-        message,
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: bgColor ?? AppColor.redColor,
-        colorText: textColor ?? AppColor.whiteColor,
-        duration: const Duration(seconds: 3),
-        margin: const EdgeInsets.all(16),
-      );
-    }
+        style:
+            FontFamily.normal.copyWith(color: textColor ?? AppColor.whiteColor),
+      ),
+      duration: const Duration(seconds: 3),
+      margin: const EdgeInsets.all(16),
+      padding: title.isEmpty
+          ? const EdgeInsets.fromLTRB(12.0, 8.0, 12.0, 12.0)
+          : const EdgeInsets.all(12.0),
+      titleText: title.isEmpty ? const SizedBox() : null,
+      borderRadius: 8,
+    );
+
+    Get.showSnackbar(snackbar);
   }
 
   void showConnectedBottomSheet(BluetoothDevice device) {
