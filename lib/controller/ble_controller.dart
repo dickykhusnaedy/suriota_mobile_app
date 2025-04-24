@@ -226,14 +226,15 @@ class BLEController extends GetxController {
   }
 
   /// Send command to device
-  void sendCommand(String command) async {
+  void sendCommand(String value) async {
     if (_writeChar == null) {
       _notifyStatus("Characteristic Write tidak ditemukan.");
       return;
     }
 
     try {
-      await _writeChar!.write(command.codeUnits, withoutResponse: false);
+      final bytes = utf8.encode(value);
+      await _writeChar!.write(bytes, withoutResponse: false);
     } catch (e) {
       _notifyStatus("Failde send a command");
       AppHelpers.debugLog("Failde send a command: $e");
