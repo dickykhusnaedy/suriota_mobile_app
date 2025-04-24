@@ -182,6 +182,10 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
           );
         }),
         AppSpacing.md,
+        TextField(
+          decoration: const InputDecoration(labelText: "Send to ESP32"),
+          onSubmitted: bleController.sendCommand,
+        )
         // Row(
         //   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         //   children: [
