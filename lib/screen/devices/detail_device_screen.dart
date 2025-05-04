@@ -83,6 +83,8 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
     double screenWidth = MediaQuery.of(context).size.width;
     final BLEController bleController = Get.put(BLEController());
 
+    print(widget.device);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -181,11 +183,7 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
                 .toList(),
           );
         }),
-        AppSpacing.md,
-        TextField(
-          decoration: const InputDecoration(labelText: "Send to ESP32"),
-          onSubmitted: bleController.sendCommand,
-        )
+        AppSpacing.lg,
         // Row(
         //   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         //   children: [
