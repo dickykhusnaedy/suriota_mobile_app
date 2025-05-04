@@ -9,12 +9,14 @@ class CustomDropdown extends StatefulWidget {
     super.key,
     required this.listItem,
     required this.hintText,
+    this.onChanged,
     this.selectedItem,
   });
 
   final List<String> listItem;
   final String? selectedItem;
   final String? hintText;
+  final void Function(String?)? onChanged;
 
   @override
   State<CustomDropdown> createState() => _CustomDropdownState();
@@ -65,11 +67,7 @@ class _CustomDropdownState extends State<CustomDropdown> {
           contentPadding: AppPadding.horizontalMedium,
         ),
       ),
-      onChanged: (value) {
-        setState(() {
-          selectedBaudrate = value; // Mengupdate nilai baudrate yang dipilih
-        });
-      },
+      onChanged: widget.onChanged,
       selectedItem:
           selectedBaudrate?.isNotEmpty == true ? selectedBaudrate : null,
       // Mengatur props popup berdasarkan jumlah item
