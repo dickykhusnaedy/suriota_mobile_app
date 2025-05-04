@@ -226,19 +226,49 @@ class BLEController extends GetxController {
   }
 
   /// Send command to device
-  void sendCommand(String value) async {
+  void sendCommand(Map<String, dynamic> jsonData) async {
+    _startLoading();
+
     if (_writeChar == null) {
       _notifyStatus("Characteristic Write tidak ditemukan.");
+      _stopLoading();
       return;
     }
 
     try {
-      final bytes = utf8.encode(value);
-      await _writeChar!.write(bytes, withoutResponse: false);
+      final jsonString = jsonEncode(jsonData);
+      final packets = splitJsonToPackets(jsonString);
+
+      for (final packet in packets) {
+        final bytes = utf8.encode(packet);
+        await _writeChar!.write(bytes, withoutResponse: false);
+        await Future.delayed(
+            const Duration(milliseconds: 20)); // give time for ESP32
+      }
+
+      _notifyStatus("Command sent in ${packets.length} packets");
     } catch (e) {
-      _notifyStatus("Failde send a command");
-      AppHelpers.debugLog("Failde send a command: $e");
+      _notifyStatus("Failed to send a command");
+      AppHelpers.debugLog("Failed to send a command: $e");
+    } finally {
+      _stopLoading();
     }
+  }
+
+  List<String> splitJsonToPackets(String json, {int chunkSize = 20}) {
+    final List<String> packets = [];
+    final totalPackets = (json.length / chunkSize).ceil();
+
+    for (int i = 0; i < totalPackets; i++) {
+      final start = i * chunkSize;
+      final end =
+          start + chunkSize > json.length ? json.length : start + chunkSize;
+      final chunk = json.substring(start, end);
+      final packet = 'P$i/${totalPackets - 1}:$chunk';
+      packets.add(packet);
+    }
+
+    return packets;
   }
 
   void _startLoading() {
