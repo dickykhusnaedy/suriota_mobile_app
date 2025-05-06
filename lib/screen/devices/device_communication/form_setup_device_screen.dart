@@ -8,6 +8,7 @@ import 'package:suriota_mobile_gateway/global/widgets/custom_button.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_dropdown.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_radiotile.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_textfield.dart';
+import 'package:suriota_mobile_gateway/global/widgets/loading_overlay.dart';
 import 'package:suriota_mobile_gateway/global/widgets/title_tile.dart';
 
 class FormSetupDeviceScreen extends StatefulWidget {
@@ -39,14 +40,11 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
   final stopBitController = TextEditingController();
   final ipAddressController = TextEditingController();
   final serverPortController = TextEditingController();
-  final connectTimeoutController = TextEditingController();
-  final internetProtocolController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     modbusTypeController.text = modBusSelected;
-    internetProtocolController.text = protocolSelected;
   }
 
   @override
@@ -60,36 +58,38 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
     stopBitController.dispose();
     ipAddressController.dispose();
     serverPortController.dispose();
-    connectTimeoutController.dispose();
-    internetProtocolController.dispose();
     super.dispose();
   }
 
   void _submit() {
     if (_formKey.currentState!.validate()) {
-      final dataRS = {
-        "baudrate": baudrateController.text,
-        "bid_data": bidDataController.text,
-        "parity": parityController.text,
-        "stop_bit": stopBitController.text,
-      };
-      final dataTcp = {
-        "ip_address": ipAddressController.text,
-        "server_port": serverPortController.text,
-        "connect_timeout": connectTimeoutController.text,
-        "internet_protocol": internetProtocolController.text,
-      };
-
       final sendData = {
         "action": "CREATE",
-        "dataset": "modbus",
+        "dataset": "devices",
         "data": {
-          "id": 1,
+          "id": 105,
           "name": deviceNameController.text,
-          "timestamp": DateTime.now().millisecondsSinceEpoch,
+          "timestamp": DateTime.now().millisecondsSinceEpoch ~/ 1000,
           "modbus_type": modbusTypeController.text,
-          "refresh_rate": refreshRateController.text,
-          ...(modbusTypeController.text == 'TCP' ? dataTcp : dataRS),
+          "refresh_rate": refreshRateController.text.isNotEmpty
+              ? int.parse(refreshRateController.text)
+              : null,
+          "baudrate": baudrateController.text.isNotEmpty
+              ? int.parse(baudrateController.text)
+              : null,
+          "data_bits": bidDataController.text.isNotEmpty
+              ? int.parse(bidDataController.text)
+              : null,
+          "parity": parityController.text.isNotEmpty
+              ? int.parse(parityController.text)
+              : null,
+          "stop_bits": stopBitController.text.isNotEmpty
+              ? int.parse(stopBitController.text)
+              : null,
+          "ip_address": ipAddressController.text,
+          "port": serverPortController.text.isNotEmpty
+              ? int.parse(serverPortController.text)
+              : null
         }
       };
 
@@ -99,112 +99,20 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: _appBar(context),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: AppPadding.horizontalMedium,
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                AppSpacing.md,
-                CustomTextFormField(
-                  controller: deviceNameController,
-                  labelTxt: "Device Name",
-                  hintTxt: "Enter the device name",
-                ),
-                if (modBusSelected == "RS-4851" || modBusSelected == "RS-4852")
-                  Column(
-                    children: [
-                      AppSpacing.md,
-                      CustomTextFormField(
-                        controller: refreshRateController,
-                        labelTxt: "Refresh Rate",
-                        hintTxt: "Enter the Refresh Rate",
-                        keyboardType: TextInputType.number,
-                        suffixIcon: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                "m/s",
-                                style: context.bodySmall
-                                    .copyWith(color: AppColor.grey),
-                              )
-                            ]),
-                      ),
-                    ],
-                  ),
-                AppSpacing.md,
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text("Choose Modbus", style: context.h6),
-                    AppSpacing.sm,
-                    CustomRadioTile(
-                      value: "RS-4851",
-                      grupValue: modBusSelected,
-                      onChanges: () {
-                        setState(() {
-                          modBusSelected = "RS-4851";
-                          modbusTypeController.text = "RS-4851";
-                        });
-                      },
-                    ),
-                    CustomRadioTile(
-                      value: "RS-4852",
-                      grupValue: modBusSelected,
-                      onChanges: () {
-                        setState(() {
-                          modBusSelected = "RS-4852";
-                          modbusTypeController.text = "RS-4852";
-                        });
-                      },
-                    ),
-                    CustomRadioTile(
-                      value: "TCP",
-                      grupValue: modBusSelected,
-                      onChanges: () {
-                        setState(() {
-                          modBusSelected = "TCP";
-                          modbusTypeController.text = "TCP";
-
-                          // Reset RS-485 field
-                          baudrateController.clear();
-                          bidDataController.clear();
-                          parityController.clear();
-                          stopBitController.clear();
-
-                          // Reset selected value (untuk UI dropdown)
-                          selectedBaudRate = null;
-                          selectedBiddata = null;
-                          selectedParity = null;
-                          selectedStopbit = null;
-                        });
-                      },
-                    ),
-                  ],
-                ),
-                AppSpacing.md,
-                TitleTile(title: "Modbus Setup $modBusSelected"),
-                AppSpacing.md,
-                modBusSelected == 'RS-4851' || modBusSelected == 'RS-4852'
-                    ? _formRS485Wrapper()
-                    : _formTCPIPWrapper(),
-                AppSpacing.lg,
-                Button(
-                  width: MediaQuery.of(context).size.width,
-                  onPressed: _submit,
-                  text: bleController.isLoading.value ? "Loading..." : "Submit",
-                  height: 50,
-                ),
-                AppSpacing.lg
-              ],
-            ),
-          ),
+    return Stack(
+      children: [
+        Scaffold(
+          appBar: _appBar(context),
+          body: _body(context),
         ),
-      ),
+        Obx(() {
+          final isAnyDeviceLoading = bleController.isLoading.value;
+          return LoadingOverlay(
+            isLoading: isAnyDeviceLoading,
+            message: "Sending data...",
+          );
+        }),
+      ],
     );
   }
 
@@ -220,23 +128,117 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
     );
   }
 
+  SafeArea _body(BuildContext context) {
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: AppPadding.horizontalMedium,
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AppSpacing.md,
+              CustomTextFormField(
+                controller: deviceNameController,
+                labelTxt: "Device Name",
+                hintTxt: "Enter the device name",
+              ),
+              Column(
+                children: [
+                  AppSpacing.md,
+                  CustomTextFormField(
+                    controller: refreshRateController,
+                    labelTxt: "Refresh Rate",
+                    hintTxt: "Enter the Refresh Rate",
+                    keyboardType: TextInputType.number,
+                    suffixIcon: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            "m/s",
+                            style: context.bodySmall
+                                .copyWith(color: AppColor.grey),
+                          )
+                        ]),
+                  ),
+                ],
+              ),
+              AppSpacing.md,
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("Choose Modbus", style: context.h6),
+                  AppSpacing.sm,
+                  CustomRadioTile(
+                    value: "RS-4851",
+                    grupValue: modBusSelected,
+                    onChanges: () {
+                      setState(() {
+                        modBusSelected = "RS-4851";
+                        modbusTypeController.text = "RS-4851";
+                      });
+                    },
+                  ),
+                  CustomRadioTile(
+                    value: "RS-4852",
+                    grupValue: modBusSelected,
+                    onChanges: () {
+                      setState(() {
+                        modBusSelected = "RS-4852";
+                        modbusTypeController.text = "RS-4852";
+                      });
+                    },
+                  ),
+                  CustomRadioTile(
+                    value: "TCP",
+                    grupValue: modBusSelected,
+                    onChanges: () {
+                      setState(() {
+                        modBusSelected = "TCP";
+                        modbusTypeController.text = "TCP";
+
+                        // Reset RS-485 field
+                        baudrateController.clear();
+                        bidDataController.clear();
+                        parityController.clear();
+                        stopBitController.clear();
+
+                        // Reset selected value (untuk UI dropdown)
+                        selectedBaudRate = null;
+                        selectedBiddata = null;
+                        selectedParity = null;
+                        selectedStopbit = null;
+                      });
+                    },
+                  ),
+                ],
+              ),
+              AppSpacing.md,
+              TitleTile(title: "Modbus Setup $modBusSelected"),
+              AppSpacing.md,
+              modBusSelected == 'RS-4851' || modBusSelected == 'RS-4852'
+                  ? _formRS485Wrapper()
+                  : _formTCPIPWrapper(),
+              AppSpacing.lg,
+              Button(
+                width: MediaQuery.of(context).size.width,
+                onPressed: _submit,
+                text: "Save",
+                height: 50,
+              ),
+              AppSpacing.lg
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _formRS485Wrapper() {
-    List<String> baudrates = [
-      '9600 Baud',
-      '19200 Baud',
-      '38400 Baud',
-      '57600 Baud',
-      '115200 Baud'
-    ];
-    List<String> bitData = [
-      '7 Data Bits',
-      '8 Data Bits',
-    ];
-    List<String> parity = ['None Parity', 'Odd Parity', 'Even Parity'];
-    List<String> stopBits = [
-      '1 Stop Bit',
-      '2 Stop Bits',
-    ];
+    List<String> baudrates = ['9600', '19200', '38400', '57600', '115200'];
+    List<String> bitData = ['7', '8'];
+    List<String> parity = ['0', '1', '2'];
+    List<String> stopBits = ['1', '2'];
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.start,
@@ -328,35 +330,35 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
           hintTxt: "502",
           keyboardType: TextInputType.number,
         ),
-        AppSpacing.md,
-        CustomTextFormField(
-          controller: connectTimeoutController,
-          labelTxt: "Connect Timeout",
-          hintTxt: "3000 m/s",
-        ),
-        AppSpacing.md,
-        Text("Choose Internet Protocol", style: context.h6),
-        AppSpacing.sm,
-        CustomRadioTile(
-          value: "IPv4",
-          grupValue: protocolSelected,
-          onChanges: () {
-            setState(() {
-              protocolSelected = "IPv4";
-              internetProtocolController.text = "IPv4";
-            });
-          },
-        ),
-        CustomRadioTile(
-          value: "IPv6",
-          grupValue: protocolSelected,
-          onChanges: () {
-            setState(() {
-              protocolSelected = "IPv6";
-              internetProtocolController.text = "IPv6";
-            });
-          },
-        ),
+        AppSpacing.md
+        // CustomTextFormField(
+        //   controller: connectTimeoutController,
+        //   labelTxt: "Connect Timeout",
+        //   hintTxt: "3000 m/s",
+        // ),
+        // AppSpacing.md,
+        // Text("Choose Internet Protocol", style: context.h6),
+        // AppSpacing.sm,
+        // CustomRadioTile(
+        //   value: "IPv4",
+        //   grupValue: protocolSelected,
+        //   onChanges: () {
+        //     setState(() {
+        //       protocolSelected = "IPv4";
+        //       internetProtocolController.text = "IPv4";
+        //     });
+        //   },
+        // ),
+        // CustomRadioTile(
+        //   value: "IPv6",
+        //   grupValue: protocolSelected,
+        //   onChanges: () {
+        //     setState(() {
+        //       protocolSelected = "IPv6";
+        //       internetProtocolController.text = "IPv6";
+        //     });
+        //   },
+        // ),
       ],
     );
   }
