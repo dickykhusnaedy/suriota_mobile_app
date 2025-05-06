@@ -44,9 +44,8 @@ class DeviceListWidget extends StatelessWidget {
         }
       },
       child: DeviceCard(
-        deviceTitle: device.platformName.isNotEmpty
-            ? device.platformName
-            : "Unknown Device",
+        deviceTitle:
+            device.platformName.isNotEmpty ? device.platformName : "N/A",
         deviceAddress: device.remoteId.toString(),
         buttonTitle: isLoadingConnection
             ? "Connecting..."
