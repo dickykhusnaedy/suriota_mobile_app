@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:get/get.dart';
 import 'package:suriota_mobile_gateway/constant/app_color.dart';
@@ -11,6 +10,7 @@ import 'package:suriota_mobile_gateway/constant/font_setup.dart';
 import 'package:suriota_mobile_gateway/global/utils/helper.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_button.dart';
 import 'package:suriota_mobile_gateway/screen/devices/detail_device_screen.dart';
+import 'package:suriota_mobile_gateway/screen/devices/device_communication/device_communications_screen.dart';
 
 class BLEController extends GetxController {
   BluetoothService? _selectedService;
@@ -20,6 +20,9 @@ class BLEController extends GetxController {
 
   final devices = <BluetoothDevice>[].obs;
   final isLoading = false.obs;
+
+  final Map<int, String> _packetBuffer = {};
+  int _expectedPackets = -1;
 
   final RxMap<String, bool> _connectionStatus = <String, bool>{}.obs;
   final RxMap<String, bool> _loadingStatus = <String, bool>{}.obs;
@@ -70,9 +73,11 @@ class BLEController extends GetxController {
       for (ScanResult r in results) {
         final id = r.device.remoteId.toString();
 
-        if (r.device.platformName.isNotEmpty && !seenDeviceIds.contains(id)) {
+        if (!seenDeviceIds.contains(id)) {
           seenDeviceIds.add(id);
           devices.add(r.device);
+
+          // Optionally store bleDevice in a list if needed
           _connectionStatus[id] = false;
         }
       }
@@ -177,37 +182,21 @@ class BLEController extends GetxController {
   /// Get characteristic device
   Future<bool> _discoverServices(BluetoothDevice device) async {
     try {
-      List<BluetoothService> services = await device.discoverServices().timeout(
-        const Duration(seconds: 15),
-        onTimeout: () {
-          throw TimeoutException("Service discovery timed out.");
-        },
-      );
+      final services = await device.discoverServices().timeout(
+            const Duration(seconds: 15),
+            onTimeout: () =>
+                throw TimeoutException("Service discovery timed out."),
+          );
 
       if (services.isEmpty) {
         _notifyStatus("No services found on ${device.platformName}");
         return false;
       }
 
-      for (var service in services) {
-        for (var char in service.characteristics) {
-          final props = char.properties;
+      for (final service in services) {
+        for (final char in service.characteristics) {
+          _assignCharacteristic(char);
 
-          if (props.write && _writeChar == null) {
-            _writeChar = char;
-          }
-
-          if (props.notify && _notifyChar == null) {
-            _notifyChar = char;
-
-            await _notifyChar!.setNotifyValue(true);
-            _notifyChar!.onValueReceived.listen((value) {
-              final received = utf8.decode(value);
-              _notifyStatus("Notify from ESP32: $received");
-            });
-          }
-
-          // Jika sudah dapat keduanya, kita lanjut
           if (_writeChar != null && _notifyChar != null) {
             _selectedService = service;
             return true;
@@ -222,6 +211,57 @@ class BLEController extends GetxController {
           "Failed to discover service/characteristic on ${device.platformName}");
       AppHelpers.debugLog("Failed to discover service/characteristic: $e");
       return false;
+    }
+  }
+
+  void _assignCharacteristic(BluetoothCharacteristic char) async {
+    final props = char.properties;
+
+    if (props.write && _writeChar == null) {
+      _writeChar = char;
+    }
+
+    if (props.notify && _notifyChar == null) {
+      _notifyChar = char;
+      await _notifyChar!.setNotifyValue(true);
+      _listenToNotifications();
+    }
+  }
+
+  void _listenToNotifications() {
+    _notifyChar!.onValueReceived.listen((value) async {
+      final data = utf8.decode(value);
+      final regex = RegExp(r'^P(\d+)/(\d+):(.*)$');
+      final match = regex.firstMatch(data);
+
+      if (match != null) {
+        _handlePacket(match);
+      } else {
+        _notifyStatus("Invalid packet format: $data");
+        AppHelpers.debugLog("Invalid packet format: $data");
+      }
+    });
+  }
+
+  void _handlePacket(RegExpMatch match) async {
+    final index = int.parse(match.group(1)!);
+    final total = int.parse(match.group(2)!);
+    final content = match.group(3)!;
+
+    _packetBuffer[index] = content;
+    _expectedPackets = total + 1;
+
+    if (_packetBuffer.length == _expectedPackets) {
+      final message =
+          List.generate(_expectedPackets, (i) => _packetBuffer[i] ?? '').join();
+      _packetBuffer.clear();
+      _expectedPackets = -1;
+
+      if (message.toLowerCase().contains("success")) {
+        showSnackbar("Success", message, Colors.green, Colors.white);
+        await Future.delayed(const Duration(seconds: 3));
+        Get.offAll(() => const DeviceCommunicationsScreen());
+      }
     }
   }
 
@@ -243,10 +283,10 @@ class BLEController extends GetxController {
         final bytes = utf8.encode(packet);
         await _writeChar!.write(bytes, withoutResponse: false);
         await Future.delayed(
-            const Duration(milliseconds: 20)); // give time for ESP32
+            const Duration(milliseconds: 30)); // give time for ESP32
       }
 
-      _notifyStatus("Command sent in ${packets.length} packets");
+      // _notifyStatus("Command sent in ${packets.length} packets");
     } catch (e) {
       _notifyStatus("Failed to send a command");
       AppHelpers.debugLog("Failed to send a command: $e");
