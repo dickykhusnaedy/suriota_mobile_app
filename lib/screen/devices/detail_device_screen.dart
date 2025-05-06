@@ -83,8 +83,6 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
     double screenWidth = MediaQuery.of(context).size.width;
     final BLEController bleController = Get.put(BLEController());
 
-    print(widget.device);
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
