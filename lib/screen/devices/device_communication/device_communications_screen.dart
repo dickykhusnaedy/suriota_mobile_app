@@ -1,16 +1,37 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:suriota_mobile_gateway/constant/app_color.dart';
 import 'package:suriota_mobile_gateway/constant/app_gap.dart';
 import 'package:suriota_mobile_gateway/constant/image_asset.dart';
+import 'package:suriota_mobile_gateway/controller/ble_controller.dart';
 import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_button.dart';
 import 'package:suriota_mobile_gateway/screen/devices/device_communication/data_display_screen.dart';
 import 'package:suriota_mobile_gateway/screen/devices/device_communication/form_setup_device_screen.dart';
 
-class DeviceCommunicationsScreen extends StatelessWidget {
+class DeviceCommunicationsScreen extends StatefulWidget {
   const DeviceCommunicationsScreen({super.key});
+
+  @override
+  State<DeviceCommunicationsScreen> createState() =>
+      _DeviceCommunicationsScreenState();
+}
+
+class _DeviceCommunicationsScreenState
+    extends State<DeviceCommunicationsScreen> {
+  final BLEController bleController = Get.put(BLEController());
+
+  @override
+  void initState() {
+    setState(() {
+      bleController.sendCommand(
+          {"action": "READ", "dataset": "devices", "page": 1, "pageSize": 10});
+    });
+
+    super.initState();
+  }
 
   @override
   Widget build(BuildContext context) {
