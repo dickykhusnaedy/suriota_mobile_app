@@ -128,11 +128,11 @@ class DeviceCard extends StatelessWidget {
     double screenWidth = MediaQuery.of(context).size.width;
 
     return Card(
-      color: AppColor.cardColor,
+      color: AppColor.lightPrimaryColor,
       margin: EdgeInsets.zero,
       elevation: 0.0,
       child: Padding(
-        padding: AppPadding.small,
+        padding: AppPadding.medium,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -142,7 +142,7 @@ class DeviceCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.start,
                 children: [
                   Image.asset(ImageAsset.iconBluetooth,
-                      width: 35, height: 35, fit: BoxFit.contain),
+                      width: 40, height: 40, fit: BoxFit.contain),
                   AppSpacing.sm,
                   Flexible(
                     flex: 1,
@@ -157,7 +157,7 @@ class DeviceCard extends StatelessWidget {
                         AppSpacing.xs,
                         Text(
                           deviceAddress!,
-                          style: context.body,
+                          style: context.bodySmall,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ],
