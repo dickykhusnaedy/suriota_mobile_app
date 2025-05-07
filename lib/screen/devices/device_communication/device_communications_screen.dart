@@ -6,6 +6,7 @@ import 'package:suriota_mobile_gateway/constant/app_color.dart';
 import 'package:suriota_mobile_gateway/constant/app_gap.dart';
 import 'package:suriota_mobile_gateway/constant/image_asset.dart';
 import 'package:suriota_mobile_gateway/controller/ble_controller.dart';
+import 'package:suriota_mobile_gateway/controller/global_data_controller.dart';
 import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_button.dart';
 import 'package:suriota_mobile_gateway/screen/devices/device_communication/data_display_screen.dart';
@@ -22,15 +23,18 @@ class DeviceCommunicationsScreen extends StatefulWidget {
 class _DeviceCommunicationsScreenState
     extends State<DeviceCommunicationsScreen> {
   final BLEController bleController = Get.put(BLEController());
+  final global = Get.put(GlobalDataController());
 
   @override
   void initState() {
-    setState(() {
-      bleController.sendCommand(
-          {"action": "READ", "dataset": "devices", "page": 1, "pageSize": 10});
+    // TODO: implement initState
+    super.initState();
+
+    Future.delayed(const Duration(milliseconds: 300), () {
+      bleController.sendCommand('READ|devices|id:1');
     });
 
-    super.initState();
+    print('global data: ${global}');
   }
 
   @override
