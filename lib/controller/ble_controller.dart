@@ -7,6 +7,7 @@ import 'package:get/get.dart';
 import 'package:suriota_mobile_gateway/constant/app_color.dart';
 import 'package:suriota_mobile_gateway/constant/app_gap.dart';
 import 'package:suriota_mobile_gateway/constant/font_setup.dart';
+import 'package:suriota_mobile_gateway/controller/global_data_controller.dart';
 import 'package:suriota_mobile_gateway/global/utils/helper.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_button.dart';
 import 'package:suriota_mobile_gateway/screen/devices/detail_device_screen.dart';
@@ -23,6 +24,8 @@ class BLEController extends GetxController {
 
   final Map<int, String> _packetBuffer = {};
   int _expectedPackets = -1;
+
+  final RxString deviceStoredData = ''.obs;
 
   final RxMap<String, bool> _connectionStatus = <String, bool>{}.obs;
   final RxMap<String, bool> _loadingStatus = <String, bool>{}.obs;
@@ -105,6 +108,15 @@ class BLEController extends GetxController {
     try {
       await FlutterBluePlus.stopScan();
       await device.connect(timeout: const Duration(seconds: 10));
+
+      device.connectionState.listen((state) {
+        if (state == BluetoothConnectionState.disconnected) {
+          _notifyStatus("Device $deviceName disconnected unexpectedly.");
+
+          print("Device $deviceName disconnected unexpectedly.");
+          Get.offAllNamed('/'); // Atau ke halaman manapun sesuai kebutuhan
+        }
+      });
 
       _connectionStatus[deviceId] = true;
       _isConnected[deviceId] = true;
@@ -248,12 +260,21 @@ class BLEController extends GetxController {
     final total = int.parse(match.group(2)!);
     final content = match.group(3)!;
 
+    print("📦 Received Packet [$index/$total]: $content");
+
     _packetBuffer[index] = content;
     _expectedPackets = total + 1;
 
+    print("🧩 Collected: ${_packetBuffer.length}/$_expectedPackets");
+
     if (_packetBuffer.length == _expectedPackets) {
-      final message =
-          List.generate(_expectedPackets, (i) => _packetBuffer[i] ?? '').join();
+      final message = List.generate(
+        _expectedPackets,
+        (i) => _packetBuffer[i] ?? '',
+      ).join();
+
+      print("✅ Full message received: $message");
+
       _packetBuffer.clear();
       _expectedPackets = -1;
 
@@ -261,12 +282,37 @@ class BLEController extends GetxController {
         showSnackbar("Success", message, Colors.green, Colors.white);
         await Future.delayed(const Duration(seconds: 3));
         Get.offAll(() => const DeviceCommunicationsScreen());
+      } else if (message.toLowerCase().startsWith("data|")) {
+        final parts = message.replaceAll('#', '').split('|');
+
+        if (parts.length >= 2) {
+          final dataset = parts[1];
+          final Map<String, String> parsedData = {};
+
+          for (int i = 2; i < parts.length; i++) {
+            final keyValue = parts[i].split(':');
+            if (keyValue.length == 2) {
+              parsedData[keyValue[0]] = keyValue[1];
+            }
+          }
+
+          print('✅ Parsed data from ESP32: $parsedData');
+
+          final global = Get.put(GlobalDataController());
+          global.setData(dataset, parsedData);
+
+          showSnackbar("Data from ESP32", "Dataset: $dataset", Colors.blue,
+              Colors.white);
+        } else {
+          AppHelpers.debugLog("⚠️ Malformed data response: $message");
+          _notifyStatus("Failed to parse data from ESP32");
+        }
       }
     }
   }
 
   /// Send command to device
-  void sendCommand(Map<String, dynamic> jsonData) async {
+  void sendCommand(String commandString) async {
     _startLoading();
 
     if (_writeChar == null) {
@@ -276,39 +322,35 @@ class BLEController extends GetxController {
     }
 
     try {
-      final jsonString = jsonEncode(jsonData);
-      final packets = splitJsonToPackets(jsonString);
-
-      for (final packet in packets) {
-        final bytes = utf8.encode(packet);
-        await _writeChar!.write(bytes, withoutResponse: false);
-        await Future.delayed(
-            const Duration(milliseconds: 30)); // give time for ESP32
+      if (!commandString.endsWith('#')) {
+        commandString += '#';
       }
 
+      final bytes = utf8.encode(commandString);
+
+      const mtu = 20;
+      for (int offset = 0; offset < bytes.length; offset += mtu) {
+        final chunk = bytes.sublist(
+          offset,
+          offset + mtu > bytes.length ? bytes.length : offset + mtu,
+        );
+        await _writeChar!.write(chunk, withoutResponse: false);
+        await Future.delayed(const Duration(milliseconds: 50));
+      }
+
+      print("Command sent: $commandString");
       // _notifyStatus("Command sent in ${packets.length} packets");
     } catch (e) {
-      _notifyStatus("Failed to send a command");
       AppHelpers.debugLog("Failed to send a command: $e");
+      _notifyStatus("Device disconnected, redirecting...");
+
+      // Disconnect & navigate home
+      if (_writeChar?.device != null) {
+        await disconnectDeviceWithRedirect(_writeChar!.device);
+      }
     } finally {
       _stopLoading();
     }
-  }
-
-  List<String> splitJsonToPackets(String json, {int chunkSize = 20}) {
-    final List<String> packets = [];
-    final totalPackets = (json.length / chunkSize).ceil();
-
-    for (int i = 0; i < totalPackets; i++) {
-      final start = i * chunkSize;
-      final end =
-          start + chunkSize > json.length ? json.length : start + chunkSize;
-      final chunk = json.substring(start, end);
-      final packet = 'P$i/${totalPackets - 1}:$chunk';
-      packets.add(packet);
-    }
-
-    return packets;
   }
 
   void _startLoading() {
