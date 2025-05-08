@@ -146,7 +146,7 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
                             .showDisconnectedBottomSheet(widget.device);
                       },
                       text: isLoadingConnection
-                          ? "DisConnecting device..."
+                          ? "Disconnecting..."
                           : isConnected
                               ? 'Disconnect'
                               : 'Connect',
