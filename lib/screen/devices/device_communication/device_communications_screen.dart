@@ -1,12 +1,10 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:suriota_mobile_gateway/constant/app_color.dart';
 import 'package:suriota_mobile_gateway/constant/app_gap.dart';
 import 'package:suriota_mobile_gateway/constant/image_asset.dart';
 import 'package:suriota_mobile_gateway/controller/ble_controller.dart';
-import 'package:suriota_mobile_gateway/controller/global_data_controller.dart';
+import 'package:suriota_mobile_gateway/controller/device_pagination_controller.dart';
 import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_button.dart';
 import 'package:suriota_mobile_gateway/screen/devices/device_communication/data_display_screen.dart';
@@ -23,48 +21,35 @@ class DeviceCommunicationsScreen extends StatefulWidget {
 class _DeviceCommunicationsScreenState
     extends State<DeviceCommunicationsScreen> {
   final BLEController bleController = Get.put(BLEController());
-  final global = Get.put(GlobalDataController());
+  final controller = Get.put(DevicePaginationController());
 
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
 
-    Future.delayed(const Duration(milliseconds: 300), () {
-      bleController.sendCommand('READ|devices|id:1');
+    Future.delayed(const Duration(milliseconds: 10), () {
+      bleController.sendCommand('READ|devices|page:1|pageSize:10');
     });
-
-    print('global data: ${global}');
   }
 
   @override
   Widget build(BuildContext context) {
-    List<String> connectionDevice = [
-      'Temperature Control 16B',
-      'PZEM 004T',
-      'Landstar 1102',
-      'THDM Axial',
-      'DSE 520',
-    ];
-
-    List<String> modbusType = ['RTU', 'TCP/IP'];
-
-    // Gabungkan kedua list menjadi satu list pasangan
-    List<Map<String, String>> deviceList = List.generate(
-      connectionDevice.length,
-      (index) => {
-        'device': connectionDevice[index],
-        'modbus': modbusType[index % modbusType.length],
-      },
-    );
-
     return Scaffold(
       appBar: _appBar(context),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: AppPadding.horizontalMedium,
-          child:
-              _bodyContent(context, deviceList, modbusType, connectionDevice),
+            padding: AppPadding.horizontalMedium, child: _bodyContent(context)),
+      ),
+    );
+  }
+
+  Container _loadingProgress(BuildContext context) {
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.85,
+      alignment: Alignment.center,
+      child: const Center(
+        child: CircularProgressIndicator(
+          color: AppColor.primaryColor,
         ),
       ),
     );
@@ -96,11 +81,7 @@ class _DeviceCommunicationsScreenState
     );
   }
 
-  Column _bodyContent(
-      BuildContext context,
-      List<Map<String, String>> deviceList,
-      List<String> modbusType,
-      List<String> connectionDevice) {
+  Column _bodyContent(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -111,46 +92,85 @@ class _DeviceCommunicationsScreenState
           overflow: TextOverflow.ellipsis,
         ),
         AppSpacing.sm,
-        ListView.separated(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: deviceList.length,
-          separatorBuilder: (context, index) => AppSpacing.sm,
-          itemBuilder: (BuildContext context, int index) {
-            var device = deviceList[index];
+        Obx(() {
+          if (bleController.isLoading.value) {
+            return _loadingProgress(context);
+          }
 
-            // Menggunakan Random untuk memilih tipe Modbus secara acak
-            String randomModbusType =
-                modbusType[Random().nextInt(modbusType.length)];
+          if (controller.devices.isEmpty) {
+            return _emptyView(context);
+          }
 
-            return InkWell(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => DisplayDataPage(
-                      title: connectionDevice[index], // Nama perangkat
-                      modbusType:
-                          randomModbusType, // Modbus dipilih secara acak
+          final data = controller.devices;
+
+          return ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: data.length,
+            separatorBuilder: (context, index) => AppSpacing.sm,
+            itemBuilder: (BuildContext context, int index) {
+              final item = data[index];
+
+              return InkWell(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => DisplayDataPage(
+                        title: item['name'],
+                        modbusType: item['modbus_type'],
+                      ),
                     ),
-                  ),
-                );
-              },
-              child: _cardDeviceConnection(
-                context,
-                device['device']!,
-                randomModbusType, // Tampilkan tipe Modbus acak
+                  );
+                },
+                child: _cardDeviceConnection(
+                  context,
+                  item['id'],
+                  item['name'],
+                  item['modbus_type'],
+                ),
+              );
+            },
+          );
+        }),
+        AppSpacing.md,
+        if (controller.devices.isNotEmpty)
+          Obx(() {
+            final pagination = controller;
+
+            return Center(
+              child: Text(
+                'Page ${pagination.page} from ${pagination.totalPages}',
+                style: context.bodySmall,
               ),
             );
-          },
-        ),
+          }),
         AppSpacing.md,
       ],
     );
   }
 
+  Container _emptyView(BuildContext context) {
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.70,
+      alignment: Alignment.center,
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'No device found.',
+              textAlign: TextAlign.center,
+              style: context.body.copyWith(color: AppColor.grey),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Card _cardDeviceConnection(
-      BuildContext context, String title, String? modbusType) {
+      BuildContext context, int deviceId, String title, String? modbusType) {
     double screenWidth = MediaQuery.of(context).size.width;
 
     return Card(
@@ -202,7 +222,7 @@ class _DeviceCommunicationsScreenState
                           context,
                           MaterialPageRoute(
                               builder: (context) =>
-                                  const FormSetupDeviceScreen()));
+                                  FormSetupDeviceScreen(id: deviceId)));
                     },
                     text: 'Setup',
                     btnColor: AppColor.primaryColor,
