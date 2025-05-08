@@ -7,11 +7,13 @@ import 'package:get/get.dart';
 import 'package:suriota_mobile_gateway/constant/app_color.dart';
 import 'package:suriota_mobile_gateway/constant/app_gap.dart';
 import 'package:suriota_mobile_gateway/constant/font_setup.dart';
-import 'package:suriota_mobile_gateway/controller/global_data_controller.dart';
+import 'package:suriota_mobile_gateway/controller/device_data_controller.dart';
+import 'package:suriota_mobile_gateway/controller/device_pagination_controller.dart';
 import 'package:suriota_mobile_gateway/global/utils/helper.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_button.dart';
 import 'package:suriota_mobile_gateway/screen/devices/detail_device_screen.dart';
 import 'package:suriota_mobile_gateway/screen/devices/device_communication/device_communications_screen.dart';
+import 'package:suriota_mobile_gateway/screen/home/home_screen.dart';
 
 class BLEController extends GetxController {
   BluetoothService? _selectedService;
@@ -34,6 +36,8 @@ class BLEController extends GetxController {
   final StreamController<String> _statusController =
       StreamController<String>.broadcast();
   Stream<String> get statusStream => _statusController.stream;
+
+  StreamSubscription<BluetoothConnectionState>? _disconnectSub;
 
   // Getters
   bool get isDeviceListEmpty => devices.isEmpty;
@@ -58,6 +62,27 @@ class BLEController extends GetxController {
 
   bool get isAnyDeviceLoading {
     return _loadingStatus.values.any((isLoading) => isLoading);
+  }
+
+  void monitorDeviceConnection(BluetoothDevice device) {
+    _disconnectSub = device.connectionState.listen((state) {
+      if (state == BluetoothConnectionState.disconnected) {
+        print("💔 Device disconnected");
+
+        showSnackbar("Disconnected", "BLE device disconnected", Colors.red,
+            Colors.white);
+
+        // Reset BLE state (optional)
+        resetBleState();
+
+        // Redirect to home or safe screen
+        Future.delayed(const Duration(seconds: 2), () {
+          if (Get.currentRoute != '/') {
+            Get.offAllNamed('/'); // Kembali ke home
+          }
+        });
+      }
+    });
   }
 
   /// Scan device
@@ -107,19 +132,29 @@ class BLEController extends GetxController {
 
     try {
       await FlutterBluePlus.stopScan();
-      await device.connect(timeout: const Duration(seconds: 10));
+      await device.connect(
+          timeout: const Duration(seconds: 10), autoConnect: false);
 
-      device.connectionState.listen((state) {
+      // Monitor disconnect
+      _disconnectSub?.cancel(); // cancel prev listener kalau ada
+      _disconnectSub = device.connectionState.listen((state) async {
         if (state == BluetoothConnectionState.disconnected) {
-          _notifyStatus("Device $deviceName disconnected unexpectedly.");
+          print("💔 ${device.platformName} disconnected unexpectedly");
 
-          print("Device $deviceName disconnected unexpectedly.");
-          Get.offAllNamed('/'); // Atau ke halaman manapun sesuai kebutuhan
+          _notifyStatus("Disconnected");
+          resetBleState();
+
+          await resetBleConnectionsOnly();
+
+          // Tunggu sedikit agar Navigator stabil
+          await Future.delayed(const Duration(milliseconds: 500));
+
+          // Reset koneksi BLE aktif, tanpa scan
+          if (Get.currentRoute != '/') {
+            await Get.offAll(() => const HomeScreen());
+          }
         }
       });
-
-      _connectionStatus[deviceId] = true;
-      _isConnected[deviceId] = true;
 
       bool isServiceDiscovered = await _discoverServices(device);
       if (isServiceDiscovered) {
@@ -127,6 +162,9 @@ class BLEController extends GetxController {
       } else {
         await disconnectDevice(device);
       }
+
+      _connectionStatus[deviceId] = true;
+      _isConnected[deviceId] = true;
     } catch (e) {
       _connectionStatus[deviceId] = false;
       _isConnected[deviceId] = false;
@@ -135,6 +173,31 @@ class BLEController extends GetxController {
       _notifyStatus("Failed to connect the device: $deviceName");
     } finally {
       setLoadingStatus(deviceId, false);
+    }
+  }
+
+  Future<void> resetBleConnectionsOnly() async {
+    try {
+      print("🔄 Resetting BLE connection state...");
+
+      await FlutterBluePlus.stopScan();
+
+      final connectedDevices = await FlutterBluePlus.connectedSystemDevices;
+
+      for (final device in connectedDevices) {
+        try {
+          AppHelpers.debugLog("⛔ Disconnecting ${device.platformName}...");
+          await device.disconnect();
+        } catch (e) {
+          AppHelpers.debugLog(
+              "❌ Failed to disconnect ${device.platformName}: $e");
+        }
+      }
+
+      print("✅ BLE reset & scan started");
+    } catch (e) {
+      print("❌ Error resetting BLE: $e");
+      _notifyStatus("Failed to reset BLE.");
     }
   }
 
@@ -260,12 +323,14 @@ class BLEController extends GetxController {
     final total = int.parse(match.group(2)!);
     final content = match.group(3)!;
 
-    print("📦 Received Packet [$index/$total]: $content");
+    print("📦 Packet [$index/$total]: $content");
 
     _packetBuffer[index] = content;
     _expectedPackets = total + 1;
 
-    print("🧩 Collected: ${_packetBuffer.length}/$_expectedPackets");
+    // Log semua index yang sudah terkumpul
+    final sortedKeys = _packetBuffer.keys.toList()..sort();
+    print("🧩 Current buffer: $sortedKeys / $_expectedPackets");
 
     if (_packetBuffer.length == _expectedPackets) {
       final message = List.generate(
@@ -280,33 +345,36 @@ class BLEController extends GetxController {
 
       if (message.toLowerCase().contains("success")) {
         showSnackbar("Success", message, Colors.green, Colors.white);
+
         await Future.delayed(const Duration(seconds: 3));
         Get.offAll(() => const DeviceCommunicationsScreen());
-      } else if (message.toLowerCase().startsWith("data|")) {
-        final parts = message.replaceAll('#', '').split('|');
+        return;
+      }
 
-        if (parts.length >= 2) {
-          final dataset = parts[1];
-          final Map<String, String> parsedData = {};
+      try {
+        final json = jsonDecode(message);
 
-          for (int i = 2; i < parts.length; i++) {
-            final keyValue = parts[i].split(':');
-            if (keyValue.length == 2) {
-              parsedData[keyValue[0]] = keyValue[1];
-            }
-          }
+        if (json is Map<String, dynamic> && json.containsKey("data")) {
+          print("📦 Parsed JSON: $json");
+          final paginationController = Get.find<DevicePaginationController>();
+          paginationController.setPaginationData(json);
 
-          print('✅ Parsed data from ESP32: $parsedData');
+          print("📊 Pagination data updated.");
+        } else if (json is List && json.isNotEmpty) {
+          // Read by ID response
+          final device = json.first;
+          print("📌 Read by ID result: $device");
 
-          final global = Get.put(GlobalDataController());
-          global.setData(dataset, parsedData);
-
-          showSnackbar("Data from ESP32", "Dataset: $dataset", Colors.blue,
-              Colors.white);
+          final deviceData = Get.put(DeviceDataController());
+          deviceData.setSingleDevice(device);
+          _notifyStatus("Success load data.");
         } else {
-          AppHelpers.debugLog("⚠️ Malformed data response: $message");
-          _notifyStatus("Failed to parse data from ESP32");
+          print("⚠️ JSON parsed but no 'data' key found.");
+          _notifyStatus("ESP32 response missing 'data' field.");
         }
+      } catch (e) {
+        print("❌ Failed to parse JSON: $e");
+        _notifyStatus("Invalid JSON from ESP32");
       }
     }
   }
@@ -334,7 +402,10 @@ class BLEController extends GetxController {
           offset,
           offset + mtu > bytes.length ? bytes.length : offset + mtu,
         );
-        await _writeChar!.write(chunk, withoutResponse: false);
+        await _writeChar!
+            .write(chunk, withoutResponse: false)
+            .timeout(const Duration(seconds: 5));
+
         await Future.delayed(const Duration(milliseconds: 50));
       }
 
@@ -342,12 +413,10 @@ class BLEController extends GetxController {
       // _notifyStatus("Command sent in ${packets.length} packets");
     } catch (e) {
       AppHelpers.debugLog("Failed to send a command: $e");
-      _notifyStatus("Device disconnected, redirecting...");
+      _notifyStatus("Device disconnected, redirecting in 3 seconds...");
 
-      // Disconnect & navigate home
-      if (_writeChar?.device != null) {
-        await disconnectDeviceWithRedirect(_writeChar!.device);
-      }
+      await Future.delayed(const Duration(seconds: 3));
+      Get.offAll(() => const HomeScreen());
     } finally {
       _stopLoading();
     }
@@ -359,6 +428,34 @@ class BLEController extends GetxController {
 
   void _stopLoading() {
     isLoading.value = false;
+  }
+
+  void resetBleState() {
+    print("🧹 Resetting BLE state...");
+
+    // Karakteristik & Service
+    _writeChar = null;
+    _notifyChar = null;
+    _selectedService = null;
+    _selectedCharacteristic = null;
+
+    // Cancel listener disconnect
+    _disconnectSub?.cancel();
+    _disconnectSub = null;
+
+    // Clear data
+    _packetBuffer.clear();
+    _expectedPackets = -1;
+
+    // Clear GetX state maps
+    _connectionStatus.clear();
+    _isConnected.clear();
+    _loadingStatus.clear();
+
+    // Optional: reset value stream status
+    isLoading.value = false;
+
+    print("✅ BLE state reset complete.");
   }
 
   void showSnackbar(
@@ -509,6 +606,11 @@ class BLEController extends GetxController {
       titleText: const SizedBox(),
       padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 16.0),
     );
+  }
+
+  void refreshDevicesPage({int page = 1, int pageSize = 10}) {
+    final command = "READ|devices|page:$page|pageSize:$pageSize#";
+    sendCommand(command);
   }
 
   @override
