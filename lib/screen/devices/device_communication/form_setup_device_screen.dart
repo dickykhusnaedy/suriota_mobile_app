@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:suriota_mobile_gateway/constant/app_color.dart';
 import 'package:suriota_mobile_gateway/constant/app_gap.dart';
 import 'package:suriota_mobile_gateway/controller/ble_controller.dart';
+import 'package:suriota_mobile_gateway/controller/device_data_controller.dart';
 import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_button.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_dropdown.dart';
@@ -12,7 +13,9 @@ import 'package:suriota_mobile_gateway/global/widgets/loading_overlay.dart';
 import 'package:suriota_mobile_gateway/global/widgets/title_tile.dart';
 
 class FormSetupDeviceScreen extends StatefulWidget {
-  const FormSetupDeviceScreen({super.key});
+  final int? id;
+
+  const FormSetupDeviceScreen({super.key, this.id});
 
   @override
   State<FormSetupDeviceScreen> createState() => _FormSetupDeviceScreenState();
@@ -20,9 +23,10 @@ class FormSetupDeviceScreen extends StatefulWidget {
 
 class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
   final BLEController bleController = Get.put(BLEController());
+  final dataDevice = Get.put(DeviceDataController());
+  late final Function _deviceEver;
 
-  String modBusSelected = "RS-4851";
-  String protocolSelected = "IPv4";
+  String modBusSelected = "RTU";
 
   String? selectedBaudRate;
   String? selectedBiddata;
@@ -45,11 +49,99 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
   @override
   void initState() {
     super.initState();
-    modbusTypeController.text = modBusSelected;
+
+    if (widget.id != null) {
+      dataDevice.clearDevice();
+
+      Future.microtask(() async {
+        bleController.sendCommand('READ|devices|id:${widget.id}');
+
+        // Setelah selesai, pantau perubahan singleDevice
+        _deviceEver = ever(dataDevice.singleDevice, (device) {
+          if (!mounted || device.isEmpty) return;
+
+          _fillFormFromDevice(device);
+        });
+      });
+    } else {
+      // Mode CREATE
+      modBusSelected = "RTU";
+      modbusTypeController.text = modBusSelected;
+    }
+  }
+
+  void _fillFormFromDevice(Map<String, dynamic> device) {
+    if (!mounted) return;
+
+    modBusSelected = device['modbus_type'];
+
+    modbusTypeController.text = device['modbus_type'];
+    deviceNameController.text = device['name'] ?? '';
+    refreshRateController.text = device['refresh_rate']?.toString() ?? '';
+
+    if (device['modbus_type'] == 'TCP') {
+      ipAddressController.text = device['ip_address'] ?? '';
+      serverPortController.text = device['port']?.toString() ?? '';
+      connectionTimeoutController.text =
+          device['connection_timeout']?.toString() ?? '';
+    } else {
+      selectedBaudRate = device['baudrate']?.toString();
+      selectedBiddata = device['data_bits']?.toString();
+      selectedParity = device['parity'];
+      selectedStopbit = device['stop_bits']?.toString();
+
+      baudrateController.text = selectedBaudRate ?? '';
+      bidDataController.text = selectedBiddata ?? '';
+      parityController.text = selectedParity ?? '';
+      stopBitController.text = selectedStopbit ?? '';
+    }
+  }
+
+  void _submit() {
+    if (_formKey.currentState!.validate()) {
+      int? tryParseInt(String value) {
+        return int.tryParse(value);
+      }
+
+      String buildDataRtu() {
+        return 'baudrate:${tryParseInt(baudrateController.text)}|'
+            'parity:${parityController.text}|'
+            'data_bits:${tryParseInt(bidDataController.text)}|'
+            'stop_bits:${tryParseInt(stopBitController.text)}';
+      }
+
+      String buildDataTcp() {
+        return 'ip_address:${ipAddressController.text}|'
+            'port:${tryParseInt(serverPortController.text)}|'
+            'connection_timeout:${tryParseInt(connectionTimeoutController.text)}';
+      }
+
+      String buildSendDataDelimiter() {
+        final modbusData = modbusTypeController.text == 'RTU'
+            ? buildDataRtu()
+            : buildDataTcp();
+
+        final formData = widget.id != null
+            ? 'UPDATE|devices|id:${widget.id}'
+            : 'CREATE|devices';
+
+        return '$formData|name:${deviceNameController.text}|'
+            'modbus_type:${modbusTypeController.text}|'
+            'refresh_rate:${tryParseInt(refreshRateController.text)}|$modbusData';
+      }
+
+      final sendDataDelimiter = buildSendDataDelimiter();
+
+      bleController.sendCommand(sendDataDelimiter);
+    }
   }
 
   @override
   void dispose() {
+    dataDevice.clearDevice();
+    if (widget.id != null) {
+      _deviceEver(); // Hapus listener ever()
+    }
     deviceNameController.dispose();
     refreshRateController.dispose();
     modbusTypeController.dispose();
@@ -61,38 +153,6 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
     serverPortController.dispose();
     connectionTimeoutController.dispose();
     super.dispose();
-  }
-
-  void _submit() {
-    if (_formKey.currentState!.validate()) {
-      int? tryParseInt(String value) {
-        return int.tryParse(value);
-      }
-
-      String buildDataRtu() {
-        return 'baudrate:${tryParseInt(baudrateController.text)}|'
-        'parity:${tryParseInt(parityController.text)}|'
-        'data_bits:${tryParseInt(bidDataController.text)}|'
-        'stop_bits:${tryParseInt(stopBitController.text)}';
-      }
-
-      String buildDataTcp() {
-        return 'ip_address:${ipAddressController.text}|'
-        'port:${tryParseInt(serverPortController.text)}|'
-        'connection_timeout:${tryParseInt(connectionTimeoutController.text)}';
-      }
-
-      String buildSendDataDelimiter() {
-        final modbusData = modbusTypeController.text == 'RTU' ? buildDataRtu() : buildDataTcp();
-        return 'CREATE|devices|id:1|name:${deviceNameController.text}|'
-        'modbus_type:${modbusTypeController.text}|'
-        'refresh_rate:${tryParseInt(refreshRateController.text)}|$modbusData';
-      }
-
-      final sendDataDelimiter = buildSendDataDelimiter();
-
-      bleController.sendCommand(sendDataDelimiter);
-    }
   }
 
   @override
@@ -107,7 +167,7 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
           final isAnyDeviceLoading = bleController.isLoading.value;
           return LoadingOverlay(
             isLoading: isAnyDeviceLoading,
-            message: "Sending data...",
+            message: 'Processing request...',
           );
         }),
       ],
@@ -147,7 +207,7 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
                   CustomTextFormField(
                     controller: refreshRateController,
                     labelTxt: "Refresh Rate",
-                    hintTxt: "Enter the Refresh Rate",
+                    hintTxt: "5000",
                     keyboardType: TextInputType.number,
                     suffixIcon: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -168,21 +228,7 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
                   Text("Choose Modbus", style: context.h6),
                   AppSpacing.sm,
                   CustomRadioTile(
-                    value: "RS-4851",
-                    grupValue: modBusSelected,
-                    onChanges: () {
-                      setState(() {
-                        modBusSelected = "RTU";
-                        modbusTypeController.text = "RTU";
-
-                        ipAddressController.clear();
-                        serverPortController.clear();
-                        connectionTimeoutController.clear();
-                      });
-                    },
-                  ),
-                  CustomRadioTile(
-                    value: "RS-4852",
+                    value: "RTU",
                     grupValue: modBusSelected,
                     onChanges: () {
                       setState(() {
@@ -222,14 +268,14 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
               AppSpacing.md,
               TitleTile(title: "Modbus Setup $modBusSelected"),
               AppSpacing.md,
-              modBusSelected == 'RS-4851' || modBusSelected == 'RS-4852'
+              modBusSelected == 'RTU'
                   ? _formRS485Wrapper()
                   : _formTCPIPWrapper(),
               AppSpacing.lg,
               Button(
                 width: MediaQuery.of(context).size.width,
                 onPressed: _submit,
-                text: "Save",
+                text: widget.id != null ? 'Update' : 'Save',
                 height: 50,
               ),
               AppSpacing.lg
@@ -340,7 +386,7 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
         CustomTextFormField(
           controller: connectionTimeoutController,
           labelTxt: "Connect Timeout",
-          hintTxt: "3000 m/s",
+          hintTxt: "3000",
           keyboardType: TextInputType.number,
           suffixIcon:
               Column(mainAxisAlignment: MainAxisAlignment.center, children: [
@@ -351,28 +397,6 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
           ]),
         ),
         AppSpacing.md,
-        // Text("Choose Internet Protocol", style: context.h6),
-        // AppSpacing.sm,
-        // CustomRadioTile(
-        //   value: "IPv4",
-        //   grupValue: protocolSelected,
-        //   onChanges: () {
-        //     setState(() {
-        //       protocolSelected = "IPv4";
-        //       internetProtocolController.text = "IPv4";
-        //     });
-        //   },
-        // ),
-        // CustomRadioTile(
-        //   value: "IPv6",
-        //   grupValue: protocolSelected,
-        //   onChanges: () {
-        //     setState(() {
-        //       protocolSelected = "IPv6";
-        //       internetProtocolController.text = "IPv6";
-        //     });
-        //   },
-        // ),
       ],
     );
   }
