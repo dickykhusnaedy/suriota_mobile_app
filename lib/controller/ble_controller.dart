@@ -64,27 +64,6 @@ class BLEController extends GetxController {
     return _loadingStatus.values.any((isLoading) => isLoading);
   }
 
-  void monitorDeviceConnection(BluetoothDevice device) {
-    _disconnectSub = device.connectionState.listen((state) {
-      if (state == BluetoothConnectionState.disconnected) {
-        print("💔 Device disconnected");
-
-        showSnackbar("Disconnected", "BLE device disconnected", Colors.red,
-            Colors.white);
-
-        // Reset BLE state (optional)
-        resetBleState();
-
-        // Redirect to home or safe screen
-        Future.delayed(const Duration(seconds: 2), () {
-          if (Get.currentRoute != '/') {
-            Get.offAllNamed('/'); // Kembali ke home
-          }
-        });
-      }
-    });
-  }
-
   /// Scan device
   void scanDevice() async {
     if (isLoading.value) return;
@@ -139,7 +118,7 @@ class BLEController extends GetxController {
       _disconnectSub?.cancel(); // cancel prev listener kalau ada
       _disconnectSub = device.connectionState.listen((state) async {
         if (state == BluetoothConnectionState.disconnected) {
-          print("💔 ${device.platformName} disconnected unexpectedly");
+          _notifyStatus("${device.platformName} disconnected unexpectedly");
 
           _notifyStatus("Disconnected");
           resetBleState();
@@ -147,7 +126,7 @@ class BLEController extends GetxController {
           await resetBleConnectionsOnly();
 
           // Tunggu sedikit agar Navigator stabil
-          await Future.delayed(const Duration(milliseconds: 500));
+          await Future.delayed(const Duration(seconds: 3));
 
           // Reset koneksi BLE aktif, tanpa scan
           if (Get.currentRoute != '/') {
@@ -178,25 +157,22 @@ class BLEController extends GetxController {
 
   Future<void> resetBleConnectionsOnly() async {
     try {
-      print("🔄 Resetting BLE connection state...");
+      AppHelpers.debugLog("🔄 Resetting BLE connection state...");
 
       await FlutterBluePlus.stopScan();
 
       final connectedDevices = await FlutterBluePlus.connectedSystemDevices;
-
       for (final device in connectedDevices) {
         try {
-          AppHelpers.debugLog("⛔ Disconnecting ${device.platformName}...");
           await device.disconnect();
+          AppHelpers.debugLog("⛔ Disconnecting ${device.platformName}...");
         } catch (e) {
           AppHelpers.debugLog(
               "❌ Failed to disconnect ${device.platformName}: $e");
         }
       }
-
-      print("✅ BLE reset & scan started");
     } catch (e) {
-      print("❌ Error resetting BLE: $e");
+      AppHelpers.debugLog("❌ Error resetting BLE: $e");
       _notifyStatus("Failed to reset BLE.");
     }
   }
@@ -326,57 +302,84 @@ class BLEController extends GetxController {
     print("📦 Packet [$index/$total]: $content");
 
     _packetBuffer[index] = content;
-    _expectedPackets = total + 1;
+    _expectedPackets = total;
 
-    // Log semua index yang sudah terkumpul
-    final sortedKeys = _packetBuffer.keys.toList()..sort();
-    print("🧩 Current buffer: $sortedKeys / $_expectedPackets");
+    final sortedKeys = (_packetBuffer.keys.toList()..sort());
+    print(
+        "🧩 Current buffer: $sortedKeys / $_expectedPackets (Missing: ${_getMissingIndices()})");
 
-    if (_packetBuffer.length == _expectedPackets) {
-      final message = List.generate(
-        _expectedPackets,
-        (i) => _packetBuffer[i] ?? '',
-      ).join();
-
+    if (_packetBuffer.length == _expectedPackets &&
+        _packetBuffer.keys.every((k) => k >= 0 && k < _expectedPackets)) {
+      final message = _assembleMessage();
       print("✅ Full message received: $message");
 
-      _packetBuffer.clear();
-      _expectedPackets = -1;
+      _resetPacketBuffer();
 
-      if (message.toLowerCase().contains("success")) {
-        showSnackbar("Success", message, Colors.green, Colors.white);
-
-        await Future.delayed(const Duration(seconds: 3));
-        Get.offAll(() => const DeviceCommunicationsScreen());
+      if (_isSuccessMessage(message)) {
+        await _handleSuccessMessage(message);
         return;
       }
 
-      try {
-        final json = jsonDecode(message);
-
-        if (json is Map<String, dynamic> && json.containsKey("data")) {
-          print("📦 Parsed JSON: $json");
-          final paginationController = Get.find<DevicePaginationController>();
-          paginationController.setPaginationData(json);
-
-          print("📊 Pagination data updated.");
-        } else if (json is List && json.isNotEmpty) {
-          // Read by ID response
-          final device = json.first;
-          print("📌 Read by ID result: $device");
-
-          final deviceData = Get.put(DeviceDataController());
-          deviceData.setSingleDevice(device);
-          _notifyStatus("Success load data.");
-        } else {
-          print("⚠️ JSON parsed but no 'data' key found.");
-          _notifyStatus("ESP32 response missing 'data' field.");
-        }
-      } catch (e) {
-        print("❌ Failed to parse JSON: $e");
-        _notifyStatus("Invalid JSON from ESP32");
-      }
+      _processMessage(message);
     }
+  }
+
+  List<int> _getMissingIndices() {
+    final allIndices = List<int>.generate(_expectedPackets, (i) => i);
+    return allIndices.where((i) => !_packetBuffer.containsKey(i)).toList();
+  }
+
+  String _assembleMessage() {
+    final sortedKeys = _packetBuffer.keys.toList()..sort();
+    return sortedKeys.map((i) => _packetBuffer[i] ?? '').join();
+  }
+
+  void _resetPacketBuffer() {
+    _packetBuffer.clear();
+    _expectedPackets = -1;
+  }
+
+  bool _isSuccessMessage(String message) {
+    return message.toLowerCase().contains("success");
+  }
+
+  Future<void> _handleSuccessMessage(String message) async {
+    showSnackbar(
+        "Success", message, AppColor.primaryColor, AppColor.whiteColor);
+
+    await Future.delayed(const Duration(seconds: 3));
+    Get.back();
+  }
+
+  void _processMessage(String message) {
+    try {
+      final json = jsonDecode(message);
+
+      if (json is List && json.isNotEmpty) {
+        _handleSingleDeviceData(json.first);
+      } else if (json is Map<String, dynamic> && json.containsKey("data")) {
+        _updatePaginationData(json);
+      } else {
+        _notifyStatus("ESP32 response missing 'data' field.");
+      }
+    } catch (e) {
+      print("❌ Failed to parse JSON: $e");
+      _notifyStatus("Invalid JSON from ESP32");
+    }
+  }
+
+  void _updatePaginationData(Map<String, dynamic> json) {
+    print("📦 Parsed JSON: $json");
+    final paginationController = Get.find<DevicePaginationController>();
+    paginationController.setPaginationData(json);
+    print("📊 Pagination data updated.");
+  }
+
+  void _handleSingleDeviceData(dynamic device) {
+    print("📌 Read by ID result: $device");
+    final deviceData = Get.put(DeviceDataController());
+    deviceData.setSingleDevice(device);
+    _notifyStatus("Success load data.");
   }
 
   /// Send command to device
