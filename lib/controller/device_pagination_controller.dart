@@ -22,6 +22,13 @@ class DevicePaginationController extends GetxController {
     isLoading.value = false;
   }
 
+  void checkDevices() {
+    if (devices.isEmpty) {
+      Get.snackbar('Error', 'Failed to fetch device data');
+      Future.delayed(3.seconds, () => Get.back());
+    }
+  }
+
   void clear() {
     devices.clear();
     page.value = 1;
