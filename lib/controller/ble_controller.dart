@@ -9,10 +9,10 @@ import 'package:suriota_mobile_gateway/constant/app_gap.dart';
 import 'package:suriota_mobile_gateway/constant/font_setup.dart';
 import 'package:suriota_mobile_gateway/controller/device_data_controller.dart';
 import 'package:suriota_mobile_gateway/controller/device_pagination_controller.dart';
+import 'package:suriota_mobile_gateway/controller/modbus_pagination_controller.dart';
 import 'package:suriota_mobile_gateway/global/utils/helper.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_button.dart';
 import 'package:suriota_mobile_gateway/screen/devices/detail_device_screen.dart';
-import 'package:suriota_mobile_gateway/screen/devices/device_communication/device_communications_screen.dart';
 import 'package:suriota_mobile_gateway/screen/home/home_screen.dart';
 
 class BLEController extends GetxController {
@@ -39,6 +39,10 @@ class BLEController extends GetxController {
 
   StreamSubscription<BluetoothConnectionState>? _disconnectSub;
 
+  // Antrian untuk memproses notifikasi
+  final _packetQueue = <String>[];
+  bool _isProcessingQueue = false;
+
   // Getters
   bool get isDeviceListEmpty => devices.isEmpty;
   RxMap<String, bool> get connectionStatus => _connectionStatus;
@@ -50,27 +54,32 @@ class BLEController extends GetxController {
   BluetoothCharacteristic? get writeChar => _writeChar;
   BluetoothCharacteristic? get notifyChar => _notifyChar;
 
-  // Utility Getters
   bool getConnectionStatus(String deviceId) =>
       _connectionStatus[deviceId] ?? false;
   bool getLoadingStatus(String deviceId) => _loadingStatus[deviceId] ?? false;
 
   void setLoadingStatus(String deviceId, bool isLoading) {
     _loadingStatus[deviceId] = isLoading;
-    update(); // Beritahu GetX bahwa state telah berubah
+    update();
   }
 
   bool get isAnyDeviceLoading {
     return _loadingStatus.values.any((isLoading) => isLoading);
   }
 
-  /// Scan device
+  // Variabel untuk timeout dan debugging
+  Timer? _packetTimeoutTimer;
+  final int _timeoutDuration = 15;
+  String? _currentMessageId;
+  String? _lastCommandDataType;
+  DateTime _lastPacketTime = DateTime.now();
+  final bool _verbose = true;
+
+  // Scan device (tidak diubah)
   void scanDevice() async {
     if (isLoading.value) return;
-
     _startLoading();
     devices.clear();
-
     await FlutterBluePlus.stopScan();
 
     final seenDeviceIds = <String>{};
@@ -79,12 +88,9 @@ class BLEController extends GetxController {
     subscription = FlutterBluePlus.scanResults.listen((results) {
       for (ScanResult r in results) {
         final id = r.device.remoteId.toString();
-
         if (!seenDeviceIds.contains(id)) {
           seenDeviceIds.add(id);
           devices.add(r.device);
-
-          // Optionally store bleDevice in a list if needed
           _connectionStatus[id] = false;
         }
       }
@@ -101,7 +107,7 @@ class BLEController extends GetxController {
     }
   }
 
-  /// Connect to device
+  // Connect to device (tidak diubah)
   Future<void> connectToDevice(BluetoothDevice device) async {
     final deviceId = device.remoteId.toString();
     final deviceName =
@@ -114,21 +120,13 @@ class BLEController extends GetxController {
       await device.connect(
           timeout: const Duration(seconds: 10), autoConnect: false);
 
-      // Monitor disconnect
-      _disconnectSub?.cancel(); // cancel prev listener kalau ada
+      _disconnectSub?.cancel();
       _disconnectSub = device.connectionState.listen((state) async {
         if (state == BluetoothConnectionState.disconnected) {
           _notifyStatus("${device.platformName} disconnected unexpectedly");
-
-          _notifyStatus("Disconnected");
           resetBleState();
-
           await resetBleConnectionsOnly();
-
-          // Tunggu sedikit agar Navigator stabil
           await Future.delayed(const Duration(seconds: 3));
-
-          // Reset koneksi BLE aktif, tanpa scan
           if (Get.currentRoute != '/') {
             await Get.offAll(() => const HomeScreen());
           }
@@ -147,7 +145,6 @@ class BLEController extends GetxController {
     } catch (e) {
       _connectionStatus[deviceId] = false;
       _isConnected[deviceId] = false;
-
       AppHelpers.debugLog("Failed to connect: $e");
       _notifyStatus("Failed to connect the device: $deviceName");
     } finally {
@@ -155,12 +152,11 @@ class BLEController extends GetxController {
     }
   }
 
+  // Reset BLE connections (tidak diubah)
   Future<void> resetBleConnectionsOnly() async {
     try {
       AppHelpers.debugLog("🔄 Resetting BLE connection state...");
-
       await FlutterBluePlus.stopScan();
-
       final connectedDevices = await FlutterBluePlus.connectedSystemDevices;
       for (final device in connectedDevices) {
         try {
@@ -177,7 +173,7 @@ class BLEController extends GetxController {
     }
   }
 
-  /// Disconnect to device
+  // Disconnect device (tidak diubah)
   Future<void> disconnectDevice(BluetoothDevice device) async {
     final deviceId = device.remoteId.toString();
     final deviceName =
@@ -186,51 +182,18 @@ class BLEController extends GetxController {
 
     try {
       await device.disconnect();
-
       _connectionStatus[deviceId] = false;
       _isConnected[deviceId] = false;
-
       _notifyStatus("Disconnected from $deviceName.");
     } catch (e) {
       AppHelpers.debugLog("Failed to disconnect: $e");
-      _notifyStatus("Failed to connect the device: $deviceName");
+      _notifyStatus("Failed to disconnect the device: $deviceName");
     } finally {
       setLoadingStatus(deviceId, false);
     }
   }
 
-  // Disconnect device with redirect page
-  Future<void> disconnectDeviceWithRedirect(BluetoothDevice device) async {
-    final deviceId = device.remoteId.toString();
-    final deviceName =
-        device.platformName.isNotEmpty ? device.platformName : deviceId;
-    _loadingStatus[deviceId] = true;
-
-    try {
-      await device.disconnect();
-
-      _connectionStatus[deviceId] = false;
-      _isConnected[deviceId] = false;
-
-      _notifyStatus("Disconnected from $deviceName.");
-
-      if (Get.isOverlaysOpen) {
-        Get.back();
-      }
-      Future.delayed(const Duration(milliseconds: 300), () {
-        if (Get.currentRoute != '/') {
-          Get.back(); // Kembali ke halaman sebelumnya
-        }
-      });
-    } catch (e) {
-      AppHelpers.debugLog("Failed to disconnect: $e");
-      _notifyStatus("Failed to connect the device: $deviceName");
-    } finally {
-      _loadingStatus[deviceId] = false;
-    }
-  }
-
-  /// Get characteristic device
+  // Discover services (tidak diubah)
   Future<bool> _discoverServices(BluetoothDevice device) async {
     try {
       final services = await device.discoverServices().timeout(
@@ -247,7 +210,6 @@ class BLEController extends GetxController {
       for (final service in services) {
         for (final char in service.characteristics) {
           _assignCharacteristic(char);
-
           if (_writeChar != null && _notifyChar != null) {
             _selectedService = service;
             return true;
@@ -265,13 +227,12 @@ class BLEController extends GetxController {
     }
   }
 
+  // Assign characteristic (tidak diubah)
   void _assignCharacteristic(BluetoothCharacteristic char) async {
     final props = char.properties;
-
     if (props.write && _writeChar == null) {
       _writeChar = char;
     }
-
     if (props.notify && _notifyChar == null) {
       _notifyChar = char;
       await _notifyChar!.setNotifyValue(true);
@@ -279,11 +240,34 @@ class BLEController extends GetxController {
     }
   }
 
+  // Mendengarkan notifikasi dengan antrian
   void _listenToNotifications() {
     _notifyChar!.onValueReceived.listen((value) async {
-      final data = utf8.decode(value);
-      final regex = RegExp(r'^P(\d+)/(\d+):(.*)$');
-      final match = regex.firstMatch(data);
+      try {
+        final data = utf8.decode(value);
+        _packetQueue.add(data);
+        await _processQueue();
+      } catch (e) {
+        print("❌ Failed to decode packet: $e");
+        _notifyStatus("Failed to decode packet data.");
+      }
+    });
+  }
+
+  // Memproses antrian paket
+  Future<void> _processQueue() async {
+    if (_isProcessingQueue || _packetQueue.isEmpty) return;
+    _isProcessingQueue = true;
+
+    while (_packetQueue.isNotEmpty) {
+      final data = _packetQueue.removeAt(0);
+      final regex = RegExp(r'P(\d+)/(\d+):(.*)');
+      final altRegex = RegExp(r'P(\d+)/(\d+)\s*(.*)'); // Format alternatif
+      final match = regex.firstMatch(data) ?? altRegex.firstMatch(data);
+
+      if (_verbose) {
+        print("📥 Processing packet: $data");
+      }
 
       if (match != null) {
         _handlePacket(match);
@@ -291,90 +275,245 @@ class BLEController extends GetxController {
         _notifyStatus("Invalid packet format: $data");
         AppHelpers.debugLog("Invalid packet format: $data");
       }
-    });
+    }
+
+    _isProcessingQueue = false;
   }
 
+  // Menangani paket dengan penanganan duplikasi
   void _handlePacket(RegExpMatch match) async {
-    final index = int.parse(match.group(1)!);
-    final total = int.parse(match.group(2)!);
-    final content = match.group(3)!;
+    if (_writeChar == null || _notifyChar == null) {
+      print("⚠️ No valid characteristics. Ignoring packet.");
+      _notifyStatus("Device not fully connected.");
+      return;
+    }
 
-    print("📦 Packet [$index/$total]: $content");
+    final int index = int.parse(match.group(1)!);
+    final int totalMinusOne = int.parse(match.group(2)!);
+    final String content = match.group(3)!;
+    final int actualTotal = totalMinusOne + 1;
+    final DateTime timestamp = DateTime.now();
 
-    _packetBuffer[index] = content;
-    _expectedPackets = total;
-
-    final sortedKeys = (_packetBuffer.keys.toList()..sort());
     print(
-        "🧩 Current buffer: $sortedKeys / $_expectedPackets (Missing: ${_getMissingIndices()})");
+        "📅 [${timestamp.toIso8601String()}] Packet [$index/$actualTotal]: $content");
 
-    if (_packetBuffer.length == _expectedPackets &&
-        _packetBuffer.keys.every((k) => k >= 0 && k < _expectedPackets)) {
-      final message = _assembleMessage();
-      print("✅ Full message received: $message");
+    bool isNewMessage = _shouldStartNewMessage(index, actualTotal, timestamp);
 
+    if (isNewMessage) {
+      if (_verbose) {
+        print("🔄 Starting new message sequence. Total packets: $actualTotal");
+      }
       _resetPacketBuffer();
+      _currentMessageId = _generateMessageId(actualTotal);
+      _startPacketTimeout();
+    }
 
-      if (_isSuccessMessage(message)) {
-        await _handleSuccessMessage(message);
+    // Tangani duplikasi paket
+    if (_packetBuffer.containsKey(index)) {
+      if (_packetBuffer[index] == content) {
+        print("⚠️ Duplicate packet ignored: [$index/$actualTotal]");
         return;
+      } else {
+        print("⚠️ Conflicting packet at index $index. Starting new message.");
+        _resetPacketBuffer();
+        _currentMessageId = _generateMessageId(actualTotal);
+        _startPacketTimeout();
+      }
+    }
+
+    _lastPacketTime = timestamp;
+    _packetBuffer[index] = content;
+    _expectedPackets = actualTotal;
+
+    if (_verbose) {
+      final sortedKeys = (_packetBuffer.keys.toList()..sort());
+      final missingIndices = _getMissingIndices();
+      print(
+          "🧩 Current buffer: $sortedKeys / $_expectedPackets (Missing: $missingIndices)");
+    }
+
+    if (_packetBuffer.length % 10 == 0) {
+      double completionPercentage =
+          (_packetBuffer.length / _expectedPackets) * 100;
+      print(
+          "📊 Received ${_packetBuffer.length}/$_expectedPackets packets (${completionPercentage.toStringAsFixed(1)}%)");
+    }
+
+    if (_isAllPacketsReceived()) {
+      _packetTimeoutTimer?.cancel();
+      _packetTimeoutTimer = null;
+
+      final message = _assembleMessage();
+      print("✅ Full message received (${_packetBuffer.length} packets)");
+      if (_verbose) {
+        print("📃 Message content: $message");
       }
 
-      _processMessage(message);
+      await _processCompleteMessage(message);
     }
   }
 
+  // Memulai timer timeout
+  void _startPacketTimeout() {
+    _packetTimeoutTimer?.cancel();
+    _packetTimeoutTimer = Timer(Duration(seconds: _timeoutDuration), () {
+      if (_packetBuffer.isNotEmpty && !_isAllPacketsReceived()) {
+        print("⚠️ Timeout: Processing partial data.");
+        _processPartialMessage();
+      }
+    });
+  }
+
+  // Memproses pesan lengkap
+  Future<void> _processCompleteMessage(String message) async {
+    final tempBuffer = Map<int, String>.from(_packetBuffer);
+    _processMessage(message);
+    _resetPacketBuffer();
+
+    print("📜 Processed message: $message, Previous buffer: $tempBuffer");
+  }
+
+  // Memeriksa apakah semua paket diterima
+  bool _isAllPacketsReceived() {
+    if (_expectedPackets <= 0) return false;
+    final List<int> expectedIndices =
+        List<int>.generate(_expectedPackets, (i) => i);
+    return expectedIndices.every((index) => _packetBuffer.containsKey(index));
+  }
+
+  // Menentukan apakah pesan baru harus dimulai
+  bool _shouldStartNewMessage(int index, int total, DateTime timestamp) {
+    if (_packetBuffer.isEmpty) return true;
+    if (_expectedPackets != total) return true;
+    if (_packetBuffer.containsKey(index)) return true;
+    if (index == 0 && _packetBuffer.isNotEmpty) return true;
+    if (timestamp.difference(_lastPacketTime).inSeconds > _timeoutDuration) {
+      return true;
+    }
+    return false;
+  }
+
+  // Membuat ID pesan
+  String _generateMessageId(int totalPackets) {
+    return "${DateTime.now().millisecondsSinceEpoch}_$totalPackets";
+  }
+
+  // Memproses pesan parsial dengan validasi
+  void _processPartialMessage() {
+    if (_packetBuffer.isEmpty) {
+      print("⚠️ No packets to process");
+      return;
+    }
+
+    final message = _assembleMessage();
+    print(
+        "⚠️ Processing partial message (${_packetBuffer.length}/$_expectedPackets)");
+
+    if (message.isEmpty || message.length < 10) {
+      print("❌ Partial message too short or empty");
+      _notifyStatus("Data tidak lengkap, coba lagi");
+
+      _resetPacketBuffer();
+      return;
+    }
+
+    try {
+      if (_isSuccessMessage(message)) {
+        _handleSuccessMessage(message);
+      } else {
+        _processMessage(message);
+      }
+    } catch (e) {
+      print("❌ Failed to process partial message: $e");
+      _notifyStatus("Data tidak lengkap, mencoba ulang...");
+    } finally {
+      _resetPacketBuffer();
+    }
+  }
+
+  // Mendapatkan indeks yang hilang
   List<int> _getMissingIndices() {
+    if (_expectedPackets <= 0) return [];
     final allIndices = List<int>.generate(_expectedPackets, (i) => i);
     return allIndices.where((i) => !_packetBuffer.containsKey(i)).toList();
   }
 
+  // Merakit pesan dari buffer
   String _assembleMessage() {
-    final sortedKeys = _packetBuffer.keys.toList()..sort();
-    return sortedKeys.map((i) => _packetBuffer[i] ?? '').join();
+    final sortedKeys = (_packetBuffer.keys.toList()..sort());
+    final stringBuilder = StringBuffer();
+
+    print(
+        "🧩 Current buffer: $sortedKeys / $_expectedPackets (Missing: ${_getMissingIndices()})");
+
+    for (int key in sortedKeys) {
+      stringBuilder.write(_packetBuffer[key]);
+    }
+
+    return stringBuilder.toString();
   }
 
+  // Mengatur ulang buffer
   void _resetPacketBuffer() {
     _packetBuffer.clear();
     _expectedPackets = -1;
+    _currentMessageId = null;
+    _packetTimeoutTimer?.cancel();
+    _packetTimeoutTimer = null;
   }
 
+  // Memeriksa apakah pesan adalah pesan sukses
   bool _isSuccessMessage(String message) {
-    return message.toLowerCase().contains("success");
+    final successPattern = RegExp(r'success', caseSensitive: false);
+    return successPattern.hasMatch(message);
   }
 
+  // Menangani pesan sukses
   Future<void> _handleSuccessMessage(String message) async {
-    showSnackbar(
-        "Success", message, AppColor.primaryColor, AppColor.whiteColor);
-
-    await Future.delayed(const Duration(seconds: 3));
-    Get.back();
+    showSnackbar("Success", message, Colors.green[500], Colors.white);
   }
 
+  // Memproses pesan
   void _processMessage(String message) {
     try {
+      if (_isSuccessMessage(message)) {
+        _handleSuccessMessage(message);
+        return;
+      }
+
+      String dataType = _lastCommandDataType ?? 'device';
       final json = jsonDecode(message);
 
       if (json is List && json.isNotEmpty) {
         _handleSingleDeviceData(json.first);
       } else if (json is Map<String, dynamic> && json.containsKey("data")) {
-        _updatePaginationData(json);
+        _updatePaginationData(json, dataType);
       } else {
         _notifyStatus("ESP32 response missing 'data' field.");
       }
     } catch (e) {
       print("❌ Failed to parse JSON: $e");
-      _notifyStatus("Invalid JSON from ESP32");
+
+      if (_isSuccessMessage(message)) {
+        _handleSuccessMessage(message);
+      } else {
+        _notifyStatus("Invalid response format from ESP32");
+      }
     }
   }
 
-  void _updatePaginationData(Map<String, dynamic> json) {
-    print("📦 Parsed JSON: $json");
-    final paginationController = Get.find<DevicePaginationController>();
-    paginationController.setPaginationData(json);
-    print("📊 Pagination data updated.");
+  // Update pagination data (tidak diubah)
+  void _updatePaginationData(Map<String, dynamic> json, String dataType) {
+    if (dataType == 'devices') {
+      final paginationController = Get.find<DevicePaginationController>();
+      paginationController.setPaginationData(json);
+    } else if (dataType == 'modbus') {
+      final modbusPagination = Get.find<ModbusPaginationController>();
+      modbusPagination.setPaginationData(json);
+    }
   }
 
+  // Handle single device data (tidak diubah)
   void _handleSingleDeviceData(dynamic device) {
     print("📌 Read by ID result: $device");
     final deviceData = Get.put(DeviceDataController());
@@ -382,8 +521,8 @@ class BLEController extends GetxController {
     _notifyStatus("Success load data.");
   }
 
-  /// Send command to device
-  void sendCommand(String commandString) async {
+  // Mengirim perintah dengan MTU dinamis
+  void sendCommand(String commandString, String dataType) async {
     _startLoading();
 
     if (_writeChar == null) {
@@ -397,9 +536,12 @@ class BLEController extends GetxController {
         commandString += '#';
       }
 
-      final bytes = utf8.encode(commandString);
+// Simpan dataType untuk cek di _processMessage
+      _lastCommandDataType = dataType;
 
-      const mtu = 20;
+      final bytes = utf8.encode(commandString);
+      final mtu = await _writeChar!.device.mtu.first ?? 20;
+
       for (int offset = 0; offset < bytes.length; offset += mtu) {
         final chunk = bytes.sublist(
           offset,
@@ -413,18 +555,53 @@ class BLEController extends GetxController {
       }
 
       print("Command sent: $commandString");
-      // _notifyStatus("Command sent in ${packets.length} packets");
     } catch (e) {
       AppHelpers.debugLog("Failed to send a command: $e");
-      _notifyStatus("Device disconnected, redirecting in 3 seconds...");
-
-      await Future.delayed(const Duration(seconds: 3));
-      Get.offAll(() => const HomeScreen());
+      _notifyStatus("Device disconnected...");
     } finally {
       _stopLoading();
     }
   }
 
+  Future<void> disconnectDeviceWithRedirect(BluetoothDevice device) async {
+    final deviceId = device.remoteId.toString();
+    final deviceName =
+        device.platformName.isNotEmpty ? device.platformName : deviceId;
+    _loadingStatus[deviceId] = true;
+
+    try {
+      await device.disconnect().timeout(const Duration(seconds: 10));
+      _connectionStatus[deviceId] = false;
+      _isConnected[deviceId] = false;
+      // Reset karakteristik Bluetooth
+      _writeChar = null;
+      _notifyChar = null;
+      _selectedService = null;
+
+      _notifyStatus("Disconnected from $deviceName.");
+
+      // Tutup overlay dan navigasi kembali dengan aman
+      if (Get.isRegistered<GetNavigator>()) {
+        if (Get.isOverlaysOpen) {
+          Get.back(closeOverlays: true);
+        }
+        if (Get.currentRoute != '/' && Get.previousRoute.isNotEmpty) {
+          Get.back();
+        }
+      }
+    } catch (e) {
+      AppHelpers.debugLog("Failed to disconnect: $e");
+      if (e is TimeoutException) {
+        _notifyStatus("Disconnect timed out for $deviceName");
+      } else {
+        _notifyStatus("Failed to disconnect the device: $deviceName");
+      }
+    } finally {
+      _loadingStatus[deviceId] = false;
+    }
+  }
+
+  // Fungsi utilitas lainnya (tidak diubah)
   void _startLoading() {
     isLoading.value = true;
   }
@@ -434,31 +611,18 @@ class BLEController extends GetxController {
   }
 
   void resetBleState() {
-    print("🧹 Resetting BLE state...");
-
-    // Karakteristik & Service
     _writeChar = null;
     _notifyChar = null;
     _selectedService = null;
     _selectedCharacteristic = null;
-
-    // Cancel listener disconnect
     _disconnectSub?.cancel();
     _disconnectSub = null;
-
-    // Clear data
     _packetBuffer.clear();
     _expectedPackets = -1;
-
-    // Clear GetX state maps
     _connectionStatus.clear();
     _isConnected.clear();
     _loadingStatus.clear();
-
-    // Optional: reset value stream status
     isLoading.value = false;
-
-    print("✅ BLE state reset complete.");
   }
 
   void showSnackbar(
@@ -511,8 +675,8 @@ class BLEController extends GetxController {
                     children: [
                       Expanded(
                         child: Button(
-                            onPressed: () => Navigator.of(Get.overlayContext!)
-                                .pop(), // hanya tutup bottom sheet
+                            onPressed: () =>
+                                Navigator.of(Get.overlayContext!).pop(),
                             text: "No",
                             btnColor: AppColor.grey),
                       ),
@@ -568,8 +732,8 @@ class BLEController extends GetxController {
                     children: [
                       Expanded(
                         child: Button(
-                            onPressed: () => Navigator.of(Get.overlayContext!)
-                                .pop(), // hanya tutup bottom sheet
+                            onPressed: () =>
+                                Navigator.of(Get.overlayContext!).pop(),
                             text: "No",
                             btnColor: AppColor.grey),
                       ),
@@ -597,7 +761,6 @@ class BLEController extends GetxController {
 
   void _notifyStatus(String status) {
     _statusController.add(status);
-
     Get.snackbar(
       '',
       status,
@@ -609,11 +772,6 @@ class BLEController extends GetxController {
       titleText: const SizedBox(),
       padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 16.0),
     );
-  }
-
-  void refreshDevicesPage({int page = 1, int pageSize = 10}) {
-    final command = "READ|devices|page:$page|pageSize:$pageSize#";
-    sendCommand(command);
   }
 
   @override
