@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:suriota_mobile_gateway/constant/app_color.dart';
 import 'package:suriota_mobile_gateway/constant/app_gap.dart';
+import 'package:suriota_mobile_gateway/constant/font_setup.dart';
 import 'package:suriota_mobile_gateway/controller/ble_controller.dart';
-import 'package:suriota_mobile_gateway/controller/device_data_controller.dart';
+import 'package:suriota_mobile_gateway/controller/device_pagination_controller.dart';
 import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_button.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_dropdown.dart';
@@ -11,6 +13,7 @@ import 'package:suriota_mobile_gateway/global/widgets/custom_radiotile.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_textfield.dart';
 import 'package:suriota_mobile_gateway/global/widgets/loading_overlay.dart';
 import 'package:suriota_mobile_gateway/global/widgets/title_tile.dart';
+import 'package:suriota_mobile_gateway/screen/devices/device_communication/device_communications_screen.dart';
 
 class FormSetupDeviceScreen extends StatefulWidget {
   final int? id;
@@ -22,26 +25,22 @@ class FormSetupDeviceScreen extends StatefulWidget {
 }
 
 class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
-  final BLEController bleController = Get.put(BLEController());
-  final dataDevice = Get.put(DeviceDataController());
-  late final Function _deviceEver;
+  late final BLEController bleController;
+  final controller = Get.put(DevicePaginationController());
 
-  String modBusSelected = "RTU";
+  Map<String, dynamic> dataDevice = {};
 
+  String modBusSelected = 'RTU';
   String? selectedBaudRate;
-  String? selectedBiddata;
+  String? selectedBitData;
   String? selectedParity;
-  String? selectedStopbit;
+  String? selectedStopBit;
+  bool isFetching = false;
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
   final deviceNameController = TextEditingController();
   final refreshRateController = TextEditingController();
-  final modbusTypeController = TextEditingController();
-  final baudrateController = TextEditingController();
-  final bidDataController = TextEditingController();
-  final parityController = TextEditingController();
-  final stopBitController = TextEditingController();
   final ipAddressController = TextEditingController();
   final serverPortController = TextEditingController();
   final connectionTimeoutController = TextEditingController();
@@ -49,106 +48,177 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
   @override
   void initState() {
     super.initState();
+    // Inisialisasi controller dengan pengecekan untuk mencegah error Get.find
+    bleController = Get.put(BLEController());
 
     if (widget.id != null) {
-      dataDevice.clearDevice();
+      dataDevice = controller.devices
+          .firstWhere((item) => item['id'] == widget.id, orElse: () => {});
 
-      Future.microtask(() async {
-        bleController.sendCommand('READ|devices|id:${widget.id}');
-
-        // Setelah selesai, pantau perubahan singleDevice
-        _deviceEver = ever(dataDevice.singleDevice, (device) {
-          if (!mounted || device.isEmpty) return;
-
-          _fillFormFromDevice(device);
-        });
-      });
+      _fillFormFromDevice(dataDevice);
     } else {
-      // Mode CREATE
-      modBusSelected = "RTU";
-      modbusTypeController.text = modBusSelected;
+      modBusSelected = 'RTU';
     }
   }
 
   void _fillFormFromDevice(Map<String, dynamic> device) {
-    if (!mounted) return;
+    setState(() {
+      modBusSelected = device['modbus_type'] ?? 'RTU';
+      deviceNameController.text = device['name'] ?? '';
+      refreshRateController.text = device['refresh_rate']?.toString() ?? '';
 
-    modBusSelected = device['modbus_type'];
-
-    modbusTypeController.text = device['modbus_type'];
-    deviceNameController.text = device['name'] ?? '';
-    refreshRateController.text = device['refresh_rate']?.toString() ?? '';
-
-    if (device['modbus_type'] == 'TCP') {
-      ipAddressController.text = device['ip_address'] ?? '';
-      serverPortController.text = device['port']?.toString() ?? '';
-      connectionTimeoutController.text =
-          device['connection_timeout']?.toString() ?? '';
-    } else {
-      selectedBaudRate = device['baudrate']?.toString();
-      selectedBiddata = device['data_bits']?.toString();
-      selectedParity = device['parity'];
-      selectedStopbit = device['stop_bits']?.toString();
-
-      baudrateController.text = selectedBaudRate ?? '';
-      bidDataController.text = selectedBiddata ?? '';
-      parityController.text = selectedParity ?? '';
-      stopBitController.text = selectedStopbit ?? '';
-    }
+      if (device['modbus_type'] == 'TCP') {
+        ipAddressController.text = device['ip_address'] ?? '';
+        serverPortController.text = device['port']?.toString() ?? '';
+        connectionTimeoutController.text =
+            device['connection_timeout']?.toString() ?? '';
+      } else {
+        selectedBaudRate = device['baudrate']?.toString();
+        selectedBitData = device['data_bits']?.toString();
+        selectedParity = device['parity'];
+        selectedStopBit = device['stop_bits']?.toString();
+      }
+      isFetching = false;
+    });
   }
 
-  void _submit() {
-    if (_formKey.currentState!.validate()) {
-      int? tryParseInt(String value) {
-        return int.tryParse(value);
-      }
-
-      String buildDataRtu() {
-        return 'baudrate:${tryParseInt(baudrateController.text)}|'
-            'parity:${parityController.text}|'
-            'data_bits:${tryParseInt(bidDataController.text)}|'
-            'stop_bits:${tryParseInt(stopBitController.text)}';
-      }
-
-      String buildDataTcp() {
-        return 'ip_address:${ipAddressController.text}|'
-            'port:${tryParseInt(serverPortController.text)}|'
-            'connection_timeout:${tryParseInt(connectionTimeoutController.text)}';
-      }
-
-      String buildSendDataDelimiter() {
-        final modbusData = modbusTypeController.text == 'RTU'
-            ? buildDataRtu()
-            : buildDataTcp();
-
-        final formData = widget.id != null
-            ? 'UPDATE|devices|id:${widget.id}'
-            : 'CREATE|devices';
-
-        return '$formData|name:${deviceNameController.text}|'
-            'modbus_type:${modbusTypeController.text}|'
-            'refresh_rate:${tryParseInt(refreshRateController.text)}|$modbusData';
-      }
-
-      final sendDataDelimiter = buildSendDataDelimiter();
-
-      bleController.sendCommand(sendDataDelimiter);
+  String? _validateRTUFields() {
+    if (modBusSelected == 'RTU') {
+      if (selectedBaudRate == null) return 'Baudrate is required';
+      if (selectedBitData == null) return 'Bit data is required';
+      if (selectedParity == null) return 'Parity is required';
+      if (selectedStopBit == null) return 'Stop bit is required';
     }
+    return null;
+  }
+
+  void _submit() async {
+    // Validasi field RTU
+    final rtuError = _validateRTUFields();
+    if (rtuError != null) {
+      Get.snackbar('Error', rtuError);
+      return;
+    }
+
+    // Validasi form
+    if (!_formKey.currentState!.validate()) return;
+
+    // Periksa koneksi BLE
+    if (bleController.isConnected.isEmpty ||
+        !bleController.isConnected.values.any((connected) => connected)) {
+      Get.snackbar('Error', 'No BLE device connected');
+      return;
+    }
+
+    Get.bottomSheet(
+      Container(
+        padding: AppPadding.medium,
+        decoration: const BoxDecoration(
+          color: AppColor.whiteColor,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Wrap(
+          children: [
+            Center(
+              child: Column(
+                children: [
+                  Text(
+                    "Are you sure?",
+                    style: FontFamily.headlineLarge,
+                  ),
+                  AppSpacing.sm,
+                  Text(
+                      "Are you sure you want to ${widget.id != null ? 'update' : 'save'} this device?",
+                      style: FontFamily.normal),
+                  AppSpacing.md,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Button(
+                            onPressed: () =>
+                                Navigator.of(Get.overlayContext!).pop(),
+                            text: "No",
+                            btnColor: AppColor.grey),
+                      ),
+                      AppSpacing.md,
+                      Expanded(
+                        child: Button(
+                          onPressed: () async {
+                            Get.back();
+                            try {
+                              final sendDataDelimiter =
+                                  _buildSendDataDelimiter();
+                              debugPrint('Sending command: $sendDataDelimiter');
+                              bleController.sendCommand(
+                                  sendDataDelimiter, 'devices');
+
+                              await Future.delayed(const Duration(seconds: 3));
+                              Get.to(() => const DeviceCommunicationsScreen());
+                            } catch (e) {
+                              debugPrint('Error submitting form: $e');
+                              Get.snackbar(
+                                  'Error', 'Failed to submit form: $e');
+                            }
+                          },
+                          text: "Yes",
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+      isDismissible: false,
+      enableDrag: false,
+    );
+  }
+
+  String _sanitizeInput(String input) {
+    return input.replaceAll('|', '').replaceAll('#', '');
+  }
+
+  int? _tryParseInt(String? value, {int? defaultValue}) {
+    if (value == null || value.isEmpty) return defaultValue;
+    return int.tryParse(value) ?? defaultValue;
+  }
+
+  String _buildDataRtu() {
+    final baudrate = _tryParseInt(selectedBaudRate, defaultValue: 9600);
+    final dataBits = _tryParseInt(selectedBitData, defaultValue: 8);
+    final stopBits = _tryParseInt(selectedStopBit, defaultValue: 1);
+    final parityValue = selectedParity ?? 'none';
+
+    return 'baudrate:$baudrate|parity:$parityValue|data_bits:$dataBits|stop_bits:$stopBits';
+  }
+
+  String _buildDataTcp() {
+    final ip = _sanitizeInput(ipAddressController.text);
+    final port = _tryParseInt(serverPortController.text, defaultValue: 502);
+    final timeout =
+        _tryParseInt(connectionTimeoutController.text, defaultValue: 3000);
+
+    return 'ip_address:$ip|port:$port|connection_timeout:$timeout';
+  }
+
+  String _buildSendDataDelimiter() {
+    final modbusData =
+        modBusSelected == 'RTU' ? _buildDataRtu() : _buildDataTcp();
+    final formData =
+        widget.id != null ? 'UPDATE|devices|id:${widget.id}' : 'CREATE|devices';
+    final name = _sanitizeInput(deviceNameController.text);
+    final refreshRate =
+        _tryParseInt(refreshRateController.text, defaultValue: 5000);
+
+    return '$formData|name:$name|modbus_type:$modBusSelected|refresh_rate:$refreshRate|$modbusData';
   }
 
   @override
   void dispose() {
-    dataDevice.clearDevice();
-    if (widget.id != null) {
-      _deviceEver(); // Hapus listener ever()
-    }
     deviceNameController.dispose();
     refreshRateController.dispose();
-    modbusTypeController.dispose();
-    baudrateController.dispose();
-    bidDataController.dispose();
-    parityController.dispose();
-    stopBitController.dispose();
     ipAddressController.dispose();
     serverPortController.dispose();
     connectionTimeoutController.dispose();
@@ -198,43 +268,56 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
               AppSpacing.md,
               CustomTextFormField(
                 controller: deviceNameController,
-                labelTxt: "Device Name",
-                hintTxt: "Enter the device name",
+                labelTxt: 'Device Name',
+                hintTxt: 'Enter the device name',
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Device name is required';
+                  }
+                  if (value.length > 50) {
+                    return 'Device name too long (max 50 characters)';
+                  }
+                  return null;
+                },
               ),
-              Column(
-                children: [
-                  AppSpacing.md,
-                  CustomTextFormField(
-                    controller: refreshRateController,
-                    labelTxt: "Refresh Rate",
-                    hintTxt: "5000",
-                    keyboardType: TextInputType.number,
-                    suffixIcon: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            "m/s",
-                            style: context.bodySmall
-                                .copyWith(color: AppColor.grey),
-                          )
-                        ]),
-                  ),
-                ],
+              AppSpacing.md,
+              CustomTextFormField(
+                controller: refreshRateController,
+                labelTxt: 'Refresh Rate',
+                hintTxt: '5000',
+                keyboardType: TextInputType.number,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Refresh rate is required';
+                  }
+                  final num = int.tryParse(value);
+                  if (num == null || num <= 0) {
+                    return 'Enter a valid positive number';
+                  }
+                  return null;
+                },
+                suffixIcon: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'm/s',
+                      style: context.bodySmall.copyWith(color: AppColor.grey),
+                    ),
+                  ],
+                ),
               ),
               AppSpacing.md,
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text("Choose Modbus", style: context.h6),
+                  Text('Choose Modbus', style: context.h6),
                   AppSpacing.sm,
                   CustomRadioTile(
-                    value: "RTU",
+                    value: 'RTU',
                     grupValue: modBusSelected,
                     onChanges: () {
                       setState(() {
-                        modBusSelected = "RTU";
-                        modbusTypeController.text = "RTU";
-
+                        modBusSelected = 'RTU';
                         ipAddressController.clear();
                         serverPortController.clear();
                         connectionTimeoutController.clear();
@@ -242,31 +325,22 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
                     },
                   ),
                   CustomRadioTile(
-                    value: "TCP",
+                    value: 'TCP',
                     grupValue: modBusSelected,
                     onChanges: () {
                       setState(() {
-                        modBusSelected = "TCP";
-                        modbusTypeController.text = "TCP";
-
-                        // Reset RS-485 field
-                        baudrateController.clear();
-                        bidDataController.clear();
-                        parityController.clear();
-                        stopBitController.clear();
-
-                        // Reset selected value (untuk UI dropdown)
+                        modBusSelected = 'TCP';
                         selectedBaudRate = null;
-                        selectedBiddata = null;
+                        selectedBitData = null;
                         selectedParity = null;
-                        selectedStopbit = null;
+                        selectedStopBit = null;
                       });
                     },
                   ),
                 ],
               ),
               AppSpacing.md,
-              TitleTile(title: "Modbus Setup $modBusSelected"),
+              TitleTile(title: 'Modbus Setup $modBusSelected'),
               AppSpacing.md,
               modBusSelected == 'RTU'
                   ? _formRS485Wrapper()
@@ -278,7 +352,7 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
                 text: widget.id != null ? 'Update' : 'Save',
                 height: 50,
               ),
-              AppSpacing.lg
+              AppSpacing.lg,
             ],
           ),
         ),
@@ -287,19 +361,16 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
   }
 
   Widget _formRS485Wrapper() {
-    List<String> baudrates = ['9600', '19200', '38400', '57600', '115200'];
-    List<String> bitData = ['7', '8'];
-    List<String> parity = ['none', 'even', 'odd'];
-    List<String> stopBits = ['1', '2'];
+    final baudrates = ['9600', '19200', '38400', '57600', '115200'];
+    final bitData = ['7', '8'];
+    final parity = ['none', 'even', 'odd'];
+    final stopBits = ['1', '2'];
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.start,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Choose Baudrate',
-          style: context.h6,
-        ),
+        Text('Choose Baudrate', style: context.h6),
         AppSpacing.sm,
         CustomDropdown(
           listItem: baudrates,
@@ -308,56 +379,45 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
           onChanged: (value) {
             setState(() {
               selectedBaudRate = value;
-              baudrateController.text = value!;
             });
           },
         ),
         AppSpacing.md,
-        Text(
-          'Choose Bit Data',
-          style: context.h6,
-        ),
+        Text('Choose Bit Data', style: context.h6),
         AppSpacing.sm,
         CustomDropdown(
-            listItem: bitData,
-            hintText: 'Choose bit data',
-            selectedItem: selectedBiddata,
-            onChanged: (value) {
-              setState(() {
-                selectedBiddata = value;
-                bidDataController.text = value!;
-              });
-            }),
-        AppSpacing.md,
-        Text(
-          'Choose Parity',
-          style: context.h6,
+          listItem: bitData,
+          hintText: 'Choose bit data',
+          selectedItem: selectedBitData,
+          onChanged: (value) {
+            setState(() {
+              selectedBitData = value;
+            });
+          },
         ),
+        AppSpacing.md,
+        Text('Choose Parity', style: context.h6),
         AppSpacing.sm,
         CustomDropdown(
-            listItem: parity,
-            hintText: 'Choose the parity',
-            selectedItem: selectedParity,
-            onChanged: (value) {
-              setState(() {
-                selectedParity = value;
-                parityController.text = value!;
-              });
-            }),
-        AppSpacing.md,
-        Text(
-          'Choose Stop Bit',
-          style: context.h6,
+          listItem: parity,
+          hintText: 'Choose the parity',
+          selectedItem: selectedParity,
+          onChanged: (value) {
+            setState(() {
+              selectedParity = value;
+            });
+          },
         ),
+        AppSpacing.md,
+        Text('Choose Stop Bit', style: context.h6),
         AppSpacing.sm,
         CustomDropdown(
           listItem: stopBits,
           hintText: 'Choose the stop bit',
-          selectedItem: selectedStopbit,
+          selectedItem: selectedStopBit,
           onChanged: (value) {
             setState(() {
-              selectedStopbit = value;
-              stopBitController.text = value!;
+              selectedStopBit = value;
             });
           },
         ),
@@ -372,31 +432,56 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
       children: [
         CustomTextFormField(
           controller: ipAddressController,
-          labelTxt: "IP Address",
-          hintTxt: "127.0.0.1",
+          labelTxt: 'IP Address',
+          hintTxt: '127.0.0.1',
+          validator: (value) {
+            if (value == null || value.isEmpty) return 'IP address is required';
+            final ipPattern = RegExp(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$');
+            if (!ipPattern.hasMatch(value)) return 'Invalid IP address format';
+            return null;
+          },
         ),
         AppSpacing.md,
         CustomTextFormField(
           controller: serverPortController,
-          labelTxt: "Server Port",
-          hintTxt: "502",
+          labelTxt: 'Server Port',
+          hintTxt: '502',
           keyboardType: TextInputType.number,
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Server port is required';
+            }
+            final port = int.tryParse(value);
+            if (port == null || port < 1 || port > 65535) {
+              return 'Enter a valid port (1-65535)';
+            }
+            return null;
+          },
         ),
         AppSpacing.md,
         CustomTextFormField(
           controller: connectionTimeoutController,
-          labelTxt: "Connect Timeout",
-          hintTxt: "3000",
+          labelTxt: 'Connect Timeout',
+          hintTxt: '3000',
           keyboardType: TextInputType.number,
-          suffixIcon:
-              Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Text(
-              "m/s",
-              style: context.bodySmall.copyWith(color: AppColor.grey),
-            )
-          ]),
+          validator: (value) {
+            if (value == null || value.isEmpty) return 'Timeout is required';
+            final timeout = int.tryParse(value);
+            if (timeout == null || timeout <= 0) {
+              return 'Enter a valid positive number';
+            }
+            return null;
+          },
+          suffixIcon: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                'm/s',
+                style: context.bodySmall.copyWith(color: AppColor.grey),
+              ),
+            ],
+          ),
         ),
-        AppSpacing.md,
       ],
     );
   }
