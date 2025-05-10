@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:suriota_mobile_gateway/constant/app_color.dart';
 import 'package:suriota_mobile_gateway/constant/app_gap.dart';
+import 'package:suriota_mobile_gateway/constant/font_setup.dart';
 import 'package:suriota_mobile_gateway/constant/image_asset.dart';
 import 'package:suriota_mobile_gateway/controller/ble_controller.dart';
 import 'package:suriota_mobile_gateway/controller/device_pagination_controller.dart';
@@ -20,36 +21,145 @@ class DeviceCommunicationsScreen extends StatefulWidget {
 
 class _DeviceCommunicationsScreenState
     extends State<DeviceCommunicationsScreen> {
-  final BLEController bleController = Get.put(BLEController());
-  final controller = Get.put(DevicePaginationController());
+  final BLEController bleController;
+  final DevicePaginationController controller;
+  bool isLoading = false;
+  bool isInitialized = false;
+
+  _DeviceCommunicationsScreenState()
+      : bleController = Get.put(BLEController(), permanent: true),
+        controller = Get.put(DevicePaginationController(), permanent: true) {
+    debugPrint(
+        'Initialized BLEController and DevicePaginationController with Get.put');
+  }
 
   @override
   void initState() {
     super.initState();
-
-    Future.delayed(const Duration(milliseconds: 10), () {
-      bleController.sendCommand('READ|devices|page:1|pageSize:10');
+    debugPrint('initState called');
+    // Panggil fetchDevices sekali setelah widget dirender
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!isInitialized) {
+        _fetchDevices();
+        isInitialized = true;
+      }
     });
+  }
+
+  void _fetchDevices() async {
+    if (isLoading) {
+      debugPrint('Fetch devices skipped: already loading');
+      return;
+    }
+    setState(() => isLoading = true);
+    debugPrint('Fetching devices: READ|devices|page:1|pageSize:10');
+
+    try {
+      // Periksa koneksi BLE
+      if (bleController.isConnected.isEmpty ||
+          !bleController.isConnected.values.any((connected) => connected)) {
+        Get.snackbar('Error', 'No BLE device connected');
+        setState(() => isLoading = false);
+        return;
+      }
+
+      bleController.sendCommand('READ|devices|page:1|pageSize:10', 'devices');
+    } catch (e) {
+      debugPrint('Error fetching devices: $e');
+      Get.snackbar('Error', 'Failed to fetch devices: $e');
+    } finally {
+      setState(() => isLoading = false);
+    }
+  }
+
+  void _deleteDevice(int deviceId) async {
+    if (bleController.isConnected.isEmpty ||
+        !bleController.isConnected.values.any((connected) => connected)) {
+      Get.snackbar('Error', 'No BLE device connected');
+      return;
+    }
+
+    Get.bottomSheet(
+      Container(
+        padding: AppPadding.medium,
+        decoration: const BoxDecoration(
+          color: AppColor.whiteColor,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Wrap(
+          children: [
+            Center(
+              child: Column(
+                children: [
+                  Text(
+                    "Are you sure?",
+                    style: FontFamily.headlineLarge,
+                  ),
+                  AppSpacing.sm,
+                  Text("Are you sure you want to delete this device ini?",
+                      style: FontFamily.normal),
+                  AppSpacing.md,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Button(
+                            onPressed: () =>
+                                Navigator.of(Get.overlayContext!).pop(),
+                            text: "No",
+                            btnColor: AppColor.grey),
+                      ),
+                      AppSpacing.md,
+                      Expanded(
+                        child: Button(
+                          onPressed: () async {
+                            Get.back();
+                            setState(() => isLoading = true);
+                            try {
+                              bleController.sendCommand(
+                                  'DELETE|devices|id:$deviceId', 'devices');
+
+                              await Future.delayed(const Duration(seconds: 3));
+                              bleController.sendCommand(
+                                  'READ|devices|page:1|pageSize:10', 'devices');
+                            } catch (e) {
+                              debugPrint('Error deleting device: $e');
+                              Get.snackbar(
+                                  'Error', 'Failed to delete device: $e');
+                            } finally {
+                              setState(() => isLoading = false);
+                            }
+                          },
+                          text: "Yes",
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+      isDismissible: false,
+      enableDrag: false,
+    );
+  }
+
+  @override
+  void dispose() {
+    debugPrint('Disposing DeviceCommunicationsScreen');
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('Building DeviceCommunicationsScreen');
     return Scaffold(
       appBar: _appBar(context),
       body: SafeArea(
         child: SingleChildScrollView(
-            padding: AppPadding.horizontalMedium, child: _bodyContent(context)),
-      ),
-    );
-  }
-
-  Container _loadingProgress(BuildContext context) {
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.85,
-      alignment: Alignment.center,
-      child: const Center(
-        child: CircularProgressIndicator(
-          color: AppColor.primaryColor,
+          padding: AppPadding.horizontalMedium,
+          child: _bodyContent(context),
         ),
       ),
     );
@@ -66,17 +176,14 @@ class _DeviceCommunicationsScreenState
       backgroundColor: AppColor.primaryColor,
       actions: [
         IconButton(
-            onPressed: () {
-              Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const FormSetupDeviceScreen(),
-                  ));
-            },
-            icon: const Icon(
-              Icons.add_circle,
-              size: 22,
-            ))
+          onPressed: () {
+            Get.to(() => const FormSetupDeviceScreen());
+          },
+          icon: const Icon(
+            Icons.add_circle,
+            size: 22,
+          ),
+        ),
       ],
     );
   }
@@ -91,9 +198,9 @@ class _DeviceCommunicationsScreenState
           style: context.h5,
           overflow: TextOverflow.ellipsis,
         ),
-        AppSpacing.sm,
+        AppSpacing.md,
         Obx(() {
-          if (bleController.isLoading.value) {
+          if (isLoading || bleController.isLoading.value) {
             return _loadingProgress(context);
           }
 
@@ -101,52 +208,60 @@ class _DeviceCommunicationsScreenState
             return _emptyView(context);
           }
 
-          final data = controller.devices;
-
           return ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            itemCount: data.length,
+            itemCount: controller.devices.length,
             separatorBuilder: (context, index) => AppSpacing.sm,
-            itemBuilder: (BuildContext context, int index) {
-              final item = data[index];
+            itemBuilder: (context, index) {
+              final item = controller.devices[index];
+              final deviceId = item['id'] as int? ?? 0;
+              final name = item['name'] as String? ?? 'Unknown';
+              final modbusType = item['modbus_type'] as String? ?? 'Unknown';
 
               return InkWell(
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => DisplayDataPage(
-                        title: item['name'],
-                        modbusType: item['modbus_type'],
-                      ),
-                    ),
-                  );
+                  Get.to(() => DisplayDataPage(
+                        title: name,
+                        modbusType: modbusType,
+                      ));
                 },
                 child: _cardDeviceConnection(
                   context,
-                  item['id'],
-                  item['name'],
-                  item['modbus_type'],
+                  deviceId,
+                  name,
+                  modbusType,
                 ),
               );
             },
           );
         }),
         AppSpacing.md,
-        if (controller.devices.isNotEmpty)
-          Obx(() {
-            final pagination = controller;
-
+        Obx(() {
+          if (controller.devices.isNotEmpty && !bleController.isLoading.value) {
             return Center(
               child: Text(
-                'Page ${pagination.page} from ${pagination.totalPages}',
+                'Showing ${controller.totalRecords.value} entries',
                 style: context.bodySmall,
               ),
             );
-          }),
+          }
+          return const SizedBox.shrink();
+        }),
         AppSpacing.md,
       ],
+    );
+  }
+
+  Container _loadingProgress(BuildContext context) {
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.85,
+      alignment: Alignment.center,
+      child: const Center(
+        child: CircularProgressIndicator(
+          color: AppColor.primaryColor,
+        ),
+      ),
     );
   }
 
@@ -170,8 +285,8 @@ class _DeviceCommunicationsScreenState
   }
 
   Card _cardDeviceConnection(
-      BuildContext context, int deviceId, String title, String? modbusType) {
-    double screenWidth = MediaQuery.of(context).size.width;
+      BuildContext context, int deviceId, String title, String modbusType) {
+    final screenWidth = MediaQuery.of(context).size.width;
 
     return Card(
       color: AppColor.cardColor,
@@ -183,50 +298,67 @@ class _DeviceCommunicationsScreenState
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Flexible(
-                flex: screenWidth <= 600 ? 2 : 3,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: [
-                    Image.asset(ImageAsset.iconModbus,
-                        width: 50, height: 50, fit: BoxFit.contain),
-                    AppSpacing.sm,
-                    Flexible(
-                        flex: 1,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              title,
-                              style: context.h6,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            AppSpacing.xs,
-                            Text(
-                              'Device $modbusType',
-                              style: context.bodySmall,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ))
-                  ],
-                )),
+              flex: screenWidth <= 600 ? 2 : 3,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  Image.asset(
+                    ImageAsset.iconModbus,
+                    width: 50,
+                    height: 50,
+                    fit: BoxFit.contain,
+                  ),
+                  AppSpacing.sm,
+                  Flexible(
+                    flex: 1,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: context.h6,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        AppSpacing.xs,
+                        Text(
+                          'Device $modbusType',
+                          style: context.bodySmall,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
             AppSpacing.sm,
             Flexible(
               flex: 1,
               child: SizedBox(
                 height: 30,
                 child: Button(
-                    width: double.infinity,
-                    onPressed: () {
-                      Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) =>
-                                  FormSetupDeviceScreen(id: deviceId)));
-                    },
-                    text: 'Setup',
-                    btnColor: AppColor.primaryColor,
-                    customStyle: context.buttonTextSmallest),
+                  width: double.infinity,
+                  onPressed: () {
+                    Get.to(() => FormSetupDeviceScreen(id: deviceId));
+                  },
+                  text: 'Setup',
+                  btnColor: AppColor.primaryColor,
+                  customStyle: context.buttonTextSmallest,
+                ),
+              ),
+            ),
+            AppSpacing.sm,
+            Flexible(
+              flex: 1,
+              child: SizedBox(
+                height: 30,
+                child: Button(
+                  width: double.infinity,
+                  onPressed: () => _deleteDevice(deviceId),
+                  text: 'Delete',
+                  btnColor: AppColor.redColor,
+                  customStyle: context.buttonTextSmallest,
+                ),
               ),
             ),
           ],
