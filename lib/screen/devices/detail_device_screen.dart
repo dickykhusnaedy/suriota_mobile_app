@@ -5,6 +5,7 @@ import 'package:suriota_mobile_gateway/constant/app_color.dart';
 import 'package:suriota_mobile_gateway/constant/app_gap.dart';
 import 'package:suriota_mobile_gateway/constant/image_asset.dart';
 import 'package:suriota_mobile_gateway/controller/ble_controller.dart';
+import 'package:suriota_mobile_gateway/controller/device_pagination_controller.dart';
 import 'package:suriota_mobile_gateway/global/utils/helper.dart';
 import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_button.dart';
@@ -25,6 +26,8 @@ class DetailDeviceScreen extends StatefulWidget {
 
 class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
   final BLEController bleController = Get.put(BLEController());
+  final DevicePaginationController controller =
+      Get.put(DevicePaginationController());
 
   @override
   void initState() {
@@ -182,22 +185,6 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
           );
         }),
         AppSpacing.lg,
-        // Row(
-        //   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        //   children: [
-        //     Button(
-        //       onPressed: () => bleController.sendCommand('off'),
-        //       text: 'OFF LED',
-        //       btnColor: AppColor.redColor,
-        //     ),
-        //     AppSpacing.md,
-        //     Button(
-        //       onPressed: () => bleController.sendCommand('on'),
-        //       text: 'ON LED',
-        //     )
-        //   ],
-        // ),
-        // AppSpacing.lg,
       ],
     );
   }
