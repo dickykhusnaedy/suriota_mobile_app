@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:suriota_mobile_gateway/constant/app_color.dart';
 import 'package:suriota_mobile_gateway/constant/app_gap.dart';
-import 'package:suriota_mobile_gateway/constant/font_setup.dart';
 import 'package:suriota_mobile_gateway/constant/image_asset.dart';
 import 'package:suriota_mobile_gateway/controller/ble_controller.dart';
 import 'package:suriota_mobile_gateway/controller/device_pagination_controller.dart';
 import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
+import 'package:suriota_mobile_gateway/global/widgets/custom_alert_dialog.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_button.dart';
 import 'package:suriota_mobile_gateway/screen/devices/device_communication/data_display_screen.dart';
 import 'package:suriota_mobile_gateway/screen/devices/device_communication/form_setup_device_screen.dart';
@@ -79,81 +79,42 @@ class _DeviceCommunicationsScreenState
       return;
     }
 
-    Get.bottomSheet(
-      Container(
-        padding: AppPadding.medium,
-        decoration: const BoxDecoration(
-          color: AppColor.whiteColor,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: Wrap(
-          children: [
-            Center(
-              child: Column(
-                children: [
-                  Text(
-                    "Are you sure?",
-                    style: FontFamily.headlineLarge,
-                  ),
-                  AppSpacing.sm,
-                  Text("Are you sure you want to delete this device ini?",
-                      style: FontFamily.normal),
-                  AppSpacing.md,
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Button(
-                            onPressed: () =>
-                                Navigator.of(Get.overlayContext!).pop(),
-                            text: "No",
-                            btnColor: AppColor.grey),
-                      ),
-                      AppSpacing.md,
-                      Expanded(
-                        child: Button(
-                          onPressed: () async {
-                            Get.back();
-                            setState(() => isLoading = true);
-                            try {
-                              bleController.sendCommand(
-                                  'DELETE|devices|id:$deviceId', 'devices');
+    CustomAlertDialog.show(
+      title: "Are you sure?",
+      message: "Are you sure you want to delete this device?",
+      primaryButtonText: 'Yes',
+      secondaryButtonText: 'No',
+      onPrimaryPressed: () async {
+        setState(() => isLoading = true);
 
-                              await Future.delayed(const Duration(seconds: 3));
-                              bleController.sendCommand(
-                                  'READ|devices|page:1|pageSize:10', 'devices');
-                            } catch (e) {
-                              debugPrint('Error deleting device: $e');
-                              Get.snackbar(
-                                  'Error', 'Failed to delete device: $e');
-                            } finally {
-                              setState(() => isLoading = false);
-                            }
-                          },
-                          text: "Yes",
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-      isDismissible: false,
-      enableDrag: false,
+        Get.back();
+        await Future.delayed(const Duration(seconds: 1));
+
+        try {
+          bleController.sendCommand('DELETE|devices|id:$deviceId', 'devices');
+        } catch (e) {
+          debugPrint('Error deleting device: $e');
+
+          Get.snackbar('Error', 'Failed to delete device: $e');
+        } finally {
+          await Future.delayed(const Duration(milliseconds: 300));
+          bleController.sendCommand(
+              'READ|devices|page:1|pageSize:10', 'devices');
+
+          setState(() => isLoading = false);
+        }
+      },
+      barrierDismissible: false,
     );
   }
 
   @override
   void dispose() {
-    debugPrint('Disposing DeviceCommunicationsScreen');
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    debugPrint('Building DeviceCommunicationsScreen');
     return Scaffold(
       appBar: _appBar(context),
       body: SafeArea(
@@ -193,12 +154,27 @@ class _DeviceCommunicationsScreenState
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         AppSpacing.md,
-        Text(
-          'Connections Device',
-          style: context.h5,
-          overflow: TextOverflow.ellipsis,
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Connections Device',
+              style: context.h5,
+              overflow: TextOverflow.ellipsis,
+            ),
+            TextButton.icon(
+              onPressed: _fetchDevices,
+              label: const Icon(
+                Icons.rotate_left,
+                size: 20,
+              ),
+              style: TextButton.styleFrom(
+                iconColor: AppColor.primaryColor,
+              ),
+            ),
+          ],
         ),
-        AppSpacing.md,
+        AppSpacing.sm,
         Obx(() {
           if (isLoading || bleController.isLoading.value) {
             return _loadingProgress(context);
@@ -332,35 +308,25 @@ class _DeviceCommunicationsScreenState
               ),
             ),
             AppSpacing.sm,
-            Flexible(
-              flex: 1,
-              child: SizedBox(
-                height: 30,
-                child: Button(
-                  width: double.infinity,
-                  onPressed: () {
-                    Get.to(() => FormSetupDeviceScreen(id: deviceId));
-                  },
-                  text: 'Setup',
-                  btnColor: AppColor.primaryColor,
-                  customStyle: context.buttonTextSmallest,
-                ),
-              ),
+            Button(
+              width: 50,
+              height: 32,
+              onPressed: () {
+                Get.to(() => FormSetupDeviceScreen(id: deviceId));
+              },
+              icons: const Icon(Icons.edit, color: AppColor.whiteColor),
+              btnColor: AppColor.primaryColor,
+              customStyle: context.buttonTextSmallest,
             ),
             AppSpacing.sm,
-            Flexible(
-              flex: 1,
-              child: SizedBox(
-                height: 30,
-                child: Button(
-                  width: double.infinity,
-                  onPressed: () => _deleteDevice(deviceId),
-                  text: 'Delete',
-                  btnColor: AppColor.redColor,
-                  customStyle: context.buttonTextSmallest,
-                ),
-              ),
-            ),
+            Button(
+              width: 50,
+              height: 32,
+              onPressed: () => _deleteDevice(deviceId),
+              icons: const Icon(Icons.delete, color: AppColor.whiteColor),
+              btnColor: AppColor.redColor,
+              customStyle: context.buttonTextSmallest,
+            )
           ],
         ),
       ),
