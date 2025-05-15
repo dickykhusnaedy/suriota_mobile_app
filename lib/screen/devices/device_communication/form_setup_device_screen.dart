@@ -1,19 +1,19 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:suriota_mobile_gateway/constant/app_color.dart';
 import 'package:suriota_mobile_gateway/constant/app_gap.dart';
-import 'package:suriota_mobile_gateway/constant/font_setup.dart';
 import 'package:suriota_mobile_gateway/controller/ble_controller.dart';
 import 'package:suriota_mobile_gateway/controller/device_pagination_controller.dart';
 import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
+import 'package:suriota_mobile_gateway/global/widgets/custom_alert_dialog.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_button.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_dropdown.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_radiotile.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_textfield.dart';
 import 'package:suriota_mobile_gateway/global/widgets/loading_overlay.dart';
 import 'package:suriota_mobile_gateway/global/widgets/title_tile.dart';
-import 'package:suriota_mobile_gateway/screen/devices/device_communication/device_communications_screen.dart';
 
 class FormSetupDeviceScreen extends StatefulWidget {
   final int? id;
@@ -82,6 +82,11 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
     });
   }
 
+  void backNTimes(int n) {
+    int count = 0;
+    Get.until((route) => count++ == n);
+  }
+
   String? _validateRTUFields() {
     if (modBusSelected == 'RTU') {
       if (selectedBaudRate == null) return 'Baudrate is required';
@@ -110,69 +115,29 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
       return;
     }
 
-    Get.bottomSheet(
-      Container(
-        padding: AppPadding.medium,
-        decoration: const BoxDecoration(
-          color: AppColor.whiteColor,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: Wrap(
-          children: [
-            Center(
-              child: Column(
-                children: [
-                  Text(
-                    "Are you sure?",
-                    style: FontFamily.headlineLarge,
-                  ),
-                  AppSpacing.sm,
-                  Text(
-                      "Are you sure you want to ${widget.id != null ? 'update' : 'save'} this device?",
-                      style: FontFamily.normal),
-                  AppSpacing.md,
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Button(
-                            onPressed: () =>
-                                Navigator.of(Get.overlayContext!).pop(),
-                            text: "No",
-                            btnColor: AppColor.grey),
-                      ),
-                      AppSpacing.md,
-                      Expanded(
-                        child: Button(
-                          onPressed: () async {
-                            Get.back();
-                            try {
-                              final sendDataDelimiter =
-                                  _buildSendDataDelimiter();
-                              debugPrint('Sending command: $sendDataDelimiter');
-                              bleController.sendCommand(
-                                  sendDataDelimiter, 'devices');
-
-                              await Future.delayed(const Duration(seconds: 3));
-                              Get.to(() => const DeviceCommunicationsScreen());
-                            } catch (e) {
-                              debugPrint('Error submitting form: $e');
-                              Get.snackbar(
-                                  'Error', 'Failed to submit form: $e');
-                            }
-                          },
-                          text: "Yes",
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-      isDismissible: false,
-      enableDrag: false,
+    CustomAlertDialog.show(
+      title: "Are you sure?",
+      message:
+          "Are you sure you want to ${widget.id != null ? 'update' : 'save'} this device?",
+      primaryButtonText: 'Yes',
+      secondaryButtonText: 'No',
+      onPrimaryPressed: () async {
+        Get.back();
+        await Future.delayed(const Duration(seconds: 1));
+        print('route sekarang ${Get.routing.current}');
+        print('route sebelum ${Get.routing.previous}');
+        try {
+          final sendDataDelimiter = _buildSendDataDelimiter();
+          bleController.sendCommand(sendDataDelimiter, 'devices');
+        } catch (e) {
+          debugPrint('Error submitting form: $e');
+          Get.snackbar('Error', 'Failed to submit form: $e');
+        } finally {
+          await Future.delayed(const Duration(seconds: 3));
+          backNTimes(1);
+        }
+      },
+      barrierDismissible: false,
     );
   }
 
