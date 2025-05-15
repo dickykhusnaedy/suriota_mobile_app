@@ -46,7 +46,7 @@ class CustomButton extends StatelessWidget {
 
 class Button extends StatelessWidget {
   final void Function()? onPressed;
-  final String text;
+  final String? text;
   final TextStyle? customStyle;
   final Color? btnColor;
   final double? width;
@@ -56,7 +56,7 @@ class Button extends StatelessWidget {
   const Button(
       {super.key,
       required this.onPressed,
-      required this.text,
+      this.text,
       this.customStyle,
       this.btnColor,
       this.width,
@@ -80,13 +80,14 @@ class Button extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               icons ?? const SizedBox(),
-              icons != null ? AppSpacing.sm : const SizedBox(),
-              Text(
-                text,
-                style: customStyle ??
-                    FontFamily.headlineMedium
-                        .copyWith(color: AppColor.whiteColor),
-              ),
+              icons != null && text != null ? AppSpacing.sm : const SizedBox(),
+              if (text != null)
+                Text(
+                  text!,
+                  style: customStyle ??
+                      FontFamily.headlineMedium
+                          .copyWith(color: AppColor.whiteColor),
+                ),
             ],
           )),
     );
