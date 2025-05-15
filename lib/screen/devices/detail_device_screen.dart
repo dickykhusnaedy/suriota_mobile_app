@@ -10,6 +10,7 @@ import 'package:suriota_mobile_gateway/global/utils/helper.dart';
 import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_button.dart';
 import 'package:suriota_mobile_gateway/global/widgets/device_card.dart';
+import 'package:suriota_mobile_gateway/global/widgets/loading_overlay.dart';
 import 'package:suriota_mobile_gateway/screen/devices/detail_device_info_screen.dart';
 import 'package:suriota_mobile_gateway/screen/devices/device_communication/device_communications_screen.dart';
 import 'package:suriota_mobile_gateway/screen/devices/logging_config/form_logging_config_screen.dart';
@@ -29,6 +30,29 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
   final DevicePaginationController controller =
       Get.put(DevicePaginationController());
 
+  final List<Map<String, dynamic>> menuItems = [
+    {
+      "text": "Device Communication",
+      "imagePath": ImageAsset.iconDevice,
+      "page": const DeviceCommunicationsScreen()
+    },
+    {
+      "text": "Modbus Configurations",
+      "imagePath": ImageAsset.iconConfig,
+      "page": const ModbusScreen()
+    },
+    {
+      "text": "Server Configurations",
+      "imagePath": ImageAsset.iconServer,
+      "page": const FormConfigServer()
+    },
+    {
+      "text": "Logging Configurations",
+      "imagePath": ImageAsset.iconLogging,
+      "page": const FormLoggingConfigScreen()
+    },
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -47,44 +71,30 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final List<Map<String, dynamic>> menuItems = [
-      {
-        "text": "Device Communication",
-        "imagePath": ImageAsset.iconDevice,
-        "page": const DeviceCommunicationsScreen()
-      },
-      {
-        "text": "Modbus Configurations",
-        "imagePath": ImageAsset.iconConfig,
-        "page": const ModbusScreen()
-      },
-      {
-        "text": "Server Configurations",
-        "imagePath": ImageAsset.iconServer,
-        "page": const FormConfigServer()
-      },
-      {
-        "text": "Logging Configurations",
-        "imagePath": ImageAsset.iconLogging,
-        "page": const FormLoggingConfigScreen()
-      },
-    ];
-
-    return Scaffold(
-      appBar: _appBar(context, widget.device.platformName),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: AppPadding.horizontalMedium,
-          child: _bodyContent(context, menuItems),
+    return Stack(
+      children: [
+        Scaffold(
+          appBar: _appBar(context, widget.device.platformName),
+          body: SafeArea(
+            child: SingleChildScrollView(
+              padding: AppPadding.horizontalMedium,
+              child: _bodyContent(context),
+            ),
+          ),
         ),
-      ),
+        Obx(() {
+          final isAnyDeviceLoading = bleController.isLoading.value;
+          return LoadingOverlay(
+            isLoading: isAnyDeviceLoading,
+            message: 'Processing request...',
+          );
+        }),
+      ],
     );
   }
 
-  Column _bodyContent(
-      BuildContext context, List<Map<String, dynamic>> menuItems) {
+  Column _bodyContent(BuildContext context) {
     double screenWidth = MediaQuery.of(context).size.width;
-    final BLEController bleController = Get.put(BLEController());
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -145,8 +155,7 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
                   child: Button(
                       width: double.infinity,
                       onPressed: () async {
-                        await bleController
-                            .showDisconnectedBottomSheet(widget.device);
+                        await bleController.disconnectDevice(widget.device);
                       },
                       text: isLoadingConnection
                           ? "Disconnecting..."
