@@ -5,13 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:get/get.dart';
 import 'package:suriota_mobile_gateway/constant/app_color.dart';
-import 'package:suriota_mobile_gateway/constant/app_gap.dart';
 import 'package:suriota_mobile_gateway/constant/font_setup.dart';
 import 'package:suriota_mobile_gateway/controller/device_data_controller.dart';
 import 'package:suriota_mobile_gateway/controller/device_pagination_controller.dart';
 import 'package:suriota_mobile_gateway/controller/modbus_pagination_controller.dart';
 import 'package:suriota_mobile_gateway/global/utils/helper.dart';
-import 'package:suriota_mobile_gateway/global/widgets/custom_button.dart';
+import 'package:suriota_mobile_gateway/global/widgets/custom_alert_dialog.dart';
 import 'package:suriota_mobile_gateway/screen/devices/detail_device_screen.dart';
 import 'package:suriota_mobile_gateway/screen/home/home_screen.dart';
 
@@ -181,15 +180,24 @@ class BLEController extends GetxController {
     setLoadingStatus(deviceId, true);
 
     try {
-      await device.disconnect();
+      await device.disconnect().timeout(const Duration(seconds: 5),
+          onTimeout: () {
+        throw TimeoutException("Disconnect took too long");
+      });
+
       _connectionStatus[deviceId] = false;
       _isConnected[deviceId] = false;
+
       _notifyStatus("Disconnected from $deviceName.");
     } catch (e) {
       AppHelpers.debugLog("Failed to disconnect: $e");
-      _notifyStatus("Failed to disconnect the device: $deviceName");
+
+      _connectionStatus[deviceId] = false; // Pastikan state konsisten
+      _isConnected[deviceId] = false;
+
+      _notifyStatus("Failed to disconnect the device $deviceName: $e");
     } finally {
-      setLoadingStatus(deviceId, false);
+      await Future.microtask(() => setLoadingStatus(deviceId, false));
     }
   }
 
@@ -650,112 +658,31 @@ class BLEController extends GetxController {
   }
 
   void showConnectedBottomSheet(BluetoothDevice device) {
-    Get.bottomSheet(
-      Container(
-        padding: AppPadding.medium,
-        decoration: const BoxDecoration(
-          color: AppColor.whiteColor,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: Wrap(
-          children: [
-            Center(
-              child: Column(
-                children: [
-                  Text(
-                    "Device Connected",
-                    style: FontFamily.headlineLarge,
-                  ),
-                  AppSpacing.sm,
-                  Text(
-                      "Do you want to open device (${device.platformName.isNotEmpty ? device.platformName : device.remoteId.toString()}) page detail?",
-                      style: FontFamily.normal),
-                  AppSpacing.md,
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Button(
-                            onPressed: () =>
-                                Navigator.of(Get.overlayContext!).pop(),
-                            text: "No",
-                            btnColor: AppColor.grey),
-                      ),
-                      AppSpacing.md,
-                      Expanded(
-                        child: Button(
-                          onPressed: () {
-                            Navigator.of(Get.overlayContext!).pop();
-                            Get.to(() => DetailDeviceScreen(device: device));
-                          },
-                          text: "Yes",
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-      isDismissible: false,
-      enableDrag: false,
+    CustomAlertDialog.show(
+      title: "Device Connected",
+      message:
+          "Do you want to open device (${device.platformName.isNotEmpty ? device.platformName : device.remoteId.toString()}) page detail?",
+      primaryButtonText: 'Yes',
+      secondaryButtonText: 'No',
+      onPrimaryPressed: () => Get.to(() => DetailDeviceScreen(device: device)),
+      barrierDismissible: false,
     );
   }
 
-  Future<void> showDisconnectedBottomSheet(BluetoothDevice device) async {
+  void showDisconnectedBottomSheet(BluetoothDevice device) {
     final deviceName = device.platformName.isNotEmpty
         ? device.platformName
         : device.remoteId.toString();
 
-    Get.bottomSheet(
-      Container(
-        padding: AppPadding.medium,
-        decoration: const BoxDecoration(
-          color: AppColor.whiteColor,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: Wrap(
-          children: [
-            Center(
-              child: Column(
-                children: [
-                  Text(
-                    "Disconnect Device",
-                    style: FontFamily.headlineLarge,
-                  ),
-                  AppSpacing.sm,
-                  Text("Do you want to disconnect the device ($deviceName)?",
-                      style: FontFamily.normal),
-                  AppSpacing.md,
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Button(
-                            onPressed: () =>
-                                Navigator.of(Get.overlayContext!).pop(),
-                            text: "No",
-                            btnColor: AppColor.grey),
-                      ),
-                      AppSpacing.md,
-                      Expanded(
-                        child: Button(
-                          onPressed: () async {
-                            await disconnectDeviceWithRedirect(device);
-                          },
-                          text: "Yes",
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-      isDismissible: false,
-      enableDrag: false,
+    CustomAlertDialog.show(
+      title: "Disconnect Device?",
+      message: "Do you want to disconnect the device ($deviceName)?",
+      primaryButtonText: 'Yes',
+      secondaryButtonText: 'No',
+      onPrimaryPressed: () async {
+        await disconnectDevice(device);
+      },
+      barrierDismissible: false,
     );
   }
 
