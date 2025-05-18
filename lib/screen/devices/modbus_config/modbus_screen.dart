@@ -3,8 +3,11 @@ import 'package:get/get.dart';
 import 'package:suriota_mobile_gateway/constant/app_color.dart';
 import 'package:suriota_mobile_gateway/constant/app_gap.dart';
 import 'package:suriota_mobile_gateway/controller/ble_controller.dart';
+import 'package:suriota_mobile_gateway/controller/device_pagination_controller.dart';
 import 'package:suriota_mobile_gateway/controller/modbus_pagination_controller.dart';
 import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
+import 'package:suriota_mobile_gateway/global/widgets/custom_alert_dialog.dart';
+import 'package:suriota_mobile_gateway/global/widgets/custom_button.dart';
 import 'package:suriota_mobile_gateway/screen/devices/modbus_config/form_modbus_config_screen.dart';
 
 class ModbusScreen extends StatefulWidget {
@@ -16,22 +19,34 @@ class ModbusScreen extends StatefulWidget {
 
 class _ModbusScreenState extends State<ModbusScreen> {
   final BLEController bleController = Get.put(BLEController(), permanent: true);
+  final DevicePaginationController controllerDevice =
+      Get.put(DevicePaginationController(), permanent: true);
   final ModbusPaginationController controller =
       Get.put(ModbusPaginationController(), permanent: true);
+
   bool isLoading = false;
   bool isInitialized = false;
 
   @override
   void initState() {
     super.initState();
-    debugPrint('initState called');
-    // Panggil fetchDevices sekali setelah widget dirender
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!isInitialized) {
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!isInitialized) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
         _fetchDataModbus();
         isInitialized = true;
-      }
-    });
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    isInitialized = false;
+    super.dispose();
   }
 
   void _fetchDataModbus() async {
@@ -58,6 +73,41 @@ class _ModbusScreenState extends State<ModbusScreen> {
     } finally {
       setState(() => isLoading = false);
     }
+  }
+
+  void _deleteConfigModbus(int modbusId) async {
+    if (bleController.isConnected.isEmpty ||
+        !bleController.isConnected.values.any((connected) => connected)) {
+      Get.snackbar('Error', 'No BLE device connected');
+      return;
+    }
+
+    CustomAlertDialog.show(
+      title: "Are you sure?",
+      message: "Are you sure you want to delete this config?",
+      primaryButtonText: 'Yes',
+      secondaryButtonText: 'No',
+      onPrimaryPressed: () async {
+        setState(() => isLoading = true);
+
+        Get.back();
+        await Future.delayed(const Duration(seconds: 1));
+
+        try {
+          bleController.sendCommand('DELETE|modbus|id:$modbusId', 'modbus');
+        } catch (e) {
+          debugPrint('Error deleting config modbus: $e');
+
+          Get.snackbar('Error', 'Failed to delete device: $e');
+        } finally {
+          await Future.delayed(const Duration(milliseconds: 300));
+          bleController.sendCommand('READ|modbus|page:1|pageSize:10', 'modbus');
+
+          setState(() => isLoading = false);
+        }
+      },
+      barrierDismissible: false,
+    );
   }
 
   Container _loadingProgress(BuildContext context) {
@@ -102,12 +152,30 @@ class _ModbusScreenState extends State<ModbusScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               AppSpacing.md,
-              Text(
-                'Modbus Config',
-                style: context.h5,
-                overflow: TextOverflow.ellipsis,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Modbus Config',
+                    style: context.h5,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  TextButton.icon(
+                    onPressed: _fetchDataModbus,
+                    label: const Icon(
+                      Icons.rotate_left,
+                      size: 20,
+                    ),
+                    style: TextButton.styleFrom(
+                      iconColor: AppColor.primaryColor,
+                      padding: EdgeInsets.zero,
+                      minimumSize: const Size(50, 30),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                  ),
+                ],
               ),
-              AppSpacing.md,
+              AppSpacing.sm,
               Obx(() {
                 if (isLoading || bleController.isLoading.value) {
                   return _loadingProgress(context);
@@ -121,7 +189,7 @@ class _ModbusScreenState extends State<ModbusScreen> {
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: controller.modbus.length,
-                    separatorBuilder: (context, index) => AppSpacing.sm,
+                    separatorBuilder: (context, index) => AppSpacing.md,
                     itemBuilder: (context, int index) {
                       final item = controller.modbus[index];
 
@@ -161,10 +229,21 @@ class _ModbusScreenState extends State<ModbusScreen> {
       actions: [
         IconButton(
             onPressed: () {
-              Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => const FormModbusConfigScreen()));
+              if (controllerDevice.devices.isEmpty) {
+                Get.snackbar(
+                  '', // Empty title
+                  'To get started, please add or load your device data on the Device screen before setting up Modbus.',
+                  titleText: const SizedBox.shrink(),
+                  snackPosition: SnackPosition.BOTTOM,
+                  backgroundColor: AppColor.redColor,
+                  colorText: AppColor.whiteColor,
+                  borderRadius: 8.0,
+                  margin: const EdgeInsets.all(16.0),
+                  padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 16.0),
+                );
+                return;
+              }
+              Get.to(() => const FormModbusConfigScreen());
             },
             icon: const Icon(
               Icons.add_circle,
@@ -213,6 +292,58 @@ class _ModbusScreenState extends State<ModbusScreen> {
               'Data Type : ${modbus['data_type']}',
               style: context.bodySmall,
             ),
+            AppSpacing.sm,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  flex: 1,
+                  child: Button(
+                    width: double.infinity,
+                    height: 32,
+                    onPressed: () => _deleteConfigModbus(modbus['id']),
+                    icons: const Icon(
+                      Icons.delete,
+                      size: 18,
+                      color: AppColor.whiteColor,
+                    ),
+                    btnColor: AppColor.redColor,
+                  ),
+                ),
+                AppSpacing.md,
+                Flexible(
+                  flex: 1,
+                  child: Button(
+                    width: double.infinity,
+                    height: 32,
+                    onPressed: () {
+                      if (controllerDevice.devices.isEmpty) {
+                        Get.snackbar(
+                          '', // Empty title
+                          'To get started, please add or load your device data on the Device screen before setting up Modbus.',
+                          titleText: const SizedBox.shrink(),
+                          snackPosition: SnackPosition.BOTTOM,
+                          backgroundColor: AppColor.redColor,
+                          colorText: AppColor.whiteColor,
+                          borderRadius: 8.0,
+                          margin: const EdgeInsets.all(16.0),
+                          padding:
+                              const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 16.0),
+                        );
+                        return;
+                      }
+                      Get.to(() => const FormModbusConfigScreen());
+                    },
+                    icons: const Icon(
+                      Icons.edit,
+                      size: 18,
+                      color: AppColor.whiteColor,
+                    ),
+                  ),
+                )
+              ],
+            )
           ],
         ),
       ),
