@@ -23,6 +23,7 @@ class _DeviceCommunicationsScreenState
     extends State<DeviceCommunicationsScreen> {
   final BLEController bleController;
   final DevicePaginationController controller;
+
   bool isLoading = false;
   bool isInitialized = false;
 
@@ -36,14 +37,23 @@ class _DeviceCommunicationsScreenState
   @override
   void initState() {
     super.initState();
-    debugPrint('initState called');
-    // Panggil fetchDevices sekali setelah widget dirender
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!isInitialized) {
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!isInitialized) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
         _fetchDevices();
         isInitialized = true;
-      }
-    });
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    isInitialized = false;
+    super.dispose();
   }
 
   void _fetchDevices() async {
@@ -109,11 +119,6 @@ class _DeviceCommunicationsScreenState
   }
 
   @override
-  void dispose() {
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: _appBar(context),
@@ -135,6 +140,12 @@ class _DeviceCommunicationsScreenState
       ),
       iconTheme: const IconThemeData(color: AppColor.whiteColor),
       backgroundColor: AppColor.primaryColor,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back),
+        onPressed: () {
+          Get.back();
+        },
+      ),
       actions: [
         IconButton(
           onPressed: () {
@@ -169,8 +180,10 @@ class _DeviceCommunicationsScreenState
                 size: 20,
               ),
               style: TextButton.styleFrom(
-                iconColor: AppColor.primaryColor,
-              ),
+                  iconColor: AppColor.primaryColor,
+                  padding: EdgeInsets.zero,
+                  minimumSize: const Size(50, 30),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap),
             ),
           ],
         ),
