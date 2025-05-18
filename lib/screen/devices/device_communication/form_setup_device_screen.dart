@@ -35,7 +35,6 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
   String? selectedBitData;
   String? selectedParity;
   String? selectedStopBit;
-  bool isFetching = false;
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
@@ -78,13 +77,17 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
         selectedParity = device['parity'];
         selectedStopBit = device['stop_bits']?.toString();
       }
-      isFetching = false;
     });
   }
 
   void backNTimes(int n) {
+    if (n <= 0) {
+      return;
+    }
     int count = 0;
-    Get.until((route) => count++ == n);
+    Get.until((route) {
+      return count++ == n;
+    });
   }
 
   String? _validateRTUFields() {
@@ -124,8 +127,7 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
       onPrimaryPressed: () async {
         Get.back();
         await Future.delayed(const Duration(seconds: 1));
-        print('route sekarang ${Get.routing.current}');
-        print('route sebelum ${Get.routing.previous}');
+
         try {
           final sendDataDelimiter = _buildSendDataDelimiter();
           bleController.sendCommand(sendDataDelimiter, 'devices');
