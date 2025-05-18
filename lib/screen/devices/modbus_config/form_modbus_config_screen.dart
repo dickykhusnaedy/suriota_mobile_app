@@ -4,15 +4,15 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:suriota_mobile_gateway/constant/app_color.dart';
 import 'package:suriota_mobile_gateway/constant/app_gap.dart';
-import 'package:suriota_mobile_gateway/constant/font_setup.dart';
 import 'package:suriota_mobile_gateway/controller/ble_controller.dart';
 import 'package:suriota_mobile_gateway/controller/device_pagination_controller.dart';
+import 'package:suriota_mobile_gateway/controller/modbus_pagination_controller.dart';
 import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
+import 'package:suriota_mobile_gateway/global/widgets/custom_alert_dialog.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_button.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_dropdown.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_textfield.dart';
 import 'package:suriota_mobile_gateway/global/widgets/loading_overlay.dart';
-import 'package:suriota_mobile_gateway/screen/devices/modbus_config/modbus_screen.dart';
 
 class FormModbusConfigScreen extends StatefulWidget {
   final int? id;
@@ -27,6 +27,10 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
   final BLEController bleController = Get.put(BLEController(), permanent: true);
   final DevicePaginationController controller =
       Get.put(DevicePaginationController(), permanent: true);
+  final ModbusPaginationController controllerModbus =
+      Get.put(ModbusPaginationController(), permanent: true);
+
+  Map<String, dynamic> dataModbus = {};
   bool isLoading = false;
   bool isInitialized = false;
 
@@ -56,11 +60,31 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
   @override
   void initState() {
     super.initState();
+
+    if (widget.id != null) {
+      dataModbus = controllerModbus.modbus
+          .firstWhere((item) => item['id'] == widget.id, orElse: () => {});
+
+      _fillFormFromDevice(dataModbus);
+    }
+    print('data modbus $dataModbus');
   }
 
   int? _tryParseInt(String? value, {int? defaultValue}) {
     if (value == null || value.isEmpty) return defaultValue;
     return int.tryParse(value) ?? defaultValue;
+  }
+
+  void _fillFormFromDevice(Map<String, dynamic> modbus) {
+    deviceNameController.text = modbus['name'];
+    addressController.text = modbus['address'];
+    idSlaveController.text = modbus['id'].toString();
+
+    setState(() {
+      selectedDevice = modbus['device_choose'];
+      selectedFunction = modbus['function_code'];
+      selectedTypeData = modbus['data_type'];
+    });
   }
 
   String _formData() {
@@ -77,6 +101,18 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
     return 'CREATE|modbus|name:$name|device_choose:$device|data_type:$type|address:$address|function_code:$function';
   }
 
+  void backNTimes(int n) {
+    if (n <= 0) {
+      debugPrint('Nilai n tidak valid: $n');
+      return;
+    }
+    int count = 0;
+    Get.until((route) {
+      debugPrint('Route dilewati: ${route.settings.name ?? route.toString()}');
+      return count++ == n;
+    });
+  }
+
   void _submit() async {
     // Validasi form
     if (!_formKey.currentState!.validate()) return;
@@ -89,67 +125,28 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
     }
 
     // Konfirmasi sebelum submit
-    Get.bottomSheet(
-      Container(
-        padding: AppPadding.medium,
-        decoration: const BoxDecoration(
-          color: AppColor.whiteColor,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: Wrap(
-          children: [
-            Center(
-              child: Column(
-                children: [
-                  Text(
-                    "Are you sure?",
-                    style: FontFamily.headlineLarge,
-                  ),
-                  AppSpacing.sm,
-                  Text("Are you sure you want to save this modbus config?",
-                      style: FontFamily.normal),
-                  AppSpacing.md,
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Button(
-                            onPressed: () =>
-                                Navigator.of(Get.overlayContext!).pop(),
-                            text: "No",
-                            btnColor: AppColor.grey),
-                      ),
-                      AppSpacing.md,
-                      Expanded(
-                        child: Button(
-                          onPressed: () async {
-                            Get.back();
-                            try {
-                              final sendDataDelimiter = _formData();
-                              debugPrint('Sending command: $sendDataDelimiter');
-                              bleController.sendCommand(
-                                  sendDataDelimiter, 'modbus');
+    CustomAlertDialog.show(
+      title: "Are you sure?",
+      message:
+          "Are you sure you want to ${widget.id != null ? 'update' : 'save'} this modbus config?",
+      primaryButtonText: 'Yes',
+      secondaryButtonText: 'No',
+      onPrimaryPressed: () async {
+        Get.back();
+        await Future.delayed(const Duration(seconds: 1));
 
-                              await Future.delayed(const Duration(seconds: 3));
-                              Get.to(() => const ModbusScreen());
-                            } catch (e) {
-                              debugPrint('Error submitting form: $e');
-                              Get.snackbar(
-                                  'Error', 'Failed to submit form: $e');
-                            }
-                          },
-                          text: "Yes",
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-      isDismissible: false,
-      enableDrag: false,
+        try {
+          final sendDataDelimiter = _formData();
+          bleController.sendCommand(sendDataDelimiter, 'modbus');
+        } catch (e) {
+          debugPrint('Error submitting form: $e');
+          Get.snackbar('Error', 'Failed to submit form: $e');
+        } finally {
+          await Future.delayed(const Duration(seconds: 3));
+          backNTimes(1);
+        }
+      },
+      barrierDismissible: false,
     );
   }
 
@@ -216,7 +213,7 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
                 keyboardType: TextInputType.number,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Data Name is required';
+                    return 'ID Slave is required';
                   }
                   return null;
                 },
