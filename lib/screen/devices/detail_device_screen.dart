@@ -5,7 +5,6 @@ import 'package:suriota_mobile_gateway/constant/app_color.dart';
 import 'package:suriota_mobile_gateway/constant/app_gap.dart';
 import 'package:suriota_mobile_gateway/constant/image_asset.dart';
 import 'package:suriota_mobile_gateway/controller/ble_controller.dart';
-import 'package:suriota_mobile_gateway/controller/device_pagination_controller.dart';
 import 'package:suriota_mobile_gateway/global/utils/helper.dart';
 import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_button.dart';
@@ -27,8 +26,24 @@ class DetailDeviceScreen extends StatefulWidget {
 
 class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
   final BLEController bleController = Get.put(BLEController());
-  final DevicePaginationController controller =
-      Get.put(DevicePaginationController());
+
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    ever(bleController.connectionStatus, (Map<String, bool> status) {
+      final isConnected = status[widget.device.remoteId.toString()] ?? false;
+      AppHelpers.debugLog('is connect $isConnected');
+
+      if (!isConnected && Get.isOverlaysOpen) {
+        Get.back();
+      }
+    });
+  }
 
   final List<Map<String, dynamic>> menuItems = [
     {
@@ -52,22 +67,6 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
       "page": const FormLoggingConfigScreen()
     },
   ];
-
-  @override
-  void initState() {
-    super.initState();
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ever(bleController.connectionStatus, (Map<String, bool> status) {
-        final isConnected = status[widget.device.remoteId.toString()] ?? false;
-        AppHelpers.debugLog('is connect $isConnected');
-
-        if (!isConnected && Get.isOverlaysOpen) {
-          Get.back();
-        }
-      });
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
