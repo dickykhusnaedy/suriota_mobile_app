@@ -29,7 +29,7 @@ class DeviceListWidget extends StatelessWidget {
     return InkWell(
       onTap: () {
         if (!isConnected) {
-          bleController.showSnackbar(
+          BLEUtils.showSnackbar(
               '',
               'Device is not connected, please connect the device first.',
               AppColor.redColor,
