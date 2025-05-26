@@ -40,7 +40,7 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
     if (isBluetoothOn) {
       bleController.scanDevice();
     } else {
-      bleController.showSnackbar(
+      BLEUtils.showSnackbar(
           'Bluetooth is off',
           'Please enable Bluetooth to scan devices.',
           AppColor.redColor,
