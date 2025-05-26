@@ -68,7 +68,8 @@ class _DeviceCommunicationsScreenState
       // Periksa koneksi BLE
       if (bleController.isConnected.isEmpty ||
           !bleController.isConnected.values.any((connected) => connected)) {
-        Get.snackbar('Error', 'No BLE device connected');
+        BLEUtils.showSnackbar('Error', 'No BLE device connected',
+            AppColor.redColor, AppColor.whiteColor);
         setState(() => isLoading = false);
         return;
       }
@@ -76,7 +77,8 @@ class _DeviceCommunicationsScreenState
       bleController.sendCommand('READ|devices|page:1|pageSize:10', 'devices');
     } catch (e) {
       debugPrint('Error fetching devices: $e');
-      Get.snackbar('Error', 'Failed to fetch devices: $e');
+      BLEUtils.showSnackbar('Error', 'Failed to fetch devices: $e',
+          AppColor.redColor, AppColor.whiteColor);
     } finally {
       setState(() => isLoading = false);
     }
