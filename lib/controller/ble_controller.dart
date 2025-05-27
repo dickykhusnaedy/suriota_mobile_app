@@ -40,6 +40,7 @@ class BLEController extends GetxController {
   final BLEScanner scanner;
   final BLEConnectionManager connectionManager;
   final BLEDataProcessor dataProcessor;
+  Completer<Map<String, dynamic>>? _dataCompleter; // Untuk fetchData
 
   // Constructor
   BLEController()
@@ -96,15 +97,74 @@ class BLEController extends GetxController {
   Future<void> resetBleConnectionsOnly() =>
       connectionManager.resetBleConnectionsOnly();
 
-  // Send command with null check
-  void sendCommand(String command, String dataType) {
-    // ignore: unnecessary_null_comparison
-    if (dataProcessor == null) {
-      _notifyStatus("Data processor not initialized.");
-      AppHelpers.debugLog("Error: dataProcessor is null in sendCommand");
+  // Baru: Fetch data dengan Future
+  Future<Map<String, dynamic>> fetchData(
+      String command, String dataType) async {
+    _dataCompleter = Completer<Map<String, dynamic>>();
+    dataProcessor.setCompleter(_dataCompleter!); // Set Completer di processor
+    sendCommand(command, dataType);
+    return await _dataCompleter!.future.timeout(Duration(seconds: 30),
+        onTimeout: () {
+      _notifyStatus("Timeout waiting for data");
+      throw TimeoutException("Failed to fetch data");
+    });
+  }
+
+  void sendCommand(String commandString, String dataType) async {
+    _startLoading();
+    if (_writeChar == null || _notifyChar == null) {
+      _notifyStatus("Missing write/notify characteristic");
+      _stopLoading();
+      AppHelpers.debugLog("Missing write/notify characteristic");
       return;
     }
-    dataProcessor.sendCommand(command, dataType);
+
+    try {
+      bool isNotifying = await _notifyChar!.isNotifying;
+      if (!isNotifying) {
+        await _notifyChar!.setNotifyValue(true);
+        await Future.delayed(const Duration(milliseconds: 4000));
+        AppHelpers.debugLog("Re-enabled notifications before sending command");
+      }
+    } catch (e) {
+      AppHelpers.debugLog("Failed to enable notifications: $e");
+      _notifyStatus("Failed to enable notifications");
+      _stopLoading();
+      return;
+    }
+
+    try {
+      if (!commandString.endsWith('#')) {
+        commandString += '#';
+      }
+      dataProcessor._lastCommandDataType = dataType;
+      dataProcessor._lastCommand = commandString;
+      dataProcessor._retryCount = 0;
+      dataProcessor._packetBuffer.clear();
+      dataProcessor._packetQueue.clear();
+      updateProgress(0, 1);
+      final bytes = utf8.encode(commandString);
+      final mtu = await _writeChar!.device.mtu.first ?? 20;
+      AppHelpers.debugLog("MTU: $mtu");
+
+      for (int offset = 0; offset < bytes.length; offset += mtu) {
+        final chunk = bytes.sublist(
+          offset,
+          offset + mtu > bytes.length ? bytes.length : offset + mtu,
+        );
+        await _writeChar!
+            .write(chunk, withoutResponse: false)
+            .timeout(const Duration(seconds: 10));
+        await Future.delayed(Duration(milliseconds: mtu < 50 ? 500 : 100));
+      }
+      print("Command sent: $commandString");
+      AppHelpers.debugLog("Sent command: $commandString, MTU: $mtu");
+    } catch (e) {
+      AppHelpers.debugLog("Failed to send command: $e");
+      _notifyStatus("Failed to send command");
+    } finally {
+      _stopLoading();
+    }
   }
 
   // Reset BLE state
@@ -417,6 +477,7 @@ class BLEConnectionManager {
 class BLEDataProcessor {
   // Reference to BLEController, non-final to allow setting after initialization
   BLEController? controller;
+  Completer<Map<String, dynamic>>? _completer; // Baru: Untuk fetchData
   final Map<int, String> _packetBuffer = {};
   final _packetQueue = <String>[];
   bool _isProcessingQueue = false;
@@ -433,6 +494,11 @@ class BLEDataProcessor {
   static const int _secondsPerPacketBatch = 1;
 
   BLEDataProcessor();
+
+// Baru: Set Completer
+  void setCompleter(Completer<Map<String, dynamic>> completer) {
+    _completer = completer;
+  }
 
   // Reset internal state for packet processing
   void resetState() {
@@ -613,9 +679,59 @@ class BLEDataProcessor {
   // Process complete message
   Future<void> _processCompleteMessage(String message) async {
     final tempBuffer = Map<int, String>.from(_packetBuffer);
-    _processMessage(message);
-    _resetPacketBuffer();
     print("📜 Processed message: $message, Previous buffer: $tempBuffer");
+
+    try {
+      // Handle non-JSON response
+      if (message == 'No records available') {
+        print("📢 No records available");
+        AppHelpers.debugLog("No records available in response");
+        controller!._notifyStatus("No records available.");
+        _completer?.complete({"data": [], "message": "No records available"});
+        _completer = null;
+        return;
+      }
+
+      if (message.isEmpty) {
+        print("📢 Empty message received");
+        AppHelpers.debugLog("Received empty message");
+        controller!._notifyStatus("Received empty message.");
+        _completer?.complete({"data": [], "message": "Empty message"});
+        _completer = null;
+        return;
+      }
+
+      final json = jsonDecode(message);
+      if (json is List<dynamic>) {
+        // Handle array string response like ["test"]
+        print("⚠️ Received array response: $json");
+        AppHelpers.debugLog("Received array: $json");
+        final convertedData =
+            json.map((item) => {"name": item.toString()}).toList();
+        final response = {
+          "data": convertedData,
+          "page": 1,
+          "pageSize": 5,
+          "totalRecords": json.length,
+          "totalPages": 1,
+          "message": "Array response converted"
+        };
+        controller!._notifyStatus("Get data successfully!");
+        _completer?.complete(response);
+        _completer = null;
+        _resetPacketBuffer();
+        return;
+      }
+
+      // Process Map<String, dynamic> responses
+      await _processMessage(message);
+      _resetPacketBuffer();
+    } catch (e) {
+      controller!._notifyStatus("Gagal memproses pesan: $e");
+      _completer?.complete({"data": [], "message": ""});
+      _completer = null;
+      return;
+    }
   }
 
   // Check if all packets are received
@@ -641,57 +757,6 @@ class BLEDataProcessor {
   // Generate a unique message ID
   String _generateMessageId(int totalPackets) {
     return "${DateTime.now().millisecondsSinceEpoch}_$totalPackets";
-  }
-
-  // Process partial message
-  void _processPartialMessage() {
-    if (_packetBuffer.isEmpty) {
-      print("⚠️ No packets to process");
-      controller!._notifyStatus("Tidak ada data diterima, coba lagi");
-      return;
-    }
-
-    final missingIndices = _getMissingIndices();
-    print(
-        "🧩 Current buffer: ${(_packetBuffer.keys.toList()..sort())} / $_expectedPackets (Missing: $missingIndices)");
-    AppHelpers.debugLog("Missing packets: $missingIndices");
-
-    if (_retryCount < _maxRetries && _lastCommand != null) {
-      _retryCount++;
-      print("🔄 Retrying command ($_retryCount/$_maxRetries): $_lastCommand");
-      AppHelpers.debugLog(
-          "Retrying command: $_lastCommand, attempt $_retryCount");
-      _resetPacketBuffer();
-      controller!._notifyStatus(
-          "Data tidak lengkap 2, mencoba ulang ($_retryCount/$_maxRetries)...");
-      sendCommand(_lastCommand!, _lastCommandDataType ?? 'device');
-      return;
-    }
-
-    final message = _assembleMessage();
-    print(
-        "⚠️ Processing partial message (${_packetBuffer.length}/$_expectedPackets)");
-
-    if (message.isEmpty || message.length < 50) {
-      print("❌ Partial message too short or empty");
-      controller!._notifyStatus("Data tidak lengkap, gagal memuat");
-      _resetPacketBuffer();
-      return;
-    }
-
-    try {
-      if (_isSuccessMessage(message)) {
-        _handleSuccessMessage(message);
-      } else {
-        _processMessage(message);
-      }
-    } catch (e) {
-      print("❌ Failed to process partial message: $e");
-      controller!._notifyStatus("Gagal memproses data, coba lagi");
-      AppHelpers.debugLog("Failed to process partial message: $e");
-    } finally {
-      _resetPacketBuffer();
-    }
   }
 
   // Get missing packet indices
@@ -734,7 +799,7 @@ class BLEDataProcessor {
   }
 
   // Process received message
-  void _processMessage(String message) {
+  Future<void> _processMessage(String message) async {
     try {
       if (_isSuccessMessage(message)) {
         _handleSuccessMessage(message);
