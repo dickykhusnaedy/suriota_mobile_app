@@ -25,14 +25,14 @@ class FormModbusConfigScreen extends StatefulWidget {
 
 class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
   final BLEController bleController = Get.put(BLEController(), permanent: true);
-  final DevicePaginationController controller =
-      Get.put(DevicePaginationController(), permanent: true);
   final ModbusPaginationController controllerModbus =
       Get.put(ModbusPaginationController(), permanent: true);
 
   Map<String, dynamic> dataModbus = {};
   bool isLoading = false;
   bool isInitialized = false;
+  List<String>? deviceNames;
+  String errorMessage = '';
 
   final deviceNameController = TextEditingController();
   final idSlaveController = TextEditingController();
@@ -61,13 +61,51 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
   void initState() {
     super.initState();
 
-    if (widget.id != null) {
-      dataModbus = controllerModbus.modbus
-          .firstWhere((item) => item['id'] == widget.id, orElse: () => {});
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      fetchDataDevices();
 
-      _fillFormFromDevice(dataModbus);
+      if (widget.id != null) {
+        dataModbus = controllerModbus.modbus
+            .firstWhere((item) => item['id'] == widget.id, orElse: () => {});
+
+        _fillFormFromDevice(dataModbus);
+      }
+      print('data modbus $dataModbus');
+    });
+  }
+
+  Future<void> fetchDataDevices() async {
+    setState(() {
+      isLoading = true;
+      errorMessage = '';
+    });
+
+    try {
+      final data =
+          await bleController.fetchData("READ|devices|names", 'devices');
+      print('data devices name: ${data['data']}');
+
+      setState(() {
+        if (data['data'] is List) {
+          deviceNames = (data['data'] as List).map((device) {
+            if (device is Map<String, dynamic>) {
+              return device['name'] as String? ?? 'Unknown';
+            } else if (device is String) {
+              return device; // Langsung gunakan string dari array
+            }
+            return 'Unknown';
+          }).toList();
+        } else {
+          deviceNames = [];
+          errorMessage = 'No devices found';
+        }
+      });
+    } catch (e) {
+      setState(() {
+        errorMessage = 'Failed to load config: $e';
+        isLoading = false;
+      });
     }
-    print('data modbus $dataModbus');
   }
 
   int? _tryParseInt(String? value, {int? defaultValue}) {
@@ -79,6 +117,8 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
     deviceNameController.text = modbus['name'];
     addressController.text = modbus['address'];
     idSlaveController.text = modbus['id'].toString();
+
+    print('Filling form with modbus data: $modbus');
 
     setState(() {
       selectedDevice = modbus['device_choose'];
@@ -162,9 +202,11 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
   Widget build(BuildContext context) {
     List<String> getDeviceNames() {
       // ignore: invalid_use_of_protected_member
-      return controller.devices.value
-          .map((device) => device['name'] as String)
-          .toList();
+      // return controller.devices.value
+      //     .map((device) => device['name'] as String)
+      //     .toList();
+
+      return [];
     }
 
     return Stack(
@@ -225,7 +267,7 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
               ),
               AppSpacing.sm,
               CustomDropdown(
-                listItem: getDeviceNames(),
+                listItem: deviceNames ?? [],
                 hintText: 'Choose device',
                 selectedItem: selectedDevice,
                 onChanged: (value) {
