@@ -19,8 +19,6 @@ class ModbusScreen extends StatefulWidget {
 
 class _ModbusScreenState extends State<ModbusScreen> {
   final BLEController bleController = Get.put(BLEController(), permanent: true);
-  final DevicePaginationController controllerDevice =
-      Get.put(DevicePaginationController(), permanent: true);
   final ModbusPaginationController controller =
       Get.put(ModbusPaginationController(), permanent: true);
 
@@ -229,20 +227,6 @@ class _ModbusScreenState extends State<ModbusScreen> {
       actions: [
         IconButton(
             onPressed: () {
-              if (controllerDevice.devices.isEmpty) {
-                Get.snackbar(
-                  '', // Empty title
-                  'To get started, please add or load your device data on the Device screen before setting up Modbus.',
-                  titleText: const SizedBox.shrink(),
-                  snackPosition: SnackPosition.BOTTOM,
-                  backgroundColor: AppColor.redColor,
-                  colorText: AppColor.whiteColor,
-                  borderRadius: 8.0,
-                  margin: const EdgeInsets.all(16.0),
-                  padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 16.0),
-                );
-                return;
-              }
               Get.to(() => const FormModbusConfigScreen());
             },
             icon: const Icon(
@@ -318,22 +302,7 @@ class _ModbusScreenState extends State<ModbusScreen> {
                     width: double.infinity,
                     height: 32,
                     onPressed: () {
-                      if (controllerDevice.devices.isEmpty) {
-                        Get.snackbar(
-                          '', // Empty title
-                          'To get started, please add or load your device data on the Device screen before setting up Modbus.',
-                          titleText: const SizedBox.shrink(),
-                          snackPosition: SnackPosition.BOTTOM,
-                          backgroundColor: AppColor.redColor,
-                          colorText: AppColor.whiteColor,
-                          borderRadius: 8.0,
-                          margin: const EdgeInsets.all(16.0),
-                          padding:
-                              const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 16.0),
-                        );
-                        return;
-                      }
-                      Get.to(() => const FormModbusConfigScreen());
+                      Get.to(() => FormModbusConfigScreen(id: modbus['id']));
                     },
                     icons: const Icon(
                       Icons.edit,
