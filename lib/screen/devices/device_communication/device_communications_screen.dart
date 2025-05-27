@@ -62,7 +62,7 @@ class _DeviceCommunicationsScreenState
       return;
     }
     setState(() => isLoading = true);
-    debugPrint('Fetching devices: READ|devices|page:1|pageSize:10');
+    debugPrint('Fetching devices: READ|devices|page:1|pageSize:2');
 
     try {
       // Periksa koneksi BLE
@@ -74,7 +74,7 @@ class _DeviceCommunicationsScreenState
         return;
       }
 
-      bleController.sendCommand('READ|devices|page:1|pageSize:10', 'devices');
+      bleController.sendCommand('READ|devices|page:1|pageSize:2', 'devices');
     } catch (e) {
       debugPrint('Error fetching devices: $e');
       BLEUtils.showSnackbar('Error', 'Failed to fetch devices: $e',
@@ -111,7 +111,7 @@ class _DeviceCommunicationsScreenState
         } finally {
           await Future.delayed(const Duration(milliseconds: 300));
           bleController.sendCommand(
-              'READ|devices|page:1|pageSize:10', 'devices');
+              'READ|devices|page:1|pageSize:5', 'devices');
 
           setState(() => isLoading = false);
         }
@@ -248,10 +248,18 @@ class _DeviceCommunicationsScreenState
     return Container(
       height: MediaQuery.of(context).size.height * 0.85,
       alignment: Alignment.center,
-      child: const Center(
-        child: CircularProgressIndicator(
-          color: AppColor.primaryColor,
-        ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Center(
+            child: CircularProgressIndicator(
+              color: AppColor.primaryColor,
+            ),
+          ),
+          AppSpacing.md,
+          Obx(() => Text(
+              "Progress: ${(bleController.receivedPackets.value / bleController.expectedPackets.value * 100).toStringAsFixed(1)}%")),
+        ],
       ),
     );
   }
