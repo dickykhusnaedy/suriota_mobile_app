@@ -28,6 +28,9 @@ class BLEController extends GetxController {
   BluetoothCharacteristic? _notifyChar;
   StreamSubscription<BluetoothConnectionState>? _disconnectSub;
 
+  final RxInt receivedPackets = 0.obs;
+  final RxInt expectedPackets = 1.obs; // Default 1 to avoid divide by zero
+
   // Stream for status updates
   final StreamController<String> _statusController =
       StreamController<String>.broadcast();
@@ -76,6 +79,12 @@ class BLEController extends GetxController {
     update();
   }
 
+  void updateProgress(int received, int expected) {
+    receivedPackets.value = received;
+    expectedPackets.value =
+        expected > 0 ? expected : 1; // Prevent divide by zero
+  }
+
   // Public methods
   void scanDevice() => scanner.scanDevice();
   Future<void> connectToDevice(BluetoothDevice device) =>
@@ -89,6 +98,7 @@ class BLEController extends GetxController {
 
   // Send command with null check
   void sendCommand(String command, String dataType) {
+    // ignore: unnecessary_null_comparison
     if (dataProcessor == null) {
       _notifyStatus("Data processor not initialized.");
       AppHelpers.debugLog("Error: dataProcessor is null in sendCommand");
@@ -344,6 +354,19 @@ class BLEConnectionManager {
         return false;
       }
 
+      // Request MTU and validate
+      try {
+        await device.requestMtu(512);
+        final mtu = await device.mtu.first;
+        AppHelpers.debugLog("MTU set to: $mtu");
+        if (mtu < 50) {
+          AppHelpers.debugLog(
+              "Warning: Small MTU ($mtu) may cause packet loss");
+        }
+      } catch (e) {
+        AppHelpers.debugLog("Failed to set MTU: $e");
+      }
+
       for (final service in services) {
         for (final char in service.characteristics) {
           _assignCharacteristic(char);
@@ -378,7 +401,7 @@ class BLEConnectionManager {
       try {
         await controller!._notifyChar!.setNotifyValue(true);
         await Future.delayed(
-            const Duration(milliseconds: 500)); // Ensure subscription is active
+            const Duration(milliseconds: 4000)); // Increased to 4000ms
         controller!.dataProcessor._listenToNotifications();
         AppHelpers.debugLog(
             "Notification enabled for characteristic: ${char.uuid}");
@@ -400,10 +423,10 @@ class BLEDataProcessor {
   int _expectedPackets = -1;
   String? _currentMessageId;
   String? _lastCommandDataType;
-  String? _lastCommand; // Store last command for retry
+  String? _lastCommand;
   DateTime _lastPacketTime = DateTime.now();
   Timer? _packetTimeoutTimer;
-  int _timeoutDuration = 30; // Base timeout
+  int _timeoutDuration = 30;
   final bool _verbose = true;
   int _retryCount = 0;
   static const int _maxRetries = 3;
@@ -424,6 +447,7 @@ class BLEDataProcessor {
     _retryCount = 0;
     _timeoutDuration = 30;
     AppHelpers.debugLog("BLEDataProcessor state reset");
+    controller?.updateProgress(0, 1);
   }
 
   // Listen to notifications from the notify characteristic
@@ -435,13 +459,19 @@ class BLEDataProcessor {
       return;
     }
 
+    _packetQueue.clear();
+    AppHelpers.debugLog("Cleared packet queue before starting notifications");
+
     controller!._notifyChar!.onValueReceived.listen((value) async {
       try {
         final data = utf8.decode(value);
         print("📬 Received packet: $data");
-        AppHelpers.debugLog("Received packet: $data");
+        AppHelpers.debugLog(
+            "Received packet: $data, queue size before add: ${_packetQueue.length}");
         if (data.isNotEmpty) {
           _packetQueue.add(data);
+          AppHelpers.debugLog(
+              "Added packet to queue, new size: ${_packetQueue.length}");
           await _processQueue();
         } else {
           AppHelpers.debugLog("Empty packet received");
@@ -463,7 +493,6 @@ class BLEDataProcessor {
     _isProcessingQueue = true;
 
     while (_packetQueue.isNotEmpty) {
-      // Check if timeout has occurred
       if (_packetTimeoutTimer != null && !_packetTimeoutTimer!.isActive) {
         print("⚠️ Queue processing stopped due to timeout");
         _isProcessingQueue = false;
@@ -471,6 +500,8 @@ class BLEDataProcessor {
       }
 
       final data = _packetQueue.removeAt(0);
+      AppHelpers.debugLog(
+          "Removed packet from queue, remaining: ${_packetQueue.length}");
       final regex = RegExp(r'P(\d+)/(\d+):(.*)');
       final altRegex = RegExp(r'P(\d+)/(\d+)\s*(.*)');
       final match = regex.firstMatch(data) ?? altRegex.firstMatch(data);
@@ -480,7 +511,7 @@ class BLEDataProcessor {
       }
 
       if (match != null) {
-        _handlePacket(match);
+        await _handlePacket(match);
       } else {
         controller!._notifyStatus("Format paket tidak valid: $data");
         AppHelpers.debugLog("Invalid packet format: $data");
@@ -491,7 +522,7 @@ class BLEDataProcessor {
   }
 
   // Handle individual packets
-  void _handlePacket(RegExpMatch match) async {
+  Future<void> _handlePacket(RegExpMatch match) async {
     if (controller!._writeChar == null || controller!._notifyChar == null) {
       print("⚠️ No valid characteristics. Ignoring packet.");
       AppHelpers.debugLog("No valid characteristics in _handlePacket");
@@ -512,79 +543,71 @@ class BLEDataProcessor {
     bool isNewMessage = _shouldStartNewMessage(index, actualTotal, timestamp);
 
     if (isNewMessage) {
-      if (_verbose) {
-        print("🔄 Starting new message sequence. Total packets: $actualTotal");
-      }
-      _resetPacketBuffer();
+      print("🔄 Starting new message sequence. Total packets: $actualTotal");
+      _packetBuffer.clear();
       _currentMessageId = _generateMessageId(actualTotal);
-      _expectedPackets = actualTotal; // Set expected packets early
+      _expectedPackets = actualTotal;
       _startPacketTimeout();
+      controller!.updateProgress(0, actualTotal);
     }
 
     if (_packetBuffer.containsKey(index)) {
-      if (_packetBuffer[index] == content) {
-        print("⚠️ Duplicate packet ignored: [$index/$actualTotal]");
-        return;
-      } else {
-        print("⚠️ Conflicting packet at index $index. Starting new message.");
-        _resetPacketBuffer();
-        _currentMessageId = _generateMessageId(actualTotal);
-        _expectedPackets = actualTotal;
-        _startPacketTimeout();
-      }
+      print("⚠️ Duplicate packet ignored: [$index/$actualTotal]");
+      return;
     }
 
     _lastPacketTime = timestamp;
     _packetBuffer[index] = content;
-    _expectedPackets = actualTotal; // Ensure expected packets is updated
+    _expectedPackets = actualTotal;
 
-    if (_verbose) {
-      final sortedKeys = (_packetBuffer.keys.toList()..sort());
-      final missingIndices = _getMissingIndices();
-      print(
-          "🧩 Current buffer: $sortedKeys / $_expectedPackets (Missing: $missingIndices)");
-      AppHelpers.debugLog(
-          "Buffer: $sortedKeys / $_expectedPackets, Missing: $missingIndices");
-    }
+    controller!.updateProgress(_packetBuffer.length, _expectedPackets);
 
-    if (_packetBuffer.length % 10 == 0) {
-      double completionPercentage =
-          (_packetBuffer.length / _expectedPackets) * 100;
-      print(
-          "📊 Received ${_packetBuffer.length}/$_expectedPackets packets (${completionPercentage.toStringAsFixed(1)}%)");
-    }
+    final sortedKeys = (_packetBuffer.keys.toList()..sort());
+    final missingIndices = _getMissingIndices();
+    print(
+        "🧩 Current buffer: $sortedKeys / $_expectedPackets (Missing: $missingIndices)");
+    AppHelpers.debugLog(
+        "Buffer: $sortedKeys / $_expectedPackets, Missing: $missingIndices");
 
     if (_isAllPacketsReceived()) {
       _packetTimeoutTimer?.cancel();
       _packetTimeoutTimer = null;
-
       final message = _assembleMessage();
       print("✅ Full message received (${_packetBuffer.length} packets)");
-      if (_verbose) {
-        print("📃 Message content: $message");
-      }
       AppHelpers.debugLog("Full message: $message");
-
       await _processCompleteMessage(message);
+      controller!.updateProgress(_packetBuffer.length, _expectedPackets);
     }
   }
 
   // Start packet timeout timer
   void _startPacketTimeout() {
     _packetTimeoutTimer?.cancel();
-    // Dynamic timeout: 30s base + 1s per 5 packets
-    _timeoutDuration = 30 + (_expectedPackets ~/ 5) * _secondsPerPacketBatch;
+    final int expectedPackets = _expectedPackets > 0 ? _expectedPackets : 1;
+    _timeoutDuration = _secondsPerPacketBatch * expectedPackets + 10;
+    print(
+        "⏰ Started timeout timer for $_timeoutDuration seconds, expected: $_expectedPackets packets");
+    AppHelpers.debugLog("Started timeout timer: $_timeoutDuration seconds");
     _packetTimeoutTimer = Timer(Duration(seconds: _timeoutDuration), () {
-      if (_packetBuffer.isNotEmpty && !_isAllPacketsReceived()) {
+      if (_packetBuffer.length < _expectedPackets &&
+          _retryCount < _maxRetries &&
+          _lastCommand != null) {
+        _retryCount++;
         print(
-            "⚠️ Timeout: Processing partial data after $_timeoutDuration seconds.");
+            "🔄 Timeout retry due to missing packets ($_retryCount/$_maxRetries)");
         AppHelpers.debugLog(
-            "Timeout, received ${_packetBuffer.length}/$_expectedPackets packets");
-        _processPartialMessage();
+            "Timeout retry: missing ${_expectedPackets - _packetBuffer.length} packets");
+        _resetPacketBuffer();
+        controller!.updateProgress(0, 1);
+        controller!._notifyStatus(
+            "Data tidak lengkap, mencoba ulang ($_retryCount/$_maxRetries)...");
+        sendCommand(_lastCommand!, _lastCommandDataType ?? 'device');
+      } else if (_packetBuffer.length < _expectedPackets) {
+        print("❌ Timeout: Incomplete data after $_maxRetries retries");
+        controller!._notifyStatus(
+            "Gagal menerima data lengkap setelah $_maxRetries percobaan");
       }
     });
-    AppHelpers.debugLog(
-        "Started timeout timer for $_timeoutDuration seconds, expected: $_expectedPackets packets");
   }
 
   // Process complete message
@@ -640,7 +663,7 @@ class BLEDataProcessor {
           "Retrying command: $_lastCommand, attempt $_retryCount");
       _resetPacketBuffer();
       controller!._notifyStatus(
-          "Data tidak lengkap, mencoba ulang ($_retryCount/$_maxRetries)...");
+          "Data tidak lengkap 2, mencoba ulang ($_retryCount/$_maxRetries)...");
       sendCommand(_lastCommand!, _lastCommandDataType ?? 'device');
       return;
     }
@@ -760,8 +783,25 @@ class BLEDataProcessor {
   // Send command to the device
   void sendCommand(String commandString, String dataType) async {
     controller!._startLoading();
-    if (controller!._writeChar == null) {
-      controller!._notifyStatus("Characteristic Write tidak ditemukan.");
+    if (controller!._writeChar == null || controller!._notifyChar == null) {
+      controller!
+          ._notifyStatus("Karakteristik Write/Notifikasi tidak ditemukan");
+      controller!._stopLoading();
+      AppHelpers.debugLog("Missing write/notify characteristic");
+      return;
+    }
+
+    try {
+      bool isNotifying = await controller!._notifyChar!.isNotifying;
+      if (!isNotifying) {
+        await controller!._notifyChar!.setNotifyValue(true);
+        await Future.delayed(
+            const Duration(milliseconds: 4000)); // Increased to 4000ms
+        AppHelpers.debugLog("Re-enabled notifications before sending command");
+      }
+    } catch (e) {
+      AppHelpers.debugLog("Failed to enable notifications: $e");
+      controller!._notifyStatus("Gagal mengaktifkan notifikasi");
       controller!._stopLoading();
       return;
     }
@@ -771,18 +811,14 @@ class BLEDataProcessor {
         commandString += '#';
       }
       _lastCommandDataType = dataType;
-      _lastCommand = commandString; // Store command for retry
-      _retryCount = 0; // Reset retry count
+      _lastCommand = commandString;
+      _retryCount = 0;
+      _packetBuffer.clear();
+      _packetQueue.clear();
+      controller!.updateProgress(0, 1);
       final bytes = utf8.encode(commandString);
-      final mtu = await controller!._writeChar!.device.mtu.first ?? 512;
-
-      // Request higher MTU if possible
-      try {
-        await controller!._writeChar!.device.requestMtu(512);
-        AppHelpers.debugLog("Requested MTU: 512, actual MTU: $mtu");
-      } catch (e) {
-        AppHelpers.debugLog("Failed to request MTU: $e");
-      }
+      final mtu = await controller!._writeChar!.device.mtu.first ?? 20;
+      AppHelpers.debugLog("MTU: $mtu");
 
       for (int offset = 0; offset < bytes.length; offset += mtu) {
         final chunk = bytes.sublist(
@@ -792,13 +828,13 @@ class BLEDataProcessor {
         await controller!._writeChar!
             .write(chunk, withoutResponse: false)
             .timeout(const Duration(seconds: 10));
-        await Future.delayed(const Duration(milliseconds: 100));
+        await Future.delayed(Duration(milliseconds: mtu < 50 ? 500 : 100));
       }
       print("Command sent: $commandString");
       AppHelpers.debugLog("Sent command: $commandString, MTU: $mtu");
     } catch (e) {
-      AppHelpers.debugLog("Failed to send a command: $e");
-      controller!._notifyStatus("Device disconnected...");
+      AppHelpers.debugLog("Failed to send command: $e");
+      controller!._notifyStatus("Perangkat terputus...");
     } finally {
       controller!._stopLoading();
     }
