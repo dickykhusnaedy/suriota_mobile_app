@@ -16,7 +16,7 @@ class DevicePaginationController extends GetxController {
 
     page.value = json['page'] ?? 1;
     pageSize.value = json['pageSize'] ?? 10;
-    totalRecords.value = json['totalRecords'] ?? 0;
+    totalRecords.value = json['data'].length ?? 0;
     totalPages.value = json['totalPages'] ?? 1;
 
     isLoading.value = false;
