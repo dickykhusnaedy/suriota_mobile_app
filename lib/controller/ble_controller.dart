@@ -682,21 +682,8 @@ class BLEDataProcessor {
     print("📜 Processed message: $message, Previous buffer: $tempBuffer");
 
     try {
-      if (message == 'Record created successfully') {
-        await _handleSuccessMessage(message);
-        _completer?.complete({"data": [], "message": message});
-        _completer = null;
-        return;
-      }
-
-      if (message == 'Record updated successfully') {
-        await _handleSuccessMessage(message);
-        _completer?.complete({"data": [], "message": message});
-        _completer = null;
-        return;
-      }
-
-      if (message == 'Record deleted successfully') {
+      // Check for success messages containing "successfully"
+      if (message.toLowerCase().contains('successfully')) {
         await _handleSuccessMessage(message);
         _completer?.complete({"data": [], "message": message});
         _completer = null;
