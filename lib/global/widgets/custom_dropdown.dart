@@ -11,12 +11,14 @@ class CustomDropdown extends StatefulWidget {
     required this.hintText,
     this.onChanged,
     this.selectedItem,
+    this.validator, // Added validator parameter
   });
 
   final List<String> listItem;
   final String? selectedItem;
   final String? hintText;
   final void Function(String?)? onChanged;
+  final String? Function(String?)? validator; // Validator function type
 
   @override
   State<CustomDropdown> createState() => _CustomDropdownState();
@@ -24,12 +26,16 @@ class CustomDropdown extends StatefulWidget {
 
 class _CustomDropdownState extends State<CustomDropdown> {
   String? initialSelect;
+  String? errorText; // Added to store validation error
 
   @override
   void initState() {
     super.initState();
-    // Set nilai awal dari initialSelect yang diterima dari widget
     initialSelect = widget.selectedItem;
+    // Perform initial validation if selectedItem exists
+    if (widget.validator != null && initialSelect != null) {
+      errorText = widget.validator!(initialSelect);
+    }
   }
 
   @override
@@ -37,9 +43,18 @@ class _CustomDropdownState extends State<CustomDropdown> {
     return DropdownSearch<String>(
       items: widget.listItem,
       dropdownDecoratorProps: _buildDropdownDecoratorProps(context),
-      onChanged: widget.onChanged,
+      onChanged: (value) {
+        setState(() {
+          initialSelect = value;
+          // Validate on change if validator exists
+          errorText =
+              widget.validator != null ? widget.validator!(value) : null;
+        });
+        widget.onChanged?.call(value);
+      },
       selectedItem: initialSelect?.isNotEmpty == true ? initialSelect : null,
       popupProps: _buildPopupProps(context),
+      validator: widget.validator, // Pass validator to DropdownSearch
     );
   }
 
@@ -51,10 +66,16 @@ class _CustomDropdownState extends State<CustomDropdown> {
         hintStyle: context.body.copyWith(color: AppColor.grey),
         filled: true,
         fillColor: Colors.white,
-        enabledBorder: _buildOutlineInputBorder(AppColor.primaryColor, 1),
-        focusedBorder: _buildOutlineInputBorder(AppColor.primaryColor, 2),
+        enabledBorder: _buildOutlineInputBorder(
+            errorText != null ? AppColor.redColor : AppColor.primaryColor, 1),
+        focusedBorder: _buildOutlineInputBorder(
+            errorText != null ? AppColor.redColor : AppColor.primaryColor, 2),
+        errorBorder: _buildOutlineInputBorder(AppColor.redColor, 1),
+        focusedErrorBorder: _buildOutlineInputBorder(AppColor.redColor, 2),
         border: _buildOutlineInputBorder(AppColor.primaryColor, 1),
         contentPadding: AppPadding.horizontalMedium,
+        errorText: errorText, // Display error text
+        errorStyle: context.body.copyWith(color: AppColor.redColor),
       ),
     );
   }
