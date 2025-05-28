@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
-import 'package:get/get.dart';
 import 'package:suriota_mobile_gateway/constant/app_color.dart';
 import 'package:suriota_mobile_gateway/controller/ble_controller.dart';
 import 'package:suriota_mobile_gateway/global/widgets/device_card.dart';
@@ -24,8 +23,6 @@ class DeviceListWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final BLEController bleController = Get.put(BLEController());
-
     return InkWell(
       onTap: () {
         if (!isConnected) {
