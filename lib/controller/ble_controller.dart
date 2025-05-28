@@ -682,7 +682,27 @@ class BLEDataProcessor {
     print("📜 Processed message: $message, Previous buffer: $tempBuffer");
 
     try {
-      // Handle non-JSON response
+      if (message == 'Record created successfully') {
+        await _handleSuccessMessage(message);
+        _completer?.complete({"data": [], "message": message});
+        _completer = null;
+        return;
+      }
+
+      if (message == 'Record updated successfully') {
+        await _handleSuccessMessage(message);
+        _completer?.complete({"data": [], "message": message});
+        _completer = null;
+        return;
+      }
+
+      if (message == 'Record deleted successfully') {
+        await _handleSuccessMessage(message);
+        _completer?.complete({"data": [], "message": message});
+        _completer = null;
+        return;
+      }
+
       if (message == 'No records available') {
         print("📢 No records available");
         AppHelpers.debugLog("No records available in response");
@@ -693,8 +713,6 @@ class BLEDataProcessor {
       }
 
       if (message.isEmpty) {
-        print("📢 Empty message received");
-        AppHelpers.debugLog("Received empty message");
         controller!._notifyStatus("Received empty message.");
         _completer?.complete({"data": [], "message": "Empty message"});
         _completer = null;
@@ -716,7 +734,8 @@ class BLEDataProcessor {
           "totalPages": 1,
           "message": "Array response converted"
         };
-        controller!._notifyStatus("Get data successfully!");
+        controller!
+            ._notifyStatus("Get data $_lastCommandDataType successfully!");
         _completer?.complete(response);
         _completer = null;
         _resetPacketBuffer();
@@ -727,6 +746,7 @@ class BLEDataProcessor {
       await _processMessage(message);
       _resetPacketBuffer();
     } catch (e) {
+      AppHelpers.debugLog("JSON parse error: $e, message: $message");
       controller!._notifyStatus("Gagal memproses pesan: $e");
       _completer?.complete({"data": [], "message": ""});
       _completer = null;
@@ -801,11 +821,6 @@ class BLEDataProcessor {
   // Process received message
   Future<void> _processMessage(String message) async {
     try {
-      if (_isSuccessMessage(message)) {
-        _handleSuccessMessage(message);
-        return;
-      }
-
       String dataType = _lastCommandDataType ?? 'device';
       final json = jsonDecode(message);
 
