@@ -25,6 +25,8 @@ class FormModbusConfigScreen extends StatefulWidget {
 
 class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
   final BLEController bleController = Get.put(BLEController(), permanent: true);
+  final DevicePaginationController controller =
+      Get.put(DevicePaginationController(), permanent: true);
   final ModbusPaginationController controllerModbus =
       Get.put(ModbusPaginationController(), permanent: true);
 
@@ -40,8 +42,9 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
   final serverPortController = TextEditingController();
   final connectionTimeoutController = TextEditingController();
 
-  List<String> functions = ['1', '2', '3', '4'];
-  List<String> typeData = [
+  static const List<String> modbusReadFunctions = ['1', '2', '3', '4'];
+
+  static const List<String> modbusDataTypes = [
     'INT16',
     'UINT16',
     'INT32',
@@ -61,17 +64,23 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
   void initState() {
     super.initState();
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      fetchDataDevices();
+    if (widget.id != null) {
+      dataModbus = controllerModbus.modbus
+          .firstWhere((item) => item['id'] == widget.id, orElse: () => {});
 
-      if (widget.id != null) {
-        dataModbus = controllerModbus.modbus
-            .firstWhere((item) => item['id'] == widget.id, orElse: () => {});
+      _fillFormFromDevice(dataModbus);
+    }
+  }
 
-        _fillFormFromDevice(dataModbus);
-      }
-      print('data modbus $dataModbus');
-    });
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!isInitialized) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        fetchDataDevices();
+        isInitialized = true;
+      });
+    }
   }
 
   Future<void> fetchDataDevices() async {
@@ -83,7 +92,6 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
     try {
       final data =
           await bleController.fetchData("READ|devices|names", 'devices');
-      print('data devices name: ${data['data']}');
 
       setState(() {
         if (data['data'] is List) {
@@ -117,8 +125,6 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
     deviceNameController.text = modbus['name'];
     addressController.text = modbus['address'];
     idSlaveController.text = modbus['id'].toString();
-
-    print('Filling form with modbus data: $modbus');
 
     setState(() {
       selectedDevice = modbus['device_choose'];
@@ -195,25 +201,17 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
     deviceNameController.dispose();
     idSlaveController.dispose();
     addressController.dispose();
+    isInitialized = false;
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    List<String> getDeviceNames() {
-      // ignore: invalid_use_of_protected_member
-      // return controller.devices.value
-      //     .map((device) => device['name'] as String)
-      //     .toList();
-
-      return [];
-    }
-
     return Stack(
       children: [
         Scaffold(
           appBar: _appBar(context),
-          body: _body(context, getDeviceNames),
+          body: _body(context),
         ),
         Obx(() {
           final isAnyDeviceLoading = bleController.isLoading.value;
@@ -226,7 +224,19 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
     );
   }
 
-  SafeArea _body(BuildContext context, List<String> Function() getDeviceNames) {
+  AppBar _appBar(BuildContext context) {
+    return AppBar(
+      title: Text(
+        widget.id == null ? 'Setup Modbus' : 'Update Modbus',
+        style: context.h5.copyWith(color: AppColor.whiteColor),
+      ),
+      centerTitle: true,
+      iconTheme: const IconThemeData(color: Colors.white),
+      backgroundColor: AppColor.primaryColor,
+    );
+  }
+
+  SafeArea _body(BuildContext context) {
     return SafeArea(
       child: SingleChildScrollView(
         padding: AppPadding.horizontalMedium,
@@ -275,6 +285,12 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
                     selectedDevice = value;
                   });
                 },
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please select an device';
+                  }
+                  return null;
+                },
               ),
               AppSpacing.md,
               Text(
@@ -283,13 +299,19 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
               ),
               AppSpacing.sm,
               CustomDropdown(
-                listItem: functions,
+                listItem: modbusReadFunctions,
                 hintText: 'Choose the function',
                 selectedItem: selectedFunction,
                 onChanged: (value) {
                   setState(() {
                     selectedFunction = value;
                   });
+                },
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please select modbus function data';
+                  }
+                  return null;
                 },
               ),
               AppSpacing.md,
@@ -315,13 +337,19 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
               ),
               AppSpacing.sm,
               CustomDropdown(
-                listItem: typeData,
+                listItem: modbusDataTypes,
                 hintText: 'Choose data type',
                 selectedItem: selectedTypeData,
                 onChanged: (value) {
                   setState(() {
                     selectedTypeData = value;
                   });
+                },
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please select data type';
+                  }
+                  return null;
                 },
               ),
               AppSpacing.lg,
@@ -336,18 +364,6 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
           ),
         ),
       ),
-    );
-  }
-
-  AppBar _appBar(BuildContext context) {
-    return AppBar(
-      title: Text(
-        widget.id == null ? 'Setup Modbus' : 'Update Modbus',
-        style: context.h5.copyWith(color: AppColor.whiteColor),
-      ),
-      centerTitle: true,
-      iconTheme: const IconThemeData(color: Colors.white),
-      backgroundColor: AppColor.primaryColor,
     );
   }
 }
