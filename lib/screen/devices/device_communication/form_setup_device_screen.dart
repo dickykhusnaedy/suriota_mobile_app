@@ -90,24 +90,7 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
     });
   }
 
-  String? _validateRTUFields() {
-    if (modBusSelected == 'RTU') {
-      if (selectedBaudRate == null) return 'Baudrate is required';
-      if (selectedBitData == null) return 'Bit data is required';
-      if (selectedParity == null) return 'Parity is required';
-      if (selectedStopBit == null) return 'Stop bit is required';
-    }
-    return null;
-  }
-
   void _submit() async {
-    // Validasi field RTU
-    final rtuError = _validateRTUFields();
-    if (rtuError != null) {
-      Get.snackbar('Error', rtuError);
-      return;
-    }
-
     // Validasi form
     if (!_formKey.currentState!.validate()) return;
 
@@ -348,6 +331,12 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
               selectedBaudRate = value;
             });
           },
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Please select baudrate data';
+            }
+            return null;
+          },
         ),
         AppSpacing.md,
         Text('Choose Bit Data', style: context.h6),
@@ -360,6 +349,12 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
             setState(() {
               selectedBitData = value;
             });
+          },
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Please select bit data';
+            }
+            return null;
           },
         ),
         AppSpacing.md,
@@ -374,6 +369,12 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
               selectedParity = value;
             });
           },
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Please select parity data';
+            }
+            return null;
+          },
         ),
         AppSpacing.md,
         Text('Choose Stop Bit', style: context.h6),
@@ -386,6 +387,12 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
             setState(() {
               selectedStopBit = value;
             });
+          },
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Please select stop bit data';
+            }
+            return null;
           },
         ),
       ],
