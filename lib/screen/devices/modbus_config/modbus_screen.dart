@@ -3,7 +3,6 @@ import 'package:get/get.dart';
 import 'package:suriota_mobile_gateway/constant/app_color.dart';
 import 'package:suriota_mobile_gateway/constant/app_gap.dart';
 import 'package:suriota_mobile_gateway/controller/ble_controller.dart';
-import 'package:suriota_mobile_gateway/controller/device_pagination_controller.dart';
 import 'package:suriota_mobile_gateway/controller/modbus_pagination_controller.dart';
 import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_alert_dialog.dart';
@@ -52,8 +51,9 @@ class _ModbusScreenState extends State<ModbusScreen> {
       debugPrint('Fetch devices skipped: already loading');
       return;
     }
+
     setState(() => isLoading = true);
-    debugPrint('Fetching devices: READ|modbus|page:1|pageSize:5');
+    debugPrint('Fetching devices: READ|modbus|page:1|pageSize:2');
 
     try {
       // Periksa koneksi BLE
@@ -64,7 +64,7 @@ class _ModbusScreenState extends State<ModbusScreen> {
         return;
       }
 
-      bleController.sendCommand('READ|modbus|page:1|pageSize:5', 'modbus');
+      bleController.sendCommand('READ|modbus|page:1|pageSize:2', 'modbus');
     } catch (e) {
       debugPrint('Error fetching devices: $e');
       Get.snackbar('Error', 'Failed to fetch devices: $e');
