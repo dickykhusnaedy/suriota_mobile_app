@@ -708,11 +708,16 @@ class BLEDataProcessor {
 
       final json = jsonDecode(message);
       if (json is List<dynamic>) {
-        // Handle array string response like ["test"]
+        // Handle list response (e.g., ["test"])
         print("⚠️ Received array response: $json");
         AppHelpers.debugLog("Received array: $json");
-        final convertedData =
-            json.map((item) => {"name": item.toString()}).toList();
+        final convertedData = json.map((item) {
+          if (item is Map<String, dynamic>) {
+            return item; // Jika elemen sudah map (misalnya, [{"name":"test"}])
+          } else {
+            return {"name": item.toString()}; // Konversi string ke map
+          }
+        }).toList();
         final response = {
           "data": convertedData,
           "page": 1,
@@ -721,23 +726,60 @@ class BLEDataProcessor {
           "totalPages": 1,
           "message": "Array response converted"
         };
-        controller!
-            ._notifyStatus("Get data $_lastCommandDataType successfully!");
+        controller!._notifyStatus("Array data loaded");
         _completer?.complete(response);
         _completer = null;
         _resetPacketBuffer();
         return;
       }
 
-      // Process Map<String, dynamic> responses
-      await _processMessage(message);
+      if (json is Map<String, dynamic>) {
+        // Handle map response dynamically
+        print("📢 Received map response: $json");
+        AppHelpers.debugLog("Map response: $json");
+        if (_lastCommand != null && _lastCommand!.contains('"action":"READ"')) {
+          if (json.containsKey("data")) {
+            // Map dengan "data" untuk paginasi
+            await _processMessage(message);
+          } else {
+            // Map tanpa "data" (e.g., logging_config)
+            controller!._notifyStatus("Data loaded");
+            _completer?.complete(json);
+            _completer = null;
+            _resetPacketBuffer();
+            return;
+          }
+        } else {
+          // Map untuk konteks lain
+          controller!._notifyStatus("Data loaded");
+          _completer?.complete(json);
+          _completer = null;
+        }
+      } else {
+        print(
+            "❌ Invalid JSON structure: expected Map or List, got ${json.runtimeType}");
+        AppHelpers.debugLog("Invalid JSON structure: $message");
+        controller!._notifyStatus("Invalid response format");
+        _completer?.complete({"data": [], "message": "Invalid JSON structure"});
+        _completer = null;
+      }
       _resetPacketBuffer();
     } catch (e) {
+      print("❌ Failed to parse JSON: $e");
       AppHelpers.debugLog("JSON parse error: $e, message: $message");
-      controller!._notifyStatus("Gagal memproses pesan: $e");
-      _completer?.complete({"data": [], "message": ""});
+      if (_lastCommandDataType == 'modbus' &&
+          _lastCommand != null &&
+          (_lastCommand!.contains('"action":"UPDATE"') ||
+              _lastCommand!.contains('"action":"CREATE"'))) {
+        print("✅ Assuming command success despite parse error: $message");
+        controller!._notifyStatus("Operation successful (assumed)");
+        _completer?.complete({"data": [], "message": "Operation successful"});
+      } else {
+        controller!._notifyStatus("Gagal memproses pesan: $e");
+        _completer?.complete({"data": [], "message": "Failed to parse JSON"});
+      }
       _completer = null;
-      return;
+      _resetPacketBuffer();
     }
   }
 
@@ -808,18 +850,29 @@ class BLEDataProcessor {
   // Process received message
   Future<void> _processMessage(String message) async {
     try {
+      if (_isSuccessMessage(message)) {
+        _handleSuccessMessage(message);
+        return;
+      }
+
       String dataType = _lastCommandDataType ?? 'device';
       final json = jsonDecode(message);
 
       if (json is List && json.isNotEmpty) {
         _handleSingleDeviceData(json.first);
-      } else if (json is Map<String, dynamic> && json.containsKey("data")) {
-        _updatePaginationData(json, dataType);
+      } else if (json is Map<String, dynamic>) {
+        if (json.containsKey("data")) {
+          _updatePaginationData(json, dataType);
+        } else {
+          // Map tanpa "data" sudah ditangani di _processCompleteMessage
+          print("📢 Map without 'data' field, handled earlier: $json");
+          AppHelpers.debugLog("Map without data field: $json");
+        }
       } else {
-        controller!._notifyStatus("ESP32 response missing 'data' field.");
+        controller!._notifyStatus("Invalid response format from ESP32");
       }
     } catch (e) {
-      print("❌ Failed to parse JSON: $e");
+      print("❌ Failed to parse JSON in _processMessage: $e");
       if (_isSuccessMessage(message)) {
         _handleSuccessMessage(message);
       } else {
