@@ -35,8 +35,52 @@ class _FormLoggingConfigScreenState extends State<FormLoggingConfigScreen> {
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
+  bool isLoading = false;
+  bool isInitialized = false;
+  String errorMessage = '';
+
   String loggingRetentionSelected = "";
   String loggingIntervalSelected = "";
+
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!isInitialized) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        fetchData();
+        isInitialized = true;
+      });
+    }
+  }
+
+  Future<void> fetchData() async {
+    setState(() {
+      isLoading = true;
+      errorMessage = '';
+    });
+
+    try {
+      final data = await bleController.fetchData(
+          "READ|logging_config", 'logging_config');
+
+      setState(() {
+        loggingRetentionSelected = data['retention'] ?? '';
+        loggingIntervalSelected = data['interval'] ?? '';
+
+        isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        errorMessage = 'Failed to load config: $e';
+        isLoading = false;
+      });
+    }
+  }
 
   void backNTimes(int n) {
     if (n <= 0) {
@@ -98,6 +142,7 @@ class _FormLoggingConfigScreenState extends State<FormLoggingConfigScreen> {
 
   @override
   void dispose() {
+    isInitialized = false;
     super.dispose();
   }
 
