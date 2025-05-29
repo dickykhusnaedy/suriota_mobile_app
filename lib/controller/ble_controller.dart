@@ -707,6 +707,7 @@ class BLEDataProcessor {
       }
 
       final json = jsonDecode(message);
+      print("📥 Parsed JSON data: ${json is List<dynamic>}");
       if (json is List<dynamic>) {
         // Handle list response (e.g., ["test"])
         print("⚠️ Received array response: $json");
@@ -726,40 +727,31 @@ class BLEDataProcessor {
           "totalPages": 1,
           "message": "Array response converted"
         };
-        controller!._notifyStatus("Array data loaded");
         _completer?.complete(response);
         _completer = null;
         _resetPacketBuffer();
-        return;
       }
 
+      print('📥 Parsed JSON data is dynamic?: ${json is Map<String, dynamic>}');
       if (json is Map<String, dynamic>) {
         // Handle map response dynamically
-        print("📢 Received map response: $json");
+        print(
+            "📢 Received map response Map<String, dynamic>: ${_lastCommand!.contains('"action":"READ"')}");
         AppHelpers.debugLog("Map response: $json");
-        if (_lastCommand != null && _lastCommand!.contains('"action":"READ"')) {
-          if (json.containsKey("data")) {
-            // Map dengan "data" untuk paginasi
-            await _processMessage(message);
-          } else {
-            // Map tanpa "data" (e.g., logging_config)
-            controller!._notifyStatus("Data loaded");
-            _completer?.complete(json);
-            _completer = null;
-            _resetPacketBuffer();
-            return;
-          }
+        if (json.containsKey("data")) {
+          // Map dengan "data" untuk paginasi
+          await _processMessage(message);
         } else {
-          // Map untuk konteks lain
-          controller!._notifyStatus("Data loaded");
+          // Map tanpa "data" (e.g., logging_config)
           _completer?.complete(json);
           _completer = null;
+          _resetPacketBuffer();
+          return;
         }
       } else {
         print(
             "❌ Invalid JSON structure: expected Map or List, got ${json.runtimeType}");
-        AppHelpers.debugLog("Invalid JSON structure: $message");
-        controller!._notifyStatus("Invalid response format");
+        AppHelpers.debugLog("Invalid JSON structure proses: $message");
         _completer?.complete({"data": [], "message": "Invalid JSON structure"});
         _completer = null;
       }
@@ -850,11 +842,6 @@ class BLEDataProcessor {
   // Process received message
   Future<void> _processMessage(String message) async {
     try {
-      if (_isSuccessMessage(message)) {
-        _handleSuccessMessage(message);
-        return;
-      }
-
       String dataType = _lastCommandDataType ?? 'device';
       final json = jsonDecode(message);
 
