@@ -7,6 +7,7 @@ import 'package:suriota_mobile_gateway/constant/app_gap.dart';
 import 'package:suriota_mobile_gateway/controller/ble_controller.dart';
 import 'package:suriota_mobile_gateway/controller/device_pagination_controller.dart';
 import 'package:suriota_mobile_gateway/controller/modbus_pagination_controller.dart';
+import 'package:suriota_mobile_gateway/global/utils/helper.dart';
 import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_alert_dialog.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_button.dart';
@@ -147,18 +148,6 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
     return 'CREATE|modbus|name:$name|device_choose:$device|data_type:$type|address:$address|function_code:$function';
   }
 
-  void backNTimes(int n) {
-    if (n <= 0) {
-      debugPrint('Nilai n tidak valid: $n');
-      return;
-    }
-    int count = 0;
-    Get.until((route) {
-      debugPrint('Route dilewati: ${route.settings.name ?? route.toString()}');
-      return count++ == n;
-    });
-  }
-
   void _submit() async {
     // Validasi form
     if (!_formKey.currentState!.validate()) return;
@@ -189,7 +178,7 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
           Get.snackbar('Error', 'Failed to submit form: $e');
         } finally {
           await Future.delayed(const Duration(seconds: 3));
-          backNTimes(1);
+          AppHelpers.backNTimes(1);
         }
       },
       barrierDismissible: false,
