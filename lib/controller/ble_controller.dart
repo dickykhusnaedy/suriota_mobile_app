@@ -670,6 +670,9 @@ class BLEDataProcessor {
         controller!._notifyStatus("No records available.");
         _completer?.complete({"data": [], "message": "No records available"});
         _completer = null;
+
+        _updatePaginationData({}, _lastCommandDataType ?? 'device');
+
         return;
       }
 
