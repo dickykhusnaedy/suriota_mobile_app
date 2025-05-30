@@ -7,6 +7,7 @@ import 'package:suriota_mobile_gateway/constant/image_asset.dart';
 import 'package:suriota_mobile_gateway/controller/ble_controller.dart';
 import 'package:suriota_mobile_gateway/global/utils/helper.dart';
 import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
+import 'package:suriota_mobile_gateway/global/widgets/custom_alert_dialog.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_button.dart';
 import 'package:suriota_mobile_gateway/global/widgets/device_card.dart';
 import 'package:suriota_mobile_gateway/global/widgets/loading_overlay.dart';
@@ -27,6 +28,8 @@ class DetailDeviceScreen extends StatefulWidget {
 class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
   final BLEController bleController = Get.put(BLEController());
 
+  bool isLoading = false;
+
   @override
   void initState() {
     super.initState();
@@ -43,6 +46,43 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
         Get.back();
       }
     });
+  }
+
+  void disconnect() async {
+    CustomAlertDialog.show(
+      title: "Disconnect Device",
+      message:
+          "Are you sure you want to disconnect from ${widget.device.platformName}?",
+      primaryButtonText: 'Yes',
+      secondaryButtonText: 'No',
+      onPrimaryPressed: () async {
+        Get.back();
+        await Future.delayed(Duration.zero);
+
+        setState(() {
+          isLoading = true;
+        });
+
+        try {
+          await bleController.disconnectDevice(widget.device);
+
+          AppHelpers.debugLog(
+              'Successfully disconnected from ${widget.device.platformName}');
+
+          AppHelpers.backNTimes(2);
+        } catch (e) {
+          AppHelpers.debugLog('Error disconnecting from device: $e');
+          Get.snackbar('Error', 'Failed to disconnect from device',
+              backgroundColor: AppColor.redColor,
+              colorText: AppColor.whiteColor);
+        } finally {
+          setState(() {
+            isLoading = false;
+          });
+        }
+      },
+      barrierDismissible: false,
+    );
   }
 
   final List<Map<String, dynamic>> menuItems = [
@@ -82,7 +122,7 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
           ),
         ),
         Obx(() {
-          final isAnyDeviceLoading = bleController.isLoading.value;
+          final isAnyDeviceLoading = isLoading || bleController.isLoading.value;
           return LoadingOverlay(
             isLoading: isAnyDeviceLoading,
             message: 'Processing request...',
@@ -153,9 +193,7 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
                   height: 30,
                   child: Button(
                       width: double.infinity,
-                      onPressed: () async {
-                        await bleController.disconnectDevice(widget.device);
-                      },
+                      onPressed: disconnect,
                       text: isLoadingConnection
                           ? "Disconnecting..."
                           : isConnected
