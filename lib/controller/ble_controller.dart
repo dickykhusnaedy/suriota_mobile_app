@@ -92,8 +92,6 @@ class BLEController extends GetxController {
       connectionManager.connectToDevice(device);
   Future<void> disconnectDevice(BluetoothDevice device) =>
       connectionManager.disconnectDevice(device);
-  Future<void> disconnectDeviceWithRedirect(BluetoothDevice device) =>
-      connectionManager.disconnectDeviceWithRedirect(device);
   Future<void> resetBleConnectionsOnly() =>
       connectionManager.resetBleConnectionsOnly();
 
@@ -318,16 +316,27 @@ class BLEConnectionManager {
   // Disconnect from a BLE device
   Future<void> disconnectDevice(BluetoothDevice device) async {
     final deviceId = device.remoteId.toString();
-    final deviceName =
-        device.platformName.isNotEmpty ? device.platformName : deviceId;
+    final getName = device.platformName;
+    final deviceName = getName.isNotEmpty ? device.platformName : deviceId;
+
     controller!.setLoadingStatus(deviceId, true);
 
     try {
-      await device.disconnect().timeout(const Duration(seconds: 5),
+      if (controller!._isConnected[deviceId] == true) {
+        print("Device $deviceName is not connected, skipping disconnect");
+        controller!._connectionStatus[deviceId] = false;
+        controller!._isConnected[deviceId] = false;
+        controller!._notifyStatus("Device $deviceName was not connected.");
+        return;
+      }
+
+      await device.disconnect().timeout(const Duration(seconds: 10),
           onTimeout: () {
+        print("Disconnect timeout for $deviceName");
         throw TimeoutException("Disconnect took too long");
       });
 
+      print("Successfully disconnected from $deviceName");
       controller!._connectionStatus[deviceId] = false;
       controller!._isConnected[deviceId] = false;
       controller!._notifyStatus("Disconnected from $deviceName.");
@@ -340,41 +349,6 @@ class BLEConnectionManager {
     } finally {
       await Future.microtask(
           () => controller!.setLoadingStatus(deviceId, false));
-    }
-  }
-
-  // Disconnect with navigation
-  Future<void> disconnectDeviceWithRedirect(BluetoothDevice device) async {
-    final deviceId = device.remoteId.toString();
-    final deviceName =
-        device.platformName.isNotEmpty ? device.platformName : deviceId;
-    controller!.setLoadingStatus(deviceId, true);
-
-    try {
-      await device.disconnect().timeout(const Duration(seconds: 10));
-      controller!._connectionStatus[deviceId] = false;
-      controller!._isConnected[deviceId] = false;
-      controller!._writeChar = null;
-      controller!._notifyChar = null;
-      controller!._selectedService = null;
-
-      controller!._notifyStatus("Disconnected from $deviceName.");
-
-      if (Get.isRegistered<GetNavigator>()) {
-        if (Get.isOverlaysOpen) {
-          Get.back(closeOverlays: true);
-        }
-        if (Get.currentRoute != '/' && Get.previousRoute.isNotEmpty) {
-          Get.back();
-        }
-      }
-    } catch (e) {
-      AppHelpers.debugLog("Failed to disconnect: $e");
-      controller!._notifyStatus(e is TimeoutException
-          ? "Disconnect timed out for $deviceName"
-          : "Failed to disconnect the device: $deviceName");
-    } finally {
-      controller!.setLoadingStatus(deviceId, false);
     }
   }
 
