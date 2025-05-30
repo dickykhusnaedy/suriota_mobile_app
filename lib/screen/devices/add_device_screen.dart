@@ -4,7 +4,9 @@ import 'package:get/get.dart';
 import 'package:suriota_mobile_gateway/constant/app_color.dart';
 import 'package:suriota_mobile_gateway/constant/app_gap.dart';
 import 'package:suriota_mobile_gateway/controller/ble_controller.dart';
+import 'package:suriota_mobile_gateway/global/utils/helper.dart';
 import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
+import 'package:suriota_mobile_gateway/global/widgets/custom_alert_dialog.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_button.dart';
 import 'package:suriota_mobile_gateway/global/widgets/loading_overlay.dart';
 import 'package:suriota_mobile_gateway/screen/devices/widgets/device_list_widget.dart';
@@ -20,11 +22,44 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
   final BLEController bleController = Get.put(BLEController());
 
   bool isBluetoothOn = false;
+  bool isLoading = false;
 
   @override
   void initState() {
     super.initState();
     _checkBluetoothStatus();
+  }
+
+  void disconnect(BluetoothDevice device) async {
+    CustomAlertDialog.show(
+      title: "Disconnect Device",
+      message:
+          "Are you sure you want to disconnect from ${device.platformName}?",
+      primaryButtonText: 'Yes',
+      secondaryButtonText: 'No',
+      onPrimaryPressed: () async {
+        Get.back();
+        await Future.delayed(Duration.zero);
+
+        setState(() {
+          isLoading = true;
+        });
+
+        try {
+          await bleController.disconnectDevice(device);
+        } catch (e) {
+          AppHelpers.debugLog('Error disconnecting from device: $e');
+          Get.snackbar('Error', 'Failed to disconnect from device',
+              backgroundColor: AppColor.redColor,
+              colorText: AppColor.whiteColor);
+        } finally {
+          setState(() {
+            isLoading = false;
+          });
+        }
+      },
+      barrierDismissible: false,
+    );
   }
 
   Future<void> _checkBluetoothStatus() async {
@@ -225,7 +260,7 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
                       },
                       onDisconnect: () async {
                         if (!isLoadingConnection) {
-                          await bleController.disconnectDevice(device);
+                          disconnect(device);
                         }
                       },
                     );
