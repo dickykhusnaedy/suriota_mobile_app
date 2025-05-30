@@ -170,7 +170,7 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
                         ),
                         AppSpacing.xs,
                         Text(
-                          'BONDED',
+                          'NOT BONDED',
                           style: context.bodySmall,
                           overflow: TextOverflow.ellipsis,
                         ),
