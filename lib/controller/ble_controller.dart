@@ -326,7 +326,7 @@ class BLEConnectionManager {
         print("Device $deviceName is not connected, skipping disconnect");
         controller!._connectionStatus[deviceId] = false;
         controller!._isConnected[deviceId] = false;
-        controller!._notifyStatus("Device $deviceName was not connected.");
+        controller!._notifyStatus("Disconnected from $deviceName.");
         return;
       }
 
