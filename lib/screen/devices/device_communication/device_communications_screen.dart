@@ -106,12 +106,11 @@ class _DeviceCommunicationsScreenState
           bleController.sendCommand('DELETE|devices|id:$deviceId', 'devices');
         } catch (e) {
           debugPrint('Error deleting device: $e');
-
           Get.snackbar('Error', 'Failed to delete device: $e');
         } finally {
-          await Future.delayed(const Duration(milliseconds: 300));
+          await Future.delayed(const Duration(milliseconds: 3000));
           bleController.sendCommand(
-              'READ|devices|page:1|pageSize:5', 'devices');
+              'READ|devices|page:1|pageSize:2', 'devices');
 
           setState(() => isLoading = false);
         }
