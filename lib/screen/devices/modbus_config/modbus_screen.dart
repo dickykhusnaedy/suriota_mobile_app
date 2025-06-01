@@ -53,7 +53,6 @@ class _ModbusScreenState extends State<ModbusScreen> {
     }
 
     setState(() => isLoading = true);
-    debugPrint('Fetching devices: READ|modbus|page:1|pageSize:2');
 
     try {
       // Periksa koneksi BLE
@@ -98,8 +97,8 @@ class _ModbusScreenState extends State<ModbusScreen> {
 
           Get.snackbar('Error', 'Failed to delete device: $e');
         } finally {
-          await Future.delayed(const Duration(milliseconds: 300));
-          bleController.sendCommand('READ|modbus|page:1|pageSize:10', 'modbus');
+          await Future.delayed(const Duration(milliseconds: 3000));
+          bleController.sendCommand('READ|modbus|page:1|pageSize:2', 'modbus');
 
           setState(() => isLoading = false);
         }
@@ -112,10 +111,18 @@ class _ModbusScreenState extends State<ModbusScreen> {
     return Container(
       height: MediaQuery.of(context).size.height * 0.85,
       alignment: Alignment.center,
-      child: const Center(
-        child: CircularProgressIndicator(
-          color: AppColor.primaryColor,
-        ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Center(
+            child: CircularProgressIndicator(
+              color: AppColor.primaryColor,
+            ),
+          ),
+          AppSpacing.md,
+          Obx(() => Text(
+              "Progress: ${(bleController.receivedPackets.value / bleController.expectedPackets.value * 100).toStringAsFixed(1)}%")),
+        ],
       ),
     );
   }
