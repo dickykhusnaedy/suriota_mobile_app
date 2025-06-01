@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:suriota_mobile_gateway/constant/app_color.dart';
 import 'package:suriota_mobile_gateway/constant/app_gap.dart';
 import 'package:suriota_mobile_gateway/controller/ble_controller.dart';
+import 'package:suriota_mobile_gateway/global/utils/helper.dart';
 import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_alert_dialog.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_button.dart';
@@ -82,16 +83,6 @@ class _FormLoggingConfigScreenState extends State<FormLoggingConfigScreen> {
     }
   }
 
-  void backNTimes(int n) {
-    if (n <= 0) {
-      return;
-    }
-    int count = 0;
-    Get.until((route) {
-      return count++ == n;
-    });
-  }
-
   void _submit() {
     if (loggingIntervalSelected.isEmpty || loggingRetentionSelected.isEmpty) {
       Get.snackbar(
@@ -133,7 +124,7 @@ class _FormLoggingConfigScreenState extends State<FormLoggingConfigScreen> {
           Get.snackbar('Error', 'Failed to submit form: $e');
         } finally {
           await Future.delayed(const Duration(seconds: 3));
-          backNTimes(1);
+          AppHelpers.backNTimes(1);
         }
       },
       barrierDismissible: false,
