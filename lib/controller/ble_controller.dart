@@ -715,6 +715,21 @@ class BLEDataProcessor {
         print(
             "📢 Received map response Map<String, dynamic>: ${_lastCommand!.contains('"action":"READ"')}");
         AppHelpers.debugLog("Map response: $json");
+
+        // Handle error response
+        if (json['success'] == false && json.containsKey('error')) {
+          print("❌ Error response: ${json['error']}");
+          AppHelpers.debugLog("Error response: ${json['error']}");
+          controller!._notifyStatus("Error: ${json['error']}");
+          _completer?.complete({
+            "success": false,
+            "error": json['error'],
+            "message": "Operation failed"
+          });
+          _completer = null;
+          _resetPacketBuffer();
+          return;
+        }
         if (json.containsKey("data")) {
           // Map dengan "data" untuk paginasi
           await _processMessage(message);
