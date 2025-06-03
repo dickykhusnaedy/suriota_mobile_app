@@ -94,6 +94,8 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
       final data =
           await bleController.fetchData("READ|devices|names", 'devices');
 
+      print('data devices aa: $data');
+
       setState(() {
         if (data['data'] is List) {
           deviceNames = (data['data'] as List).map((device) {
@@ -111,7 +113,10 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
       });
     } catch (e) {
       setState(() {
-        errorMessage = 'Failed to load config: $e';
+        deviceNames = [];
+        errorMessage = e is TimeoutException
+            ? 'Timeout: Could not load devices. Please try again.'
+            : 'Failed to load devices: $e';
         isLoading = false;
       });
     }

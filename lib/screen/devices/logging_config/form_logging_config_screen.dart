@@ -69,6 +69,8 @@ class _FormLoggingConfigScreenState extends State<FormLoggingConfigScreen> {
       final data = await bleController.fetchData(
           "READ|logging_config", 'logging_config');
 
+      AppHelpers.debugLog('data logging: $data');
+
       setState(() {
         loggingRetentionSelected = data['retention'] ?? '';
         loggingIntervalSelected = data['interval'] ?? '';
