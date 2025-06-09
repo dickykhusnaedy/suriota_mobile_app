@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
+
+import 'package:get/get.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
-import 'package:get/get.dart';
 import 'package:suriota_mobile_gateway/constant/app_color.dart';
 import 'package:suriota_mobile_gateway/constant/font_setup.dart';
-import 'package:suriota_mobile_gateway/controller/device_data_controller.dart';
 import 'package:suriota_mobile_gateway/controller/device_pagination_controller.dart';
 import 'package:suriota_mobile_gateway/controller/modbus_pagination_controller.dart';
 import 'package:suriota_mobile_gateway/global/utils/helper.dart';
@@ -247,7 +247,6 @@ class BLEConnectionManager {
       _cancelDisconnectSubscription();
       _disconnectSubscription = device.connectionState.listen((state) async {
         if (state == BluetoothConnectionState.disconnected) {
-          _controller!._notifyStatus('$deviceName disconnected unexpectedly');
           _controller!.resetBleState();
           await resetBleConnectionsOnly();
           if (Get.currentRoute != '/') {
@@ -323,7 +322,7 @@ class BLEConnectionManager {
   Future<bool> _discoverServices(BluetoothDevice device) async {
     try {
       final services =
-          await device.discoverServices().timeout(const Duration(seconds: 15));
+          await device.discoverServices().timeout(const Duration(seconds: 30));
       if (services.isEmpty) {
         _controller!
             ._notifyStatus('No services found on ${device.platformName}');
@@ -370,8 +369,9 @@ class BLEConnectionManager {
       _controller!._components.setNotifyCharacteristic(char);
       try {
         await _controller!.notifyCharacteristic!.setNotifyValue(true);
-        await Future.delayed(const Duration(milliseconds: 4000));
+        await Future.delayed(const Duration(milliseconds: 2000));
         _controller!._dataProcessor._listenToNotifications();
+
         AppHelpers.debugLog(
             'Notification enabled for characteristic: ${char.uuid}');
       } catch (e) {
@@ -405,7 +405,7 @@ class BLEDataProcessor {
   final Set<String> _processedMessageIds = {};
 
   static const int _maxRetries = 3;
-  static const int _packetDelayMs = 20;
+  static const int _packetDelayMs = 50;
 
   // Set completer for data fetching
   void setCompleter(Completer<Map<String, dynamic>> completer) {
@@ -434,64 +434,96 @@ class BLEDataProcessor {
           'Previous fetchData in progress, waiting for completion');
       return _completer!.future;
     }
+
     _completer = Completer<Map<String, dynamic>>();
     setCompleter(_completer!);
     await sendCommand(command, dataType);
-    return _completer!.future.timeout(
-        Duration(seconds: (expectedPackets.value * 5) + 60), onTimeout: () {
-      _controller!._notifyStatus('Timeout waiting for data');
-      AppHelpers.debugLog(
-          'Fetch data timeout after ${(expectedPackets.value * 5) + 60} seconds');
-      throw TimeoutException('Failed to fetch data');
-    });
+    try {
+      final result = await _completer!.future.timeout(
+        Duration(seconds: (expectedPackets.value * 5) + 30),
+        onTimeout: () {
+          _controller!._notifyStatus('Timeout waiting for data');
+          AppHelpers.debugLog(
+              'Fetch data timeout after ${(expectedPackets.value * 5) + 30} seconds');
+          return {
+            'success': false,
+            'error': 'Timeout',
+            'message': 'Data fetch timed out',
+            'data': [],
+          };
+        },
+      );
+      AppHelpers.debugLog('FetchData result: $result');
+      return result;
+    } finally {
+      _completer = null; // Pembersihan dilakukan di sini setelah hasil diproses
+      _packetTimeoutTimer?.cancel();
+    }
   }
 
   // Send command to BLE device
   Future<void> sendCommand(String command, String dataType) async {
     _controller!._startLoading();
-    if (_controller!.writeCharacteristic == null ||
-        _controller!.notifyCharacteristic == null) {
-      _controller!._notifyStatus('Write/Notify characteristics not found');
-      _controller!._stopLoading();
-      AppHelpers.debugLog('Missing write/notify characteristics');
-      return;
-    }
 
     try {
-      if (!await _controller!.notifyCharacteristic!.isNotifying) {
-        await _controller!.notifyCharacteristic!.setNotifyValue(true);
-        await Future.delayed(const Duration(milliseconds: 4000));
-        AppHelpers.debugLog('Re-enabled notifications');
-      }
-
-      final commandWithTerminator =
-          command.endsWith('#') ? command : '$command#';
-      _lastCommand = commandWithTerminator;
-      _lastCommandDataType = dataType;
-      _retryCount = 0;
-      _packetBuffer.clear();
-      _packetQueue.clear();
-      _processedMessageIds.clear();
-      receivedPackets.value = 0;
-      expectedPackets.value = 1;
-
-      final bytes = utf8.encode(commandWithTerminator);
-      final mtu =
-          await _controller!.writeCharacteristic!.device.mtu.first ?? 20;
-      for (var offset = 0; offset < bytes.length; offset += mtu) {
-        final chunk =
-            bytes.sublist(offset, (offset + mtu).clamp(0, bytes.length));
-        await _controller!.writeCharacteristic!
-            .write(chunk, withoutResponse: false);
-        await Future.delayed(Duration(milliseconds: mtu < 50 ? 500 : 100));
-      }
-      AppHelpers.debugLog('Sent command: $commandWithTerminator, MTU: $mtu');
+      await _validateCharacteristics();
+      await _ensureNotificationsEnabled();
+      await _sendCommandData(command, dataType);
     } catch (e) {
-      _controller!._notifyStatus('Failed to send command: $e');
-      AppHelpers.debugLog('Command send error: $e');
-    } finally {
-      _controller!._stopLoading();
+      _handleSendError(e);
     }
+  }
+
+  Future<void> _validateCharacteristics() async {
+    if (_controller!.writeCharacteristic == null ||
+        _controller!.notifyCharacteristic == null) {
+      throw Exception('Write/Notify characteristics not found');
+    }
+  }
+
+  Future<void> _ensureNotificationsEnabled() async {
+    if (!await _controller!.notifyCharacteristic!.isNotifying) {
+      await _controller!.notifyCharacteristic!.setNotifyValue(true);
+      await Future.delayed(const Duration(milliseconds: 3000));
+      AppHelpers.debugLog('Re-enabled notifications');
+    }
+  }
+
+  Future<void> _sendCommandData(String command, String dataType) async {
+    final commandWithTerminator = '$command#';
+    _resetState(commandWithTerminator, dataType);
+
+    final bytes = utf8.encode(commandWithTerminator);
+    final mtu = await _controller!.writeCharacteristic!.device.mtu.first;
+
+    await _sendInChunks(bytes, mtu);
+    AppHelpers.debugLog('Sent command: $commandWithTerminator, MTU: $mtu');
+  }
+
+  void _resetState(String command, String dataType) {
+    _lastCommand = command;
+    _lastCommandDataType = dataType;
+    _retryCount = 0;
+    _packetBuffer.clear();
+    _packetQueue.clear();
+    _processedMessageIds.clear();
+    receivedPackets.value = 0;
+    expectedPackets.value = 1;
+  }
+
+  Future<void> _sendInChunks(List<int> bytes, int mtu) async {
+    for (var offset = 0; offset < bytes.length; offset += mtu) {
+      final chunk =
+          bytes.sublist(offset, (offset + mtu).clamp(0, bytes.length));
+      await _controller!.writeCharacteristic!
+          .write(chunk, withoutResponse: false);
+      await Future.delayed(Duration(milliseconds: mtu < 50 ? 5000 : 3000));
+    }
+  }
+
+  void _handleSendError(dynamic error) {
+    _controller!._notifyStatus('Failed to send command: $error');
+    AppHelpers.debugLog('Command send error: $error');
   }
 
   // Listen to BLE notifications
@@ -539,7 +571,7 @@ class BLEDataProcessor {
         AppHelpers.debugLog(
             'Processing packet: $data, queue remaining: ${_packetQueue.length}');
         await _processRawPacket(data);
-        await Future.delayed(const Duration(milliseconds: 10));
+        await Future.delayed(const Duration(milliseconds: 100));
       }
     } finally {
       _isProcessingQueue = false;
@@ -550,7 +582,6 @@ class BLEDataProcessor {
   // Process a raw packet
   Future<void> _processRawPacket(String data) async {
     final match = _parsePacket(data);
-    print('match data: ${match != null}');
     if (match != null) {
       await _storePacket(match);
     } else {
@@ -607,7 +638,20 @@ class BLEDataProcessor {
 
     if (_isAllPacketsReceived()) {
       AppHelpers.debugLog('All packets received, completing message');
-      await _completeMessage();
+      final message = _assembleMessage();
+
+      try {
+        final parsedJson = jsonDecode(message);
+        if (parsedJson is Map || parsedJson is List) {
+          await _completeMessage(json: parsedJson);
+        } else {
+          await _completeMessage(data: message);
+        }
+      } catch (e) {
+        await _completeMessage(data: message);
+      }
+
+      _controller!._stopLoading();
     }
   }
 
@@ -721,16 +765,11 @@ class BLEDataProcessor {
   Future<void> _completeMessage({String? data, dynamic json}) async {
     AppHelpers.debugLog('Completing message: data=$data, json=$json');
 
-    if (_completer == null) {
-      AppHelpers.debugLog('No completer found, cannot complete message');
-      return;
-    }
-
     if (data != null) {
       if (data.toLowerCase().contains('successfully')) {
         AppHelpers.debugLog('Success response: $data');
         _completer?.complete({'data': [], 'message': data});
-        _controller!._notifyStatus(data);
+        _controller!._notifyStatus('$data, please click button fetch data');
       } else if (data == 'No records available') {
         AppHelpers.debugLog('No records response: $data');
         _completer?.complete({'data': [], 'message': data});
@@ -742,11 +781,13 @@ class BLEDataProcessor {
             {'data': [], 'message': 'Empty or invalid message', 'raw': data});
         _controller!._notifyStatus('Received empty or invalid response');
       }
+
       _completer = null;
       _packetTimeoutTimer?.cancel();
       resetState();
       return;
     }
+
     if (json is List<dynamic>) {
       AppHelpers.debugLog('Processing list response: ${json.length} items');
       final response = {
@@ -761,8 +802,7 @@ class BLEDataProcessor {
         'message': 'Array response converted',
       };
       _completer?.complete(response);
-      _controller!._notifyStatus('Received ${json.length} items');
-      _completer = null;
+
       _packetTimeoutTimer?.cancel();
       resetState();
       return;
@@ -779,6 +819,7 @@ class BLEDataProcessor {
         });
         _controller!._notifyStatus('Error: ${json['error']}');
         AppHelpers.debugLog('Error response: ${json['error']}');
+
         _completer = null;
         _packetTimeoutTimer?.cancel();
         resetState();
@@ -797,8 +838,6 @@ class BLEDataProcessor {
         _completer?.complete(json);
       }
 
-      _controller!._notifyStatus('Received data successfully');
-      _completer = null;
       _packetTimeoutTimer?.cancel();
       resetState();
       return;
@@ -816,6 +855,7 @@ class BLEDataProcessor {
         _completer?.complete(
             {'data': [], 'message': 'Invalid JSON structure', 'raw': message});
         _controller!._notifyStatus('Invalid JSON structure received');
+
         _completer = null;
         _packetTimeoutTimer?.cancel();
         resetState();
@@ -827,6 +867,7 @@ class BLEDataProcessor {
     _completer?.complete(
         {'data': [], 'message': 'Invalid JSON structure', 'raw': json});
     _controller!._notifyStatus('Invalid JSON structure received');
+
     _completer = null;
     _packetTimeoutTimer?.cancel();
     resetState();
