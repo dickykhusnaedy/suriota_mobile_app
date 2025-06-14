@@ -13,4 +13,5 @@ class ImageAsset {
   static const iconConfig = 'assets/config.png';
   static const iconServer = 'assets/server.png';
   static const iconDeviceInitial = 'assets/responsive.png';
+  static const suriotaGatewayBanner = 'assets/banner_suriota_gateway.png';
 }
