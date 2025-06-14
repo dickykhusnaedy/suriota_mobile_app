@@ -86,7 +86,7 @@ class _MainScreenState extends State<MainScreen> {
                   color: AppColor.primaryColor,
                 ),
                 title: Text(
-                  'About Us',
+                  'About Product',
                   style: FontFamily.normal,
                 ),
                 onTap: () {

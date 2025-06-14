@@ -22,7 +22,7 @@ class SideBarMenu extends StatelessWidget {
           ),
           const Center(
             child: CircleAvatar(
-              radius: 50, backgroundImage: AssetImage(ImageAsset.profile2)),
+                radius: 50, backgroundImage: AssetImage(ImageAsset.profile2)),
           ),
           AppSpacing.md,
           Padding(
@@ -71,7 +71,7 @@ class SideBarMenu extends StatelessWidget {
                     color: AppColor.primaryColor,
                     size: 22,
                   ),
-                  title: Text('About Us', style: context.body),
+                  title: Text('About Product', style: context.body),
                   onTap: () {
                     Navigator.push(
                         context,
