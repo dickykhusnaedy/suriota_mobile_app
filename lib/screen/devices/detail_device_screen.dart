@@ -170,7 +170,7 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
                         ),
                         AppSpacing.xs,
                         Text(
-                          'NOT BONDED',
+                          'BONDED',
                           style: context.bodySmall,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -210,8 +210,8 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
         ),
         AppSpacing.xl,
         Text(
-          'Configuration Menu',
-          style: context.h5,
+          'CONFIGURATION MENU',
+          style: context.h4,
         ),
         AppSpacing.md,
         LayoutBuilder(builder: (context, constraints) {
