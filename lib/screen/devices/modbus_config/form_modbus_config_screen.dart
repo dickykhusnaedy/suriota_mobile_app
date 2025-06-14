@@ -311,15 +311,15 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
               AppSpacing.md,
               CustomTextFormField(
                 controller: addressController,
-                labelTxt: "Address",
+                labelTxt: "Address Modbus",
                 hintTxt: "1",
                 keyboardType: TextInputType.number,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Address is required';
+                    return 'Address Modbus is required';
                   }
                   if (_tryParseInt(value) == null) {
-                    return 'Address must be a valid number';
+                    return 'Address Modbus must be a valid number';
                   }
                   return null;
                 },
