@@ -6,7 +6,7 @@ import 'package:multi_dropdown/multi_dropdown.dart';
 import 'package:suriota_mobile_gateway/constant/app_color.dart';
 import 'package:suriota_mobile_gateway/constant/app_gap.dart';
 import 'package:suriota_mobile_gateway/constant/font_setup.dart';
-import 'package:suriota_mobile_gateway/controller/ble_controller.dart';
+import 'package:suriota_mobile_gateway/core/controllers/ble/ble_controller.dart';
 import 'package:suriota_mobile_gateway/global/utils/helper.dart';
 import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_alert_dialog.dart';

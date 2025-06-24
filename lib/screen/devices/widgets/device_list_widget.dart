@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:suriota_mobile_gateway/constant/app_color.dart';
-import 'package:suriota_mobile_gateway/controller/ble_controller.dart';
+import 'package:suriota_mobile_gateway/core/controllers/ble/ble_controller.dart';
 import 'package:suriota_mobile_gateway/global/widgets/device_card.dart';
 import 'package:suriota_mobile_gateway/screen/devices/detail_device_screen.dart';
 
