@@ -45,7 +45,8 @@ class _MainScreenState extends State<MainScreen> {
               Center(
                 child: Text(
                   'Fulan bin Fulan',
-                  style: FontFamily.headlineLarge,
+                  style: FontFamily.headlineLarge
+                      .copyWith(color: AppColor.blackColor),
                 ),
               ),
               const SizedBox(height: 100),
