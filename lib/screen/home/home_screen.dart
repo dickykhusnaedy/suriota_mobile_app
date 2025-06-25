@@ -72,11 +72,14 @@ class _HomeScreenState extends State<HomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Hallo, Fulan👋', style: context.h1),
+        Text('Hallo, Fulan👋',
+            style: context.h1.copyWith(color: AppColor.blackColor)),
         AppSpacing.xs,
-        Text('Connecting the device near you', style: context.body),
+        Text('Connecting the device near you',
+            style: context.body.copyWith(color: AppColor.grey)),
         AppSpacing.xxl,
-        Text('Device List', style: context.h4),
+        Text('Device List',
+            style: context.h4.copyWith(color: AppColor.blackColor)),
         AppSpacing.sm,
         Obx(() {
           // ignore: prefer_is_empty
