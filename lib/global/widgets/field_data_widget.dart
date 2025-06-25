@@ -15,7 +15,7 @@ class FieldDataWidget extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: context.h6),
+        Text(label, style: context.h6.copyWith(color: AppColor.blackColor)),
         AppSpacing.sm,
         Text(description, style: context.body.copyWith(color: AppColor.grey))
       ],
