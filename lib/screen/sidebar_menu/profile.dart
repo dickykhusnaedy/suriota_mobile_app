@@ -25,7 +25,7 @@ class ProfilePage extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        AppSpacing.md,
+        AppSpacing.lg,
         const Center(
           child: CircleAvatar(
             radius: 75,
@@ -36,7 +36,7 @@ class ProfilePage extends StatelessWidget {
         Center(
           child: Text(
             'Fulan bin Fulan',
-            style: context.h3,
+            style: context.h3.copyWith(color: AppColor.blackColor),
           ),
         ),
         AppSpacing.lg,
