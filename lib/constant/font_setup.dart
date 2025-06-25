@@ -27,7 +27,7 @@ class FontWeightTheme {
 class FontFamily {
   FontFamily._();
 
-  static const Color color = AppColor.primaryColor;
+  static const Color color = AppColor.blackColor;
 
   static TextStyle titleLarge = GoogleFonts.poppins(
     fontSize: 32,
