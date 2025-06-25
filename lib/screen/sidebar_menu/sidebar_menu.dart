@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:suriota_mobile_gateway/constant/app_color.dart';
 import 'package:suriota_mobile_gateway/constant/app_gap.dart';
+import 'package:suriota_mobile_gateway/constant/font_setup.dart';
 import 'package:suriota_mobile_gateway/constant/image_asset.dart';
 import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
 import 'package:suriota_mobile_gateway/screen/login/login_page.dart';
+import 'package:suriota_mobile_gateway/screen/sidebar_menu/about_app.dart';
 import 'package:suriota_mobile_gateway/screen/sidebar_menu/about_us_page.dart';
 import 'package:suriota_mobile_gateway/screen/sidebar_menu/profile.dart';
 
@@ -29,73 +31,105 @@ class SideBarMenu extends StatelessWidget {
             padding: AppPadding.horizontalMedium,
             child: Text(
               'Fulan bin Fulan',
-              style: context.h5,
+              style: context.h4.copyWith(color: AppColor.blackColor),
               textAlign: TextAlign.center,
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          AppSpacing.lg,
-          Padding(
-            padding: AppPadding.horizontalMedium,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ListTile(
-                  title: Text('Home', style: context.body),
-                  leading: const Icon(
-                    Icons.home,
-                    color: AppColor.primaryColor,
-                    size: 22,
-                  ),
-                  onTap: () {
-                    Navigator.pop(context);
-                  },
+          AppSpacing.md,
+          Column(
+            children: [
+              ListTile(
+                title: Text('Home',
+                    style: context.body.copyWith(color: AppColor.blackColor)),
+                trailing: const Icon(
+                  Icons.chevron_right,
+                  size: 22,
+                  color: AppColor.blackColor,
                 ),
-                ListTile(
-                  leading: const Icon(
-                    Icons.person,
-                    color: AppColor.primaryColor,
-                    size: 22,
-                  ),
-                  title: Text('Profile', style: context.body),
-                  onTap: () {
-                    Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const ProfilePage()));
-                  },
+                onTap: () {
+                  Navigator.pop(context);
+                },
+              ),
+              Divider(
+                height: 0,
+                color: Colors.grey[300],
+              ),
+              ListTile(
+                title: Text('Profile',
+                    style: context.body.copyWith(color: AppColor.blackColor)),
+                trailing: const Icon(
+                  Icons.chevron_right,
+                  size: 22,
+                  color: AppColor.blackColor,
                 ),
-                ListTile(
-                  leading: const Icon(
-                    Icons.info_sharp,
-                    color: AppColor.primaryColor,
-                    size: 22,
-                  ),
-                  title: Text('About Product', style: context.body),
-                  onTap: () {
-                    Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const AboutUsPage()));
-                  },
+                onTap: () {
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const ProfilePage()));
+                },
+              ),
+              Divider(
+                height: 0,
+                color: Colors.grey[300],
+              ),
+              ListTile(
+                title: Text('About Product',
+                    style: context.body.copyWith(color: AppColor.blackColor)),
+                trailing: const Icon(
+                  Icons.chevron_right,
+                  size: 22,
+                  color: AppColor.blackColor,
                 ),
-                ListTile(
-                  leading: const Icon(
-                    Icons.logout,
-                    color: AppColor.redColor,
-                    size: 22,
-                  ),
-                  title: Text('Logout',
-                      style: context.body.copyWith(color: AppColor.redColor)),
-                  onTap: () {
-                    Navigator.of(context).pushAndRemoveUntil(
-                        MaterialPageRoute(
-                            builder: (context) => const LoginPage()),
-                        (Route route) => false);
-                  },
+                onTap: () {
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const AboutUsPage()));
+                },
+              ),
+              Divider(
+                height: 0,
+                color: Colors.grey[300],
+              ),
+              ListTile(
+                title: Text('About App',
+                    style: context.body.copyWith(color: AppColor.blackColor)),
+                trailing: const Icon(
+                  Icons.chevron_right,
+                  size: 22,
+                  color: AppColor.blackColor,
                 ),
-              ],
-            ),
+                onTap: () {
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const AboutApp()));
+                },
+              ),
+              Divider(
+                height: 0,
+                color: Colors.grey[300],
+              ),
+              ListTile(
+                leading: const Icon(
+                  Icons.logout,
+                  color: AppColor.redColor,
+                  size: 22,
+                ),
+                title: Text('Logout',
+                    style: context.body.copyWith(
+                        color: AppColor.redColor,
+                        fontWeight: FontWeightTheme.extraBold)),
+                onTap: () {
+                  Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(
+                          builder: (context) => const LoginPage()),
+                      (Route route) => false);
+                },
+              ),
+            ],
           ),
           AppSpacing.xl,
         ],
