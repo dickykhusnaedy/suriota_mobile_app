@@ -1,13 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:get/get.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:get/get.dart';
 import 'package:suriota_mobile_gateway/constant/app_color.dart';
-import 'package:suriota_mobile_gateway/constant/font_setup.dart';
 import 'package:suriota_mobile_gateway/core/controllers/devices/device_pagination_controller.dart';
 import 'package:suriota_mobile_gateway/core/controllers/modbus/modbus_pagination_controller.dart';
+import 'package:suriota_mobile_gateway/core/utils/snackbar/snackbar_custom.dart';
 import 'package:suriota_mobile_gateway/global/utils/helper.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_alert_dialog.dart';
 import 'package:suriota_mobile_gateway/screen/devices/detail_device_screen.dart';
@@ -121,7 +121,8 @@ class BLEController extends GetxController {
   // Notify status updates to UI
   void _notifyStatus(String message) {
     _statusController.add(message);
-    BLEUtils.showSnackbar('', message, AppColor.grey, AppColor.whiteColor);
+    SnackbarCustom.showSnackbar(
+        '', message, AppColor.grey, AppColor.whiteColor);
   }
 
   // Start loading state
@@ -769,7 +770,7 @@ class BLEDataProcessor {
       if (data.toLowerCase().contains('successfully')) {
         AppHelpers.debugLog('Success response: $data');
         _completer?.complete({'data': [], 'message': data});
-        _controller!._notifyStatus('$data, please click button fetch data');
+        _controller!._notifyStatus('$data\nPlease click button fetch data');
       } else if (data == 'No records available') {
         AppHelpers.debugLog('No records response: $data');
         _completer?.complete({'data': [], 'message': data});
@@ -899,28 +900,6 @@ class BLEDataProcessor {
 
 // Utility class for UI-related BLE functions
 class BLEUtils {
-  // Show a snackbar with custom styling
-  static void showSnackbar(
-      String title, String message, Color? bgColor, Color? textColor) {
-    Get.showSnackbar(GetSnackBar(
-      title: title.isEmpty ? null : title,
-      message: message,
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: bgColor ?? AppColor.redColor,
-      messageText: Text(
-        message,
-        style:
-            FontFamily.normal.copyWith(color: textColor ?? AppColor.whiteColor),
-      ),
-      duration: const Duration(seconds: 3),
-      margin: const EdgeInsets.all(16),
-      padding: title.isEmpty
-          ? const EdgeInsets.fromLTRB(12.0, 8.0, 12.0, 12.0)
-          : const EdgeInsets.all(12.0),
-      borderRadius: 8,
-    ));
-  }
-
   // Show dialog when a device is connected
   static void showConnectedBottomSheet(BluetoothDevice device) {
     CustomAlertDialog.show(
