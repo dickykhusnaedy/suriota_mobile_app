@@ -3,6 +3,7 @@ import 'package:suriota_mobile_gateway/constant/app_color.dart';
 import 'package:suriota_mobile_gateway/constant/app_gap.dart';
 import 'package:suriota_mobile_gateway/constant/font_setup.dart';
 import 'package:suriota_mobile_gateway/constant/image_asset.dart';
+import 'package:suriota_mobile_gateway/global/utils/helper.dart';
 import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_button.dart';
 
@@ -179,7 +180,11 @@ class AboutApp extends StatelessWidget {
             Expanded(
               child: Button(
                 width: double.infinity,
-                onPressed: () {},
+                onPressed: () {
+                  final Uri url = Uri.parse(
+                      'https://drive.google.com/file/d/1B77Mzzm0dMLm9qItgJSUfPSPCa8zjLUG/view?usp=sharing');
+                  AppHelpers.launchInBrowser(url);
+                },
                 text: 'Company Profile',
                 icons: const Icon(
                   Icons.file_open,

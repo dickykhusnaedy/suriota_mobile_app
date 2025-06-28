@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:suriota_mobile_gateway/constant/app_color.dart';
 import 'package:suriota_mobile_gateway/constant/app_gap.dart';
 import 'package:suriota_mobile_gateway/constant/image_asset.dart';
+import 'package:suriota_mobile_gateway/global/utils/helper.dart';
 import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_button.dart';
 
@@ -379,17 +380,9 @@ class AboutUsPage extends StatelessWidget {
                     child: Button(
                       width: double.infinity,
                       onPressed: () async {
-                        // final Uri url = Uri.parse(
-                        //     'https://drive.google.com/drive/folders/12XOl4YRrcpPVdAbYFFdjo-ylfev5Z-Lu?usp=sharing');
-
-                        // if (await canLaunchUrl(url)) {
-                        //   await launchUrl(
-                        //     url,
-                        //     mode: LaunchMode.platformDefault,
-                        //   );
-                        // } else {
-                        //   debugPrint('❌ Tidak bisa membuka link: $url');
-                        // }
+                        final Uri url = Uri.parse(
+                            'https://drive.google.com/drive/folders/12XOl4YRrcpPVdAbYFFdjo-ylfev5Z-Lu?usp=sharing');
+                        AppHelpers.launchInBrowser(url);
                       },
                       text: 'Datasheet',
                       icons: const Icon(
