@@ -64,7 +64,17 @@ class AboutApp extends StatelessWidget {
             ),
             AppSpacing.md,
             Text(
-              'Visson',
+              'Who Are We?',
+              style: context.h5.copyWith(color: AppColor.blackColor),
+            ),
+            AppSpacing.sm,
+            Text(
+              'PT Surya Inovasi Prioritas (Suriota) is a company engaged in Consulting Engineering Services, located in Batam, Riau Islands, Indonesia. Established in January 2023, Suriota focuses on providing innovative and sustainable solutions in four main areas: Electrical, Water Treatment, Automation, and Renewable Energy.',
+              style: context.body.copyWith(color: AppColor.blackColor),
+            ),
+            AppSpacing.md,
+            Text(
+              'Vission',
               style: context.h5.copyWith(color: AppColor.blackColor),
             ),
             AppSpacing.sm,
