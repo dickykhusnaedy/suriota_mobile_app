@@ -11,35 +11,35 @@ class AppTheme {
         titleLarge: GoogleFonts.poppins(
             fontSize: FontSizeTheme.h1,
             fontWeight: FontWeightTheme.extraBold,
-            color: AppColor.primaryColor),
+            color: AppColor.blackColor),
         titleMedium: GoogleFonts.poppins(
             fontSize: FontSizeTheme.h2,
             fontWeight: FontWeightTheme.bold,
-            color: AppColor.primaryColor),
+            color: AppColor.blackColor),
         titleSmall: GoogleFonts.poppins(
             fontSize: FontSizeTheme.h3,
             fontWeight: FontWeightTheme.bold,
-            color: AppColor.primaryColor),
+            color: AppColor.blackColor),
         headlineLarge: GoogleFonts.poppins(
             fontSize: FontSizeTheme.h4,
             fontWeight: FontWeightTheme.semiBold,
-            color: AppColor.primaryColor),
+            color: AppColor.blackColor),
         headlineMedium: GoogleFonts.poppins(
             fontSize: FontSizeTheme.h5,
             fontWeight: FontWeightTheme.semiBold,
-            color: AppColor.primaryColor),
+            color: AppColor.blackColor),
         headlineSmall: GoogleFonts.poppins(
             fontSize: FontSizeTheme.h6,
             fontWeight: FontWeightTheme.semiBold,
-            color: AppColor.primaryColor),
+            color: AppColor.blackColor),
         bodyMedium: GoogleFonts.poppins(
             fontSize: FontSizeTheme.body,
             fontWeight: FontWeightTheme.regular,
-            color: AppColor.primaryColor),
+            color: AppColor.blackColor),
         bodySmall: GoogleFonts.poppins(
             fontSize: FontSizeTheme.bodySmall,
             fontWeight: FontWeightTheme.regular,
-            color: AppColor.primaryColor),
+            color: AppColor.blackColor),
         labelLarge: GoogleFonts.poppins(
             fontSize: FontSizeTheme.body,
             fontWeight: FontWeightTheme.medium,
