@@ -6,6 +6,7 @@ import 'package:suriota_mobile_gateway/constant/app_color.dart';
 import 'package:suriota_mobile_gateway/constant/app_gap.dart';
 import 'package:suriota_mobile_gateway/core/controllers/ble/ble_controller.dart';
 import 'package:suriota_mobile_gateway/core/controllers/devices/device_pagination_controller.dart';
+import 'package:suriota_mobile_gateway/core/utils/snackbar/snackbar_custom.dart';
 import 'package:suriota_mobile_gateway/global/utils/helper.dart';
 import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_alert_dialog.dart';
@@ -82,6 +83,21 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
   }
 
   void _submit() async {
+    if (widget.id == null) {
+      final Map<String, dynamic> devicesName = controller.devices.firstWhere(
+          (item) => item['name'] == deviceNameController.text,
+          orElse: () => {});
+
+      if (devicesName.isNotEmpty) {
+        SnackbarCustom.showSnackbar(
+            '',
+            'Sorry, the device name you entered is already registered.',
+            AppColor.redColor,
+            AppColor.whiteColor);
+        return;
+      }
+    }
+
     // Validasi form
     if (!_formKey.currentState!.validate()) return;
 
