@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:suriota_mobile_gateway/constant/app_color.dart';
-import 'package:suriota_mobile_gateway/core/controllers/ble/ble_controller.dart';
+import 'package:suriota_mobile_gateway/core/utils/snackbar/snackbar_custom.dart';
 import 'package:suriota_mobile_gateway/global/widgets/device_card.dart';
 import 'package:suriota_mobile_gateway/screen/devices/detail_device_screen.dart';
 
@@ -26,7 +26,7 @@ class DeviceListWidget extends StatelessWidget {
     return InkWell(
       onTap: () {
         if (!isConnected) {
-          BLEUtils.showSnackbar(
+          SnackbarCustom.showSnackbar(
               '',
               'Device is not connected, please connect the device first.',
               AppColor.redColor,
