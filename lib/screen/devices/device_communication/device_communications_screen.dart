@@ -170,7 +170,7 @@ class _DeviceCommunicationsScreenState
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Connections Device',
+              'Data Devices',
               style: context.h5,
               overflow: TextOverflow.ellipsis,
             ),
@@ -257,7 +257,8 @@ class _DeviceCommunicationsScreenState
           ),
           AppSpacing.md,
           Obx(() => Text(
-              "Progress: ${(bleController.receivedPackets.value / bleController.expectedPackets.value * 100).toStringAsFixed(1)}%")),
+              "Loading: ${(bleController.receivedPackets.value / bleController.expectedPackets.value * 100).toStringAsFixed(1)}%",
+              style: context.bodySmall)),
         ],
       ),
     );
