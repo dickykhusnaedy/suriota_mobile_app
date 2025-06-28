@@ -5,6 +5,7 @@ import 'package:suriota_mobile_gateway/constant/app_gap.dart';
 import 'package:suriota_mobile_gateway/constant/image_asset.dart';
 import 'package:suriota_mobile_gateway/core/controllers/ble/ble_controller.dart';
 import 'package:suriota_mobile_gateway/core/controllers/devices/device_pagination_controller.dart';
+import 'package:suriota_mobile_gateway/core/utils/snackbar/snackbar_custom.dart';
 import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_alert_dialog.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_button.dart';
@@ -68,7 +69,7 @@ class _DeviceCommunicationsScreenState
       // Periksa koneksi BLE
       if (bleController.isConnected.isEmpty ||
           !bleController.isConnected.values.any((connected) => connected)) {
-        BLEUtils.showSnackbar('Error', 'No BLE device connected',
+        SnackbarCustom.showSnackbar('Error', 'No BLE device connected',
             AppColor.redColor, AppColor.whiteColor);
         setState(() => isLoading = false);
         return;
@@ -77,7 +78,7 @@ class _DeviceCommunicationsScreenState
       bleController.sendCommand('READ|devices|page:1|pageSize:2', 'devices');
     } catch (e) {
       debugPrint('Error fetching devices: $e');
-      BLEUtils.showSnackbar('Error', 'Failed to fetch devices: $e',
+      SnackbarCustom.showSnackbar('Error', 'Failed to fetch devices: $e',
           AppColor.redColor, AppColor.whiteColor);
     } finally {
       setState(() => isLoading = false);
