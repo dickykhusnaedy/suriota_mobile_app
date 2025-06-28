@@ -121,7 +121,8 @@ class _ModbusScreenState extends State<ModbusScreen> {
           ),
           AppSpacing.md,
           Obx(() => Text(
-              "Progress: ${(bleController.receivedPackets.value / bleController.expectedPackets.value * 100).toStringAsFixed(1)}%")),
+              "Loading: ${(bleController.receivedPackets.value / bleController.expectedPackets.value * 100).toStringAsFixed(1)}%",
+              style: context.bodySmall)),
         ],
       ),
     );
@@ -161,7 +162,7 @@ class _ModbusScreenState extends State<ModbusScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Modbus Config',
+                    'Data Modbus',
                     style: context.h5,
                     overflow: TextOverflow.ellipsis,
                   ),
