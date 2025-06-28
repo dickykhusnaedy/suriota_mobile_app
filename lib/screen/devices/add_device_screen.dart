@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:suriota_mobile_gateway/constant/app_color.dart';
 import 'package:suriota_mobile_gateway/constant/app_gap.dart';
 import 'package:suriota_mobile_gateway/core/controllers/ble/ble_controller.dart';
+import 'package:suriota_mobile_gateway/core/utils/snackbar/snackbar_custom.dart';
 import 'package:suriota_mobile_gateway/global/utils/helper.dart';
 import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_alert_dialog.dart';
@@ -75,7 +76,7 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
     if (isBluetoothOn) {
       bleController.scanDevice();
     } else {
-      BLEUtils.showSnackbar(
+      SnackbarCustom.showSnackbar(
           'Bluetooth is off',
           'Please enable Bluetooth to scan devices.',
           AppColor.redColor,
