@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:suriota_mobile_gateway/constant/app_gap.dart';
-import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
+import 'package:suriota_mobile_gateway/core/constants/app_gap.dart';
+import 'package:suriota_mobile_gateway/core/utils/extensions.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_button.dart';
 
-import '../../constant/app_color.dart';
-import '../../constant/font_setup.dart';
-import '../../constant/image_asset.dart';
+import '../../core/constants/app_color.dart';
+import '../../core/constants/app_font.dart';
+import '../../core/constants/app_image_assets.dart';
 
 Widget cardMenu(BuildContext context, String? iconImage, String? titleCard,
     {void Function()? onTap}) {

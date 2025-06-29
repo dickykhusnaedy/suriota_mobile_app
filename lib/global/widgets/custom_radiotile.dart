@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:suriota_mobile_gateway/constant/app_color.dart';
-import 'package:suriota_mobile_gateway/constant/font_setup.dart';
-import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
+import 'package:suriota_mobile_gateway/core/constants/app_color.dart';
+import 'package:suriota_mobile_gateway/core/constants/app_font.dart';
+import 'package:suriota_mobile_gateway/core/utils/extensions.dart';
 
 class CustomRadioTileController extends ValueNotifier<String?> {
   CustomRadioTileController(String? initialValue) : super(initialValue);

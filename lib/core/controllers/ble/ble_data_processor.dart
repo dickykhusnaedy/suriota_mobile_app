@@ -5,7 +5,7 @@ import 'package:get/get.dart';
 import 'package:suriota_mobile_gateway/core/controllers/ble/ble_controller.dart';
 import 'package:suriota_mobile_gateway/core/controllers/devices/device_pagination_controller.dart';
 import 'package:suriota_mobile_gateway/core/controllers/modbus/modbus_pagination_controller.dart';
-import 'package:suriota_mobile_gateway/global/utils/helper.dart';
+import 'package:suriota_mobile_gateway/core/utils/app_helpers.dart';
 
 class BLEDataProcessor {
   BLEController? controller;

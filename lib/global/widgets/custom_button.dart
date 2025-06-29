@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:suriota_mobile_gateway/constant/app_gap.dart';
+import 'package:suriota_mobile_gateway/core/constants/app_gap.dart';
 
-import '../../constant/app_color.dart';
-import '../../constant/font_setup.dart';
+import '../../core/constants/app_color.dart';
+import '../../core/constants/app_font.dart';
 
 class CustomButton extends StatelessWidget {
   const CustomButton(

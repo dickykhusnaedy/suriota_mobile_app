@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:suriota_mobile_gateway/constant/app_color.dart';
-import 'package:suriota_mobile_gateway/constant/app_gap.dart';
-import 'package:suriota_mobile_gateway/constant/font_setup.dart';
-import 'package:suriota_mobile_gateway/constant/image_asset.dart';
-import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
+import 'package:suriota_mobile_gateway/core/constants/app_color.dart';
+import 'package:suriota_mobile_gateway/core/constants/app_gap.dart';
+import 'package:suriota_mobile_gateway/core/constants/app_font.dart';
+import 'package:suriota_mobile_gateway/core/constants/app_image_assets.dart';
+import 'package:suriota_mobile_gateway/core/utils/extensions.dart';
 import 'package:suriota_mobile_gateway/screen/login/login_page.dart';
 import 'package:suriota_mobile_gateway/screen/sidebar_menu/about_app.dart';
 import 'package:suriota_mobile_gateway/screen/sidebar_menu/about_us_page.dart';

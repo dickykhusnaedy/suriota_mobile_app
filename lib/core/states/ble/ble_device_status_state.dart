@@ -1,5 +1,5 @@
 import 'package:get/get.dart';
-import 'package:suriota_mobile_gateway/global/utils/helper.dart';
+import 'package:suriota_mobile_gateway/core/utils/app_helpers.dart';
 
 class BleDeviceStatusState {
   final RxMap<String, bool> connectionStatus = <String, bool>{}.obs;

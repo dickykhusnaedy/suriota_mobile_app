@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:suriota_mobile_gateway/constant/app_color.dart';
-import 'package:suriota_mobile_gateway/constant/font_setup.dart';
+import 'package:suriota_mobile_gateway/core/constants/app_color.dart';
+import 'package:suriota_mobile_gateway/core/constants/app_font.dart';
 import 'package:suriota_mobile_gateway/screen/sidebar_menu/about_us_page.dart';
 import 'package:suriota_mobile_gateway/screen/home/home_screen.dart';
 import 'package:suriota_mobile_gateway/screen/login/login_page.dart';
-import '../constant/image_asset.dart';
+import '../core/constants/app_image_assets.dart';
 import 'sidebar_menu/profile.dart';
 
 class MainScreen extends StatefulWidget {

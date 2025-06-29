@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:get/get.dart';
-import 'package:suriota_mobile_gateway/constant/app_color.dart';
+import 'package:suriota_mobile_gateway/core/constants/app_color.dart';
 import 'package:suriota_mobile_gateway/core/controllers/ble/ble_data_processor.dart';
 import 'package:suriota_mobile_gateway/core/services/ble/ble_connection.dart';
 import 'package:suriota_mobile_gateway/core/services/ble/ble_scan.dart';
@@ -10,7 +10,7 @@ import 'package:suriota_mobile_gateway/core/states/ble/ble_device_status_state.d
 import 'package:suriota_mobile_gateway/core/utils/ble/ble_components.dart';
 import 'package:suriota_mobile_gateway/core/utils/ble/ble_utils.dart';
 import 'package:suriota_mobile_gateway/core/utils/snackbar/snackbar_custom.dart';
-import 'package:suriota_mobile_gateway/global/utils/helper.dart';
+import 'package:suriota_mobile_gateway/core/utils/app_helpers.dart';
 
 // Manages BLE operations and state
 class BLEController extends GetxController {

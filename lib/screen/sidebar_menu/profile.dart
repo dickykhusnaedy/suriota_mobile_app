@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:suriota_mobile_gateway/constant/app_color.dart';
-import 'package:suriota_mobile_gateway/constant/app_gap.dart';
-import 'package:suriota_mobile_gateway/constant/image_asset.dart';
-import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
+import 'package:suriota_mobile_gateway/core/constants/app_color.dart';
+import 'package:suriota_mobile_gateway/core/constants/app_gap.dart';
+import 'package:suriota_mobile_gateway/core/constants/app_image_assets.dart';
+import 'package:suriota_mobile_gateway/core/utils/extensions.dart';
 import 'package:suriota_mobile_gateway/global/widgets/field_data_widget.dart';
 
 class ProfilePage extends StatelessWidget {

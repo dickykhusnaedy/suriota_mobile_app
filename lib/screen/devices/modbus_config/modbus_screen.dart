@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:suriota_mobile_gateway/constant/app_color.dart';
-import 'package:suriota_mobile_gateway/constant/app_gap.dart';
+import 'package:suriota_mobile_gateway/core/constants/app_color.dart';
+import 'package:suriota_mobile_gateway/core/constants/app_gap.dart';
 import 'package:suriota_mobile_gateway/core/controllers/ble/ble_controller.dart';
 import 'package:suriota_mobile_gateway/core/controllers/modbus/modbus_pagination_controller.dart';
-import 'package:suriota_mobile_gateway/global/utils/text_extension.dart';
+import 'package:suriota_mobile_gateway/core/utils/extensions.dart';
+import 'package:suriota_mobile_gateway/core/utils/loading_progress.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_alert_dialog.dart';
 import 'package:suriota_mobile_gateway/global/widgets/custom_button.dart';
 import 'package:suriota_mobile_gateway/screen/devices/modbus_config/form_modbus_config_screen.dart';
@@ -107,27 +108,6 @@ class _ModbusScreenState extends State<ModbusScreen> {
     );
   }
 
-  Container _loadingProgress(BuildContext context) {
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.85,
-      alignment: Alignment.center,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Center(
-            child: CircularProgressIndicator(
-              color: AppColor.primaryColor,
-            ),
-          ),
-          AppSpacing.md,
-          Obx(() => Text(
-              "Loading: ${(bleController.receivedPackets.value / bleController.expectedPackets.value * 100).toStringAsFixed(1)}%",
-              style: context.bodySmall)),
-        ],
-      ),
-    );
-  }
-
   Container _emptyView(BuildContext context) {
     return Container(
       height: MediaQuery.of(context).size.height * 0.70,
@@ -184,7 +164,10 @@ class _ModbusScreenState extends State<ModbusScreen> {
               AppSpacing.sm,
               Obx(() {
                 if (isLoading || bleController.isLoading.value) {
-                  return _loadingProgress(context);
+                  return LoadingProgress(
+                    receivedPackets: bleController.receivedPackets,
+                    expectedPackets: bleController.expectedPackets,
+                  );
                 }
 
                 if (controller.modbus.isEmpty) {

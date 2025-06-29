@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:suriota_mobile_gateway/constant/app_color.dart';
+import 'package:suriota_mobile_gateway/core/constants/app_color.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class FontSizeTheme {
