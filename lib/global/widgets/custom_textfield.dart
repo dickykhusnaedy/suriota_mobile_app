@@ -64,7 +64,7 @@ class CustomTextFormField extends StatelessWidget {
           cursorColor: AppColor.darkGrey,
           decoration: InputDecoration(
             filled: true,
-            fillColor: Colors.white,
+            fillColor: readOnly ? Colors.grey[200] : Colors.white,
             floatingLabelBehavior: FloatingLabelBehavior.always,
             alignLabelWithHint: false,
             contentPadding: AppPadding.horizontalMedium,
