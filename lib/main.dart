@@ -5,7 +5,7 @@ import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:suriota_mobile_gateway/core/constants/theme.dart';
 import 'package:suriota_mobile_gateway/provider/loading_provider.dart';
-import 'package:suriota_mobile_gateway/screen/splash_screen.dart';
+import 'package:suriota_mobile_gateway/presentation/pages/splash_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();

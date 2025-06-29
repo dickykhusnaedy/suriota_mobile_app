@@ -5,7 +5,7 @@ import 'package:get/get.dart';
 import 'package:suriota_mobile_gateway/core/controllers/ble/ble_controller.dart';
 import 'package:suriota_mobile_gateway/core/utils/ble/ble_utils.dart';
 import 'package:suriota_mobile_gateway/core/utils/app_helpers.dart';
-import 'package:suriota_mobile_gateway/screen/home/home_screen.dart';
+import 'package:suriota_mobile_gateway/presentation/pages/home/home_screen.dart';
 
 class BLEConnection {
   BLEController? controller;

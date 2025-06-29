@@ -4,7 +4,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:suriota_mobile_gateway/core/constants/app_color.dart';
 import 'package:suriota_mobile_gateway/core/constants/app_gap.dart';
 import 'package:suriota_mobile_gateway/core/utils/extensions.dart';
-import 'package:suriota_mobile_gateway/global/widgets/custom_button.dart';
+import 'package:suriota_mobile_gateway/presentation/widgets/common/custom_button.dart';
 
 class BluetoothPermissionService extends GetxController {
   static Future<bool> checkAndRequestPermissions(BuildContext context) async {

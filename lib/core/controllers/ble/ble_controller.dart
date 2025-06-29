@@ -9,7 +9,7 @@ import 'package:suriota_mobile_gateway/core/services/ble/ble_scan.dart';
 import 'package:suriota_mobile_gateway/core/states/ble/ble_device_status_state.dart';
 import 'package:suriota_mobile_gateway/core/utils/ble/ble_components.dart';
 import 'package:suriota_mobile_gateway/core/utils/ble/ble_utils.dart';
-import 'package:suriota_mobile_gateway/core/utils/snackbar/snackbar_custom.dart';
+import 'package:suriota_mobile_gateway/core/utils/snackbar_custom.dart';
 import 'package:suriota_mobile_gateway/core/utils/app_helpers.dart';
 
 // Manages BLE operations and state
