@@ -236,6 +236,7 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
                   }
                   return null;
                 },
+                readOnly: widget.id != null,
               ),
               AppSpacing.md,
               CustomTextFormField(
