@@ -3,9 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
-import 'package:suriota_mobile_gateway/constant/theme.dart';
-import 'package:suriota_mobile_gateway/provider/LoadingProvider.dart';
-import 'package:suriota_mobile_gateway/screen/splash_screen.dart';
+import 'package:suriota_mobile_gateway/core/constants/theme.dart';
+import 'package:suriota_mobile_gateway/presentation/providers/loading_provider.dart';
+import 'package:suriota_mobile_gateway/presentation/pages/splash_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();

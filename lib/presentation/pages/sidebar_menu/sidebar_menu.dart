@@ -1,0 +1,139 @@
+import 'package:flutter/material.dart';
+import 'package:suriota_mobile_gateway/core/constants/app_color.dart';
+import 'package:suriota_mobile_gateway/core/constants/app_gap.dart';
+import 'package:suriota_mobile_gateway/core/constants/app_font.dart';
+import 'package:suriota_mobile_gateway/core/constants/app_image_assets.dart';
+import 'package:suriota_mobile_gateway/core/utils/extensions.dart';
+import 'package:suriota_mobile_gateway/presentation/pages/login/login_page.dart';
+import 'package:suriota_mobile_gateway/presentation/pages/sidebar_menu/about_app.dart';
+import 'package:suriota_mobile_gateway/presentation/pages/sidebar_menu/about_us_page.dart';
+import 'package:suriota_mobile_gateway/presentation/pages/sidebar_menu/profile.dart';
+
+class SideBarMenu extends StatelessWidget {
+  const SideBarMenu({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    double statusBarHeight = MediaQuery.of(context).padding.top;
+
+    return Drawer(
+      child: ListView(
+        children: [
+          SizedBox(
+            height: statusBarHeight,
+          ),
+          const Center(
+            child: CircleAvatar(
+                radius: 50, backgroundImage: AssetImage(ImageAsset.profile2)),
+          ),
+          AppSpacing.md,
+          Padding(
+            padding: AppPadding.horizontalMedium,
+            child: Text(
+              'Fulan bin Fulan',
+              style: context.h4.copyWith(color: AppColor.blackColor),
+              textAlign: TextAlign.center,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          AppSpacing.md,
+          Column(
+            children: [
+              ListTile(
+                title: Text('Home',
+                    style: context.body.copyWith(color: AppColor.blackColor)),
+                trailing: const Icon(
+                  Icons.chevron_right,
+                  size: 22,
+                  color: AppColor.blackColor,
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                },
+              ),
+              Divider(
+                height: 0,
+                color: Colors.grey[300],
+              ),
+              ListTile(
+                title: Text('Profile',
+                    style: context.body.copyWith(color: AppColor.blackColor)),
+                trailing: const Icon(
+                  Icons.chevron_right,
+                  size: 22,
+                  color: AppColor.blackColor,
+                ),
+                onTap: () {
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const ProfilePage()));
+                },
+              ),
+              Divider(
+                height: 0,
+                color: Colors.grey[300],
+              ),
+              ListTile(
+                title: Text('About Product',
+                    style: context.body.copyWith(color: AppColor.blackColor)),
+                trailing: const Icon(
+                  Icons.chevron_right,
+                  size: 22,
+                  color: AppColor.blackColor,
+                ),
+                onTap: () {
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const AboutUsPage()));
+                },
+              ),
+              Divider(
+                height: 0,
+                color: Colors.grey[300],
+              ),
+              ListTile(
+                title: Text('About App',
+                    style: context.body.copyWith(color: AppColor.blackColor)),
+                trailing: const Icon(
+                  Icons.chevron_right,
+                  size: 22,
+                  color: AppColor.blackColor,
+                ),
+                onTap: () {
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const AboutApp()));
+                },
+              ),
+              Divider(
+                height: 0,
+                color: Colors.grey[300],
+              ),
+              ListTile(
+                leading: const Icon(
+                  Icons.logout,
+                  color: AppColor.redColor,
+                  size: 22,
+                ),
+                title: Text('Logout',
+                    style: context.body.copyWith(
+                        color: AppColor.redColor,
+                        fontWeight: FontWeightTheme.extraBold)),
+                onTap: () {
+                  Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(
+                          builder: (context) => const LoginPage()),
+                      (Route route) => false);
+                },
+              ),
+            ],
+          ),
+          AppSpacing.xl,
+        ],
+      ),
+    );
+  }
+}
