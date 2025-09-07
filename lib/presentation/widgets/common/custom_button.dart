@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_gap.dart';
+import 'package:gateway_config/core/constants/app_gap.dart';
 
 import '../../../core/constants/app_color.dart';
 import '../../../core/constants/app_font.dart';
 
 class CustomButton extends StatelessWidget {
-  const CustomButton(
-      {super.key,
-      required this.onPressed,
-      this.titleButton,
-      this.colorButton,
-      this.height,
-      this.width,
-      this.textStyle});
+  const CustomButton({
+    super.key,
+    required this.onPressed,
+    this.titleButton,
+    this.colorButton,
+    this.height,
+    this.width,
+    this.textStyle,
+  });
 
   final String? titleButton;
   final Color? colorButton;
@@ -29,14 +30,20 @@ class CustomButton extends StatelessWidget {
       child: ElevatedButton(
         onPressed: onPressed,
         style: ButtonStyle(
-            backgroundColor:
-                WidgetStatePropertyAll(colorButton ?? AppColor.primaryColor),
-            shape: const WidgetStatePropertyAll(RoundedRectangleBorder(
-                borderRadius: BorderRadius.all(Radius.circular(8)))),
-            fixedSize: const WidgetStatePropertyAll(Size.infinite)),
+          backgroundColor: WidgetStatePropertyAll(
+            colorButton ?? AppColor.primaryColor,
+          ),
+          shape: const WidgetStatePropertyAll(
+            RoundedRectangleBorder(
+              borderRadius: BorderRadius.all(Radius.circular(8)),
+            ),
+          ),
+          fixedSize: const WidgetStatePropertyAll(Size.infinite),
+        ),
         child: Text(
           titleButton ?? '',
-          style: textStyle ??
+          style:
+              textStyle ??
               FontFamily.headlineMedium.copyWith(color: Colors.white),
         ),
       ),
@@ -53,15 +60,16 @@ class Button extends StatelessWidget {
   final double? height;
   final Widget? icons;
 
-  const Button(
-      {super.key,
-      required this.onPressed,
-      this.text,
-      this.customStyle,
-      this.btnColor,
-      this.width,
-      this.height,
-      this.icons});
+  const Button({
+    super.key,
+    required this.onPressed,
+    this.text,
+    this.customStyle,
+    this.btnColor,
+    this.width,
+    this.height,
+    this.icons,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -69,27 +77,32 @@ class Button extends StatelessWidget {
       width: width ?? 100,
       height: height ?? 42,
       child: ElevatedButton(
-          onPressed: onPressed,
-          style: ElevatedButton.styleFrom(
-              backgroundColor: btnColor ?? AppColor.primaryColor,
-              padding: const EdgeInsets.symmetric(horizontal: 15),
-              elevation: 0.0,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10))),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              icons ?? const SizedBox(),
-              icons != null && text != null ? AppSpacing.sm : const SizedBox(),
-              if (text != null)
-                Text(
-                  text!,
-                  style: customStyle ??
-                      FontFamily.headlineMedium
-                          .copyWith(color: AppColor.whiteColor),
-                ),
-            ],
-          )),
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: btnColor ?? AppColor.primaryColor,
+          padding: const EdgeInsets.symmetric(horizontal: 15),
+          elevation: 0.0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            icons ?? const SizedBox(),
+            icons != null && text != null ? AppSpacing.sm : const SizedBox(),
+            if (text != null)
+              Text(
+                text!,
+                style:
+                    customStyle ??
+                    FontFamily.headlineMedium.copyWith(
+                      color: AppColor.whiteColor,
+                    ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -104,16 +117,17 @@ class ButtonOutline extends StatelessWidget {
   final Widget? icons;
   final String? imagePath;
 
-  const ButtonOutline(
-      {super.key,
-      required this.onPressed,
-      required this.text,
-      this.customStyle,
-      this.btnColor,
-      this.width,
-      this.height,
-      this.icons,
-      this.imagePath});
+  const ButtonOutline({
+    super.key,
+    required this.onPressed,
+    required this.text,
+    this.customStyle,
+    this.btnColor,
+    this.width,
+    this.height,
+    this.icons,
+    this.imagePath,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -121,33 +135,35 @@ class ButtonOutline extends StatelessWidget {
       width: width ?? 100,
       height: height ?? 42,
       child: ElevatedButton(
-          onPressed: onPressed,
-          style: ElevatedButton.styleFrom(
-              backgroundColor: btnColor ?? AppColor.whiteColor,
-              padding: const EdgeInsets.symmetric(horizontal: 15),
-              side: const BorderSide(color: AppColor.primaryColor, width: 1),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10))),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              icons ?? const SizedBox(),
-              icons != null ? AppSpacing.sm : const SizedBox(),
-              imagePath != null
-                  ? Image.asset(
-                      imagePath!,
-                      height: 25,
-                    )
-                  : const SizedBox(),
-              imagePath != null ? AppSpacing.sm : const SizedBox(),
-              Text(
-                text,
-                style: customStyle ??
-                    FontFamily.headlineMedium
-                        .copyWith(color: AppColor.primaryColor),
-              ),
-            ],
-          )),
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: btnColor ?? AppColor.whiteColor,
+          padding: const EdgeInsets.symmetric(horizontal: 15),
+          side: const BorderSide(color: AppColor.primaryColor, width: 1),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            icons ?? const SizedBox(),
+            icons != null ? AppSpacing.sm : const SizedBox(),
+            imagePath != null
+                ? Image.asset(imagePath!, height: 25)
+                : const SizedBox(),
+            imagePath != null ? AppSpacing.sm : const SizedBox(),
+            Text(
+              text,
+              style:
+                  customStyle ??
+                  FontFamily.headlineMedium.copyWith(
+                    color: AppColor.primaryColor,
+                  ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -171,18 +187,18 @@ class BtnButtomNavBar extends StatelessWidget {
       decoration: BoxDecoration(
         color: bgColor ?? Theme.of(context).scaffoldBackgroundColor,
         boxShadow: const [
-          BoxShadow(blurRadius: 5, color: Colors.black12, offset: Offset(0, -2))
+          BoxShadow(
+            blurRadius: 5,
+            color: Colors.black12,
+            offset: Offset(0, -2),
+          ),
         ],
         borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(14),
           topRight: Radius.circular(14),
         ),
       ),
-      child: CustomButton(
-        onPressed: onPressed,
-        titleButton: title,
-        height: 50,
-      ),
+      child: CustomButton(onPressed: onPressed, titleButton: title, height: 50),
     );
   }
 }

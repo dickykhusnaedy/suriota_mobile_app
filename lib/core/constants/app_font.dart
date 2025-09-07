@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_color.dart';
+import 'package:gateway_config/core/constants/app_color.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class FontSizeTheme {
@@ -55,10 +55,7 @@ class FontFamily {
     fontWeight: FontWeight.bold,
     color: color,
   );
-  static TextStyle normal = GoogleFonts.poppins(
-    fontSize: 14,
-    color: color,
-  );
+  static TextStyle normal = GoogleFonts.poppins(fontSize: 14, color: color);
   static TextStyle labelText = GoogleFonts.poppins(
     fontSize: 14,
     color: AppColor.grey,

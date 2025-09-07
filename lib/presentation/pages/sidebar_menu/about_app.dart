@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_color.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_gap.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_font.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_image_assets.dart';
-import 'package:suriota_mobile_gateway/core/utils/app_helpers.dart';
-import 'package:suriota_mobile_gateway/core/utils/extensions.dart';
-import 'package:suriota_mobile_gateway/presentation/widgets/common/custom_button.dart';
+import 'package:gateway_config/core/constants/app_color.dart';
+import 'package:gateway_config/core/constants/app_gap.dart';
+import 'package:gateway_config/core/constants/app_font.dart';
+import 'package:gateway_config/core/constants/app_image_assets.dart';
+import 'package:gateway_config/core/utils/app_helpers.dart';
+import 'package:gateway_config/core/utils/extensions.dart';
+import 'package:gateway_config/presentation/widgets/common/custom_button.dart';
 
 class AboutApp extends StatelessWidget {
   const AboutApp({super.key});
@@ -15,10 +15,11 @@ class AboutApp extends StatelessWidget {
     return Scaffold(
       appBar: _appBar(context),
       body: SafeArea(
-          child: SingleChildScrollView(
-        padding: AppPadding.horizontalMedium,
-        child: _body(context),
-      )),
+        child: SingleChildScrollView(
+          padding: AppPadding.horizontalMedium,
+          child: _body(context),
+        ),
+      ),
     );
   }
 
@@ -43,8 +44,9 @@ class AboutApp extends StatelessWidget {
               Text(
                 'Gateway Config',
                 style: context.h5.copyWith(
-                    color: AppColor.blackColor,
-                    fontWeight: FontWeightTheme.bold),
+                  color: AppColor.blackColor,
+                  fontWeight: FontWeightTheme.bold,
+                ),
               ),
               AppSpacing.xs,
               Text(
@@ -192,7 +194,8 @@ class AboutApp extends StatelessWidget {
                 width: double.infinity,
                 onPressed: () {
                   final Uri url = Uri.parse(
-                      'https://drive.google.com/file/d/1B77Mzzm0dMLm9qItgJSUfPSPCa8zjLUG/view?usp=sharing');
+                    'https://drive.google.com/file/d/1B77Mzzm0dMLm9qItgJSUfPSPCa8zjLUG/view?usp=sharing',
+                  );
                   AppHelpers.launchInBrowser(url);
                 },
                 text: 'Company Profile',

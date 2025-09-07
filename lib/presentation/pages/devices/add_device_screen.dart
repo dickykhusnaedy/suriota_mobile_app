@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:get/get.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_color.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_gap.dart';
-import 'package:suriota_mobile_gateway/core/controllers/ble/ble_controller.dart';
-import 'package:suriota_mobile_gateway/core/utils/snackbar_custom.dart';
-import 'package:suriota_mobile_gateway/core/utils/app_helpers.dart';
-import 'package:suriota_mobile_gateway/core/utils/extensions.dart';
-import 'package:suriota_mobile_gateway/presentation/widgets/common/custom_alert_dialog.dart';
-import 'package:suriota_mobile_gateway/presentation/widgets/common/custom_button.dart';
-import 'package:suriota_mobile_gateway/presentation/widgets/common/loading_overlay.dart';
-import 'package:suriota_mobile_gateway/presentation/pages/devices/widgets/device_list_widget.dart';
+import 'package:gateway_config/core/constants/app_color.dart';
+import 'package:gateway_config/core/constants/app_gap.dart';
+import 'package:gateway_config/core/controllers/ble/ble_controller.dart';
+import 'package:gateway_config/core/utils/snackbar_custom.dart';
+import 'package:gateway_config/core/utils/app_helpers.dart';
+import 'package:gateway_config/core/utils/extensions.dart';
+import 'package:gateway_config/presentation/widgets/common/custom_alert_dialog.dart';
+import 'package:gateway_config/presentation/widgets/common/custom_button.dart';
+import 'package:gateway_config/presentation/widgets/common/loading_overlay.dart';
+import 'package:gateway_config/presentation/pages/devices/widgets/device_list_widget.dart';
 
 class AddDeviceScreen extends StatefulWidget {
   const AddDeviceScreen({super.key});
@@ -50,9 +50,12 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
           await bleController.disconnectDevice(device);
         } catch (e) {
           AppHelpers.debugLog('Error disconnecting from device: $e');
-          Get.snackbar('Error', 'Failed to disconnect from device',
-              backgroundColor: AppColor.redColor,
-              colorText: AppColor.whiteColor);
+          Get.snackbar(
+            'Error',
+            'Failed to disconnect from device',
+            backgroundColor: AppColor.redColor,
+            colorText: AppColor.whiteColor,
+          );
         } finally {
           setState(() {
             isLoading = false;
@@ -77,10 +80,11 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
       bleController.scanDevice();
     } else {
       SnackbarCustom.showSnackbar(
-          'Bluetooth is off',
-          'Please enable Bluetooth to scan devices.',
-          AppColor.redColor,
-          AppColor.whiteColor);
+        'Bluetooth is off',
+        'Please enable Bluetooth to scan devices.',
+        AppColor.redColor,
+        AppColor.whiteColor,
+      );
     }
   }
 
@@ -90,11 +94,7 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
       children: [
         Scaffold(
           appBar: _appBar(),
-          body: SafeArea(
-            child: SingleChildScrollView(
-              child: _body(),
-            ),
-          ),
+          body: SafeArea(child: SingleChildScrollView(child: _body())),
         ),
         Obx(() {
           final isAnyDeviceLoading = bleController.isAnyDeviceLoading;
@@ -112,17 +112,19 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
       centerTitle: true,
       iconTheme: const IconThemeData(color: Colors.white),
       backgroundColor: AppColor.primaryColor,
-      title: Text('Add Device',
-          style: context.h5.copyWith(color: AppColor.whiteColor)),
+      title: Text(
+        'Add Device',
+        style: context.h5.copyWith(color: AppColor.whiteColor),
+      ),
       actions: [
-        Obx(() => bleController.devices.isNotEmpty
-            ? IconButton(
-                onPressed: _checkBluetoothDevice,
-                icon: const Icon(
-                  Icons.search,
-                  size: 24,
-                ))
-            : const SizedBox.shrink())
+        Obx(
+          () => bleController.devices.isNotEmpty
+              ? IconButton(
+                  onPressed: _checkBluetoothDevice,
+                  icon: const Icon(Icons.search, size: 24),
+                )
+              : const SizedBox.shrink(),
+        ),
       ],
     );
   }
@@ -146,25 +148,25 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            'Find device',
-            style: context.h2,
-          ),
+          Text('Find device', style: context.h2),
           AppSpacing.sm,
-          Text('Finding nearby devices with\nBluetooth connectivity...',
-              textAlign: TextAlign.center,
-              style: context.body.copyWith(color: AppColor.grey)),
+          Text(
+            'Finding nearby devices with\nBluetooth connectivity...',
+            textAlign: TextAlign.center,
+            style: context.body.copyWith(color: AppColor.grey),
+          ),
           AppSpacing.xxxl,
           Button(
-              onPressed: _checkBluetoothDevice,
-              text: 'Scan',
-              icons: const Icon(
-                Icons.search,
-                color: AppColor.whiteColor,
-                size: 23,
-              ),
-              height: 50,
-              width: MediaQuery.of(context).size.width * 0.3),
+            onPressed: _checkBluetoothDevice,
+            text: 'Scan',
+            icons: const Icon(
+              Icons.search,
+              color: AppColor.whiteColor,
+              size: 23,
+            ),
+            height: 50,
+            width: MediaQuery.of(context).size.width * 0.3,
+          ),
         ],
       ),
     );
@@ -213,70 +215,74 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
           AppSpacing.sm,
           Text('Device List', style: context.h4),
           AppSpacing.sm,
-          LayoutBuilder(builder: (context, constraints) {
-            return Obx(() {
-              if (bleController.devices.isEmpty) {
-                return Container(
-                  height: MediaQuery.of(context).size.height * 0.55,
-                  alignment: Alignment.center,
-                  child: Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'No device found.\nFind device near you.',
-                          textAlign: TextAlign.center,
-                          style: context.body.copyWith(color: AppColor.grey),
-                        ),
-                      ],
+          LayoutBuilder(
+            builder: (context, constraints) {
+              return Obx(() {
+                if (bleController.devices.isEmpty) {
+                  return Container(
+                    height: MediaQuery.of(context).size.height * 0.55,
+                    alignment: Alignment.center,
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'No device found.\nFind device near you.',
+                            textAlign: TextAlign.center,
+                            style: context.body.copyWith(color: AppColor.grey),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
+                  );
+                }
+
+                return ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  separatorBuilder: (context, index) => AppSpacing.sm,
+                  itemCount: bleController.devices.length,
+                  itemBuilder: (context, index) {
+                    final device = bleController.devices[index];
+                    final deviceId = device.remoteId.toString();
+
+                    return Obx(() {
+                      final isConnected = bleController.getConnectionStatus(
+                        deviceId,
+                      );
+                      final isLoadingConnection = bleController
+                          .getLoadingStatus(deviceId);
+
+                      return DeviceListWidget(
+                        device: device,
+                        isConnected: isConnected,
+                        isLoadingConnection: isLoadingConnection,
+                        onConnect: () async {
+                          if (!isLoadingConnection) {
+                            await bleController.connectToDevice(
+                              device,
+                            ); // Panggil fungsi connect
+                          }
+                        },
+                        onDisconnect: () async {
+                          if (!isLoadingConnection) {
+                            disconnect(device);
+                          }
+                        },
+                      );
+                    });
+                  },
                 );
-              }
-
-              return ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                separatorBuilder: (context, index) => AppSpacing.sm,
-                itemCount: bleController.devices.length,
-                itemBuilder: (context, index) {
-                  final device = bleController.devices[index];
-                  final deviceId = device.remoteId.toString();
-
-                  return Obx(() {
-                    final isConnected =
-                        bleController.getConnectionStatus(deviceId);
-                    final isLoadingConnection =
-                        bleController.getLoadingStatus(deviceId);
-
-                    return DeviceListWidget(
-                      device: device,
-                      isConnected: isConnected,
-                      isLoadingConnection: isLoadingConnection,
-                      onConnect: () async {
-                        if (!isLoadingConnection) {
-                          await bleController.connectToDevice(
-                              device); // Panggil fungsi connect
-                        }
-                      },
-                      onDisconnect: () async {
-                        if (!isLoadingConnection) {
-                          disconnect(device);
-                        }
-                      },
-                    );
-                  });
-                },
-              );
-            });
-          }),
+              });
+            },
+          ),
           AppSpacing.md,
           Center(
             child: Text(
               'A total of ${bleController.devices.length} devices were successfully discovered.',
               style: context.bodySmall,
             ),
-          )
+          ),
         ],
       ),
     );

@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_gap.dart';
-import 'package:suriota_mobile_gateway/core/utils/extensions.dart';
-import 'package:suriota_mobile_gateway/presentation/widgets/common/custom_button.dart';
+import 'package:gateway_config/core/constants/app_gap.dart';
+import 'package:gateway_config/core/utils/extensions.dart';
+import 'package:gateway_config/presentation/widgets/common/custom_button.dart';
 
 import '../../../core/constants/app_color.dart';
 import '../../../core/constants/app_font.dart';
 import '../../../core/constants/app_image_assets.dart';
 
-Widget cardMenu(BuildContext context, String? iconImage, String? titleCard,
-    {void Function()? onTap}) {
+Widget cardMenu(
+  BuildContext context,
+  String? iconImage,
+  String? titleCard, {
+  void Function()? onTap,
+}) {
   double widthCard = MediaQuery.of(context).size.width * 0.45;
 
   return InkWell(
@@ -34,14 +38,12 @@ Widget cardMenu(BuildContext context, String? iconImage, String? titleCard,
                 ),
               ),
               // ignore: prefer_const_constructors
-              SizedBox(
-                height: 5,
-              ),
+              SizedBox(height: 5),
               Text(
                 titleCard ?? 'Enter The Title',
                 textAlign: TextAlign.center,
                 style: FontFamily.normal,
-              )
+              ),
             ],
           ),
         ),
@@ -56,12 +58,13 @@ class CardMenu extends StatelessWidget {
   final String? imagePath;
   final Widget page;
 
-  const CardMenu(
-      {super.key,
-      required this.text,
-      this.imagePath,
-      required this.width,
-      required this.page});
+  const CardMenu({
+    super.key,
+    required this.text,
+    this.imagePath,
+    required this.width,
+    required this.page,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -88,15 +91,14 @@ class CardMenu extends StatelessWidget {
                   SizedBox(
                     width: 100,
                     height: 100,
-                    child: Image.asset(imagePath!,
-                        width: 100, fit: BoxFit.contain),
+                    child: Image.asset(
+                      imagePath!,
+                      width: 100,
+                      fit: BoxFit.contain,
+                    ),
                   ),
                   AppSpacing.xs,
-                  Text(
-                    text,
-                    style: context.body,
-                    textAlign: TextAlign.center,
-                  )
+                  Text(text, style: context.body, textAlign: TextAlign.center),
                 ],
               ),
             ),
@@ -141,8 +143,12 @@ class DeviceCard extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.start,
                 children: [
-                  Image.asset(ImageAsset.iconBluetooth,
-                      width: 40, height: 40, fit: BoxFit.contain),
+                  Image.asset(
+                    ImageAsset.iconBluetooth,
+                    width: 40,
+                    height: 40,
+                    fit: BoxFit.contain,
+                  ),
                   AppSpacing.sm,
                   Flexible(
                     flex: 1,
@@ -162,7 +168,7 @@ class DeviceCard extends StatelessWidget {
                         ),
                       ],
                     ),
-                  )
+                  ),
                 ],
               ),
             ),
@@ -172,11 +178,12 @@ class DeviceCard extends StatelessWidget {
               child: SizedBox(
                 height: 30,
                 child: Button(
-                    width: double.infinity,
-                    onPressed: onPressed,
-                    text: buttonTitle ?? '',
-                    btnColor: colorButton,
-                    customStyle: context.buttonTextSmallest),
+                  width: double.infinity,
+                  onPressed: onPressed,
+                  text: buttonTitle ?? '',
+                  btnColor: colorButton,
+                  customStyle: context.buttonTextSmallest,
+                ),
               ),
             ),
           ],

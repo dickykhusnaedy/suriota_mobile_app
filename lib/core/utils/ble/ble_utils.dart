@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:get/get.dart';
-import 'package:suriota_mobile_gateway/presentation/widgets/common/custom_alert_dialog.dart';
-import 'package:suriota_mobile_gateway/presentation/pages/devices/detail_device_screen.dart';
+import 'package:gateway_config/presentation/widgets/common/custom_alert_dialog.dart';
+import 'package:gateway_config/presentation/pages/devices/detail_device_screen.dart';
 
 class BLEUtils {
   // Show dialog when a device is connected
@@ -20,7 +20,9 @@ class BLEUtils {
 
   // Show dialog to confirm device disconnection
   static void showDisconnectedBottomSheet(
-      BluetoothDevice device, VoidCallback? onDisconnect) {
+    BluetoothDevice device,
+    VoidCallback? onDisconnect,
+  ) {
     final deviceName = device.platformName.isNotEmpty
         ? device.platformName
         : device.remoteId.toString();

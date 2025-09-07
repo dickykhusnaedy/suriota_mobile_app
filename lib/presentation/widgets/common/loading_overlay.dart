@@ -1,17 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_color.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_gap.dart';
-import 'package:suriota_mobile_gateway/core/utils/extensions.dart';
+import 'package:gateway_config/core/constants/app_color.dart';
+import 'package:gateway_config/core/constants/app_gap.dart';
+import 'package:gateway_config/core/utils/extensions.dart';
 
 class LoadingOverlay extends StatelessWidget {
   final bool isLoading;
   final String? message;
 
-  const LoadingOverlay({
-    super.key,
-    required this.isLoading,
-    this.message,
-  });
+  const LoadingOverlay({super.key, required this.isLoading, this.message});
 
   @override
   Widget build(BuildContext context) {

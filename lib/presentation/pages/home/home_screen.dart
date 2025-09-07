@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_color.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_gap.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_image_assets.dart';
-import 'package:suriota_mobile_gateway/core/controllers/ble/ble_controller.dart';
-import 'package:suriota_mobile_gateway/core/utils/extensions.dart';
-import 'package:suriota_mobile_gateway/presentation/widgets/common/loading_overlay.dart';
-import 'package:suriota_mobile_gateway/models/device_dummy.dart';
-import 'package:suriota_mobile_gateway/models/device_model.dart';
-import 'package:suriota_mobile_gateway/presentation/pages/devices/add_device_screen.dart';
-import 'package:suriota_mobile_gateway/presentation/pages/devices/widgets/device_list_widget.dart';
-import 'package:suriota_mobile_gateway/presentation/pages/sidebar_menu/sidebar_menu.dart';
+import 'package:gateway_config/core/constants/app_color.dart';
+import 'package:gateway_config/core/constants/app_gap.dart';
+import 'package:gateway_config/core/constants/app_image_assets.dart';
+import 'package:gateway_config/core/controllers/ble/ble_controller.dart';
+import 'package:gateway_config/core/utils/extensions.dart';
+import 'package:gateway_config/presentation/widgets/common/loading_overlay.dart';
+import 'package:gateway_config/models/device_dummy.dart';
+import 'package:gateway_config/models/device_model.dart';
+import 'package:gateway_config/presentation/pages/devices/add_device_screen.dart';
+import 'package:gateway_config/presentation/pages/devices/widgets/device_list_widget.dart';
+import 'package:gateway_config/presentation/pages/sidebar_menu/sidebar_menu.dart';
 
 // ignore: must_be_immutable
 class HomeScreen extends StatefulWidget {
@@ -47,7 +47,7 @@ class _HomeScreenState extends State<HomeScreen> {
             isLoading: isAnyDeviceLoading,
             message: 'Connecting device...',
           );
-        })
+        }),
       ],
     );
   }
@@ -59,10 +59,7 @@ class _HomeScreenState extends State<HomeScreen> {
         width: screenWidth * (screenWidth <= 600 ? 0.4 : 0.2),
         child: AspectRatio(
           aspectRatio: 16 / 9,
-          child: Image.asset(
-            ImageAsset.logoSuriota,
-            fit: BoxFit.contain,
-          ),
+          child: Image.asset(ImageAsset.logoSuriota, fit: BoxFit.contain),
         ),
       ),
     );
@@ -72,14 +69,20 @@ class _HomeScreenState extends State<HomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Hallo, Fulan👋',
-            style: context.h1.copyWith(color: AppColor.blackColor)),
+        Text(
+          'Hallo, Fulan👋',
+          style: context.h1.copyWith(color: AppColor.blackColor),
+        ),
         AppSpacing.xs,
-        Text('Connecting the device near you',
-            style: context.body.copyWith(color: AppColor.grey)),
+        Text(
+          'Connecting the device near you',
+          style: context.body.copyWith(color: AppColor.grey),
+        ),
         AppSpacing.xxl,
-        Text('Device List',
-            style: context.h4.copyWith(color: AppColor.blackColor)),
+        Text(
+          'Device List',
+          style: context.h4.copyWith(color: AppColor.blackColor),
+        ),
         AppSpacing.sm,
         Obx(() {
           // ignore: prefer_is_empty
@@ -115,8 +118,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
               return Obx(() {
                 final isConnected = bleController.getConnectionStatus(deviceId);
-                final isLoadingConnection =
-                    bleController.getLoadingStatus(deviceId);
+                final isLoadingConnection = bleController.getLoadingStatus(
+                  deviceId,
+                );
 
                 return DeviceListWidget(
                   device: device,
@@ -143,25 +147,26 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Container _floatingButtonCustom(BuildContext context) {
     return Container(
-        width: 50,
-        height: 50,
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-        decoration: BoxDecoration(
-          color: AppColor.primaryColor,
-          borderRadius: BorderRadius.circular(10),
+      width: 50,
+      height: 50,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColor.primaryColor,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const AddDeviceScreen()),
+          );
+        },
+        child: const Icon(
+          Icons.add_circle,
+          size: 20,
+          color: AppColor.whiteColor,
         ),
-        child: InkWell(
-          onTap: () {
-            Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => const AddDeviceScreen()));
-          },
-          child: const Icon(
-            Icons.add_circle,
-            size: 20,
-            color: AppColor.whiteColor,
-          ),
-        ));
+      ),
+    );
   }
 }

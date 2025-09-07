@@ -2,20 +2,20 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_color.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_gap.dart';
-import 'package:suriota_mobile_gateway/core/controllers/ble/ble_controller.dart';
-import 'package:suriota_mobile_gateway/core/controllers/devices/device_pagination_controller.dart';
-import 'package:suriota_mobile_gateway/core/utils/snackbar_custom.dart';
-import 'package:suriota_mobile_gateway/core/utils/app_helpers.dart';
-import 'package:suriota_mobile_gateway/core/utils/extensions.dart';
-import 'package:suriota_mobile_gateway/presentation/widgets/common/custom_alert_dialog.dart';
-import 'package:suriota_mobile_gateway/presentation/widgets/common/custom_button.dart';
-import 'package:suriota_mobile_gateway/presentation/widgets/common/custom_dropdown.dart';
-import 'package:suriota_mobile_gateway/presentation/widgets/common/custom_radiotile.dart';
-import 'package:suriota_mobile_gateway/presentation/widgets/common/custom_textfield.dart';
-import 'package:suriota_mobile_gateway/presentation/widgets/common/loading_overlay.dart';
-import 'package:suriota_mobile_gateway/presentation/widgets/spesific/title_tile.dart';
+import 'package:gateway_config/core/constants/app_color.dart';
+import 'package:gateway_config/core/constants/app_gap.dart';
+import 'package:gateway_config/core/controllers/ble/ble_controller.dart';
+import 'package:gateway_config/core/controllers/devices/device_pagination_controller.dart';
+import 'package:gateway_config/core/utils/snackbar_custom.dart';
+import 'package:gateway_config/core/utils/app_helpers.dart';
+import 'package:gateway_config/core/utils/extensions.dart';
+import 'package:gateway_config/presentation/widgets/common/custom_alert_dialog.dart';
+import 'package:gateway_config/presentation/widgets/common/custom_button.dart';
+import 'package:gateway_config/presentation/widgets/common/custom_dropdown.dart';
+import 'package:gateway_config/presentation/widgets/common/custom_radiotile.dart';
+import 'package:gateway_config/presentation/widgets/common/custom_textfield.dart';
+import 'package:gateway_config/presentation/widgets/common/loading_overlay.dart';
+import 'package:gateway_config/presentation/widgets/spesific/title_tile.dart';
 
 class FormSetupDeviceScreen extends StatefulWidget {
   final int? id;
@@ -53,8 +53,10 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
     bleController = Get.put(BLEController());
 
     if (widget.id != null) {
-      dataDevice = controller.devices
-          .firstWhere((item) => item['id'] == widget.id, orElse: () => {});
+      dataDevice = controller.devices.firstWhere(
+        (item) => item['id'] == widget.id,
+        orElse: () => {},
+      );
 
       _fillFormFromDevice(dataDevice);
     } else {
@@ -85,15 +87,17 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
   void _submit() async {
     if (widget.id == null) {
       final Map<String, dynamic> devicesName = controller.devices.firstWhere(
-          (item) => item['name'] == deviceNameController.text,
-          orElse: () => {});
+        (item) => item['name'] == deviceNameController.text,
+        orElse: () => {},
+      );
 
       if (devicesName.isNotEmpty) {
         SnackbarCustom.showSnackbar(
-            '',
-            'Sorry, the device name you entered is already registered.',
-            AppColor.redColor,
-            AppColor.whiteColor);
+          '',
+          'Sorry, the device name you entered is already registered.',
+          AppColor.redColor,
+          AppColor.whiteColor,
+        );
         return;
       }
     }
@@ -154,20 +158,26 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
   String _buildDataTcp() {
     final ip = _sanitizeInput(ipAddressController.text);
     final port = _tryParseInt(serverPortController.text, defaultValue: 502);
-    final timeout =
-        _tryParseInt(connectionTimeoutController.text, defaultValue: 3000);
+    final timeout = _tryParseInt(
+      connectionTimeoutController.text,
+      defaultValue: 3000,
+    );
 
     return 'ip_address:$ip|port:$port|connection_timeout:$timeout';
   }
 
   String _buildSendDataDelimiter() {
-    final modbusData =
-        modBusSelected == 'RTU' ? _buildDataRtu() : _buildDataTcp();
-    final formData =
-        widget.id != null ? 'UPDATE|devices|id:${widget.id}' : 'CREATE|devices';
+    final modbusData = modBusSelected == 'RTU'
+        ? _buildDataRtu()
+        : _buildDataTcp();
+    final formData = widget.id != null
+        ? 'UPDATE|devices|id:${widget.id}'
+        : 'CREATE|devices';
     final name = _sanitizeInput(deviceNameController.text);
-    final refreshRate =
-        _tryParseInt(refreshRateController.text, defaultValue: 5000);
+    final refreshRate = _tryParseInt(
+      refreshRateController.text,
+      defaultValue: 5000,
+    );
 
     return '$formData|name:$name|modbus_type:$modBusSelected|refresh_rate:$refreshRate|$modbusData';
   }
@@ -186,10 +196,7 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        Scaffold(
-          appBar: _appBar(context),
-          body: _body(context),
-        ),
+        Scaffold(appBar: _appBar(context), body: _body(context)),
         Obx(() {
           final isAnyDeviceLoading = bleController.isLoading.value;
           return LoadingOverlay(

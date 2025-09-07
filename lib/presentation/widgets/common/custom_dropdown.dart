@@ -1,8 +1,8 @@
 import 'package:dropdown_search/dropdown_search.dart';
 import 'package:flutter/material.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_color.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_gap.dart';
-import 'package:suriota_mobile_gateway/core/utils/extensions.dart';
+import 'package:gateway_config/core/constants/app_color.dart';
+import 'package:gateway_config/core/constants/app_gap.dart';
+import 'package:gateway_config/core/utils/extensions.dart';
 
 class CustomDropdown extends StatefulWidget {
   const CustomDropdown({
@@ -41,14 +41,15 @@ class _CustomDropdownState extends State<CustomDropdown> {
   @override
   Widget build(BuildContext context) {
     return DropdownSearch<String>(
-      items: widget.listItem,
-      dropdownDecoratorProps: _buildDropdownDecoratorProps(context),
+      items: widget.listItem as DropdownSearchOnFind<String>,
+      decoratorProps: _buildDropdownDecoratorProps(context),
       onChanged: (value) {
         setState(() {
           initialSelect = value;
           // Validate on change if validator exists
-          errorText =
-              widget.validator != null ? widget.validator!(value) : null;
+          errorText = widget.validator != null
+              ? widget.validator!(value)
+              : null;
         });
         widget.onChanged?.call(value);
       },
@@ -61,15 +62,19 @@ class _CustomDropdownState extends State<CustomDropdown> {
   DropDownDecoratorProps _buildDropdownDecoratorProps(BuildContext context) {
     return DropDownDecoratorProps(
       baseStyle: context.h6,
-      dropdownSearchDecoration: InputDecoration(
+      decoration: InputDecoration(
         hintText: widget.hintText,
         hintStyle: context.body.copyWith(color: AppColor.grey),
         filled: true,
         fillColor: Colors.white,
         enabledBorder: _buildOutlineInputBorder(
-            errorText != null ? AppColor.redColor : AppColor.primaryColor, 1),
+          errorText != null ? AppColor.redColor : AppColor.primaryColor,
+          1,
+        ),
         focusedBorder: _buildOutlineInputBorder(
-            errorText != null ? AppColor.redColor : AppColor.primaryColor, 2),
+          errorText != null ? AppColor.redColor : AppColor.primaryColor,
+          2,
+        ),
         errorBorder: _buildOutlineInputBorder(AppColor.redColor, 1),
         focusedErrorBorder: _buildOutlineInputBorder(AppColor.redColor, 2),
         border: _buildOutlineInputBorder(AppColor.primaryColor, 1),
@@ -86,23 +91,26 @@ class _CustomDropdownState extends State<CustomDropdown> {
             fit: FlexFit.loose,
             dialogProps: const DialogProps(
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.all(Radius.circular(12))),
+                borderRadius: BorderRadius.all(Radius.circular(12)),
+              ),
             ),
             showSelectedItems: true,
             showSearchBox: true,
             searchFieldProps: _buildSearchFieldProps(context),
-            itemBuilder: (context, item, isSelected) =>
-                _buildPopupItem(context, item, isSelected),
+            itemBuilder:
+                _buildPopupItem as DropdownSearchPopupItemBuilder<String>,
           )
         : PopupProps.menu(
             fit: FlexFit.loose,
             menuProps: const MenuProps(
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(4)))),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.all(Radius.circular(4)),
+              ),
+            ),
             showSelectedItems: true,
             showSearchBox: false,
-            itemBuilder: (context, item, isSelected) =>
-                _buildPopupItem(context, item, isSelected),
+            itemBuilder:
+                _buildPopupItem as DropdownSearchPopupItemBuilder<String>,
           );
   }
 
@@ -127,20 +135,14 @@ class _CustomDropdownState extends State<CustomDropdown> {
         borderRadius: BorderRadius.circular(8),
         color: isSelected ? AppColor.primaryColor.withValues(alpha: 0.1) : null,
       ),
-      child: Text(
-        item,
-        style: context.body,
-      ),
+      child: Text(item, style: context.body),
     );
   }
 
   OutlineInputBorder _buildOutlineInputBorder(Color color, double width) {
     return OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
-      borderSide: BorderSide(
-        color: color,
-        width: width,
-      ),
+      borderSide: BorderSide(color: color, width: width),
     );
   }
 }

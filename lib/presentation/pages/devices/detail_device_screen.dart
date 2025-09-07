@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:get/get.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_color.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_gap.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_image_assets.dart';
-import 'package:suriota_mobile_gateway/core/controllers/ble/ble_controller.dart';
-import 'package:suriota_mobile_gateway/core/utils/app_helpers.dart';
-import 'package:suriota_mobile_gateway/core/utils/extensions.dart';
-import 'package:suriota_mobile_gateway/presentation/widgets/common/custom_alert_dialog.dart';
-import 'package:suriota_mobile_gateway/presentation/widgets/common/custom_button.dart';
-import 'package:suriota_mobile_gateway/presentation/widgets/spesific/device_card.dart';
-import 'package:suriota_mobile_gateway/presentation/widgets/common/loading_overlay.dart';
-import 'package:suriota_mobile_gateway/presentation/pages/devices/detail_device_info_screen.dart';
-import 'package:suriota_mobile_gateway/presentation/pages/devices/device_communication/device_communications_screen.dart';
-import 'package:suriota_mobile_gateway/presentation/pages/devices/logging_config/form_logging_config_screen.dart';
-import 'package:suriota_mobile_gateway/presentation/pages/devices/modbus_config/modbus_screen.dart';
-import 'package:suriota_mobile_gateway/presentation/pages/devices/server_config/form_config_server_screen.dart';
+import 'package:gateway_config/core/constants/app_color.dart';
+import 'package:gateway_config/core/constants/app_gap.dart';
+import 'package:gateway_config/core/constants/app_image_assets.dart';
+import 'package:gateway_config/core/controllers/ble/ble_controller.dart';
+import 'package:gateway_config/core/utils/app_helpers.dart';
+import 'package:gateway_config/core/utils/extensions.dart';
+import 'package:gateway_config/presentation/widgets/common/custom_alert_dialog.dart';
+import 'package:gateway_config/presentation/widgets/common/custom_button.dart';
+import 'package:gateway_config/presentation/widgets/spesific/device_card.dart';
+import 'package:gateway_config/presentation/widgets/common/loading_overlay.dart';
+import 'package:gateway_config/presentation/pages/devices/detail_device_info_screen.dart';
+import 'package:gateway_config/presentation/pages/devices/device_communication/device_communications_screen.dart';
+import 'package:gateway_config/presentation/pages/devices/logging_config/form_logging_config_screen.dart';
+import 'package:gateway_config/presentation/pages/devices/modbus_config/modbus_screen.dart';
+import 'package:gateway_config/presentation/pages/devices/server_config/form_config_server_screen.dart';
 
 class DetailDeviceScreen extends StatefulWidget {
   const DetailDeviceScreen({super.key, required this.device});
@@ -67,14 +67,18 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
           await bleController.disconnectDevice(widget.device);
 
           AppHelpers.debugLog(
-              'Successfully disconnected from ${widget.device.platformName}');
+            'Successfully disconnected from ${widget.device.platformName}',
+          );
 
           AppHelpers.backNTimes(2);
         } catch (e) {
           AppHelpers.debugLog('Error disconnecting from device: $e');
-          Get.snackbar('Error', 'Failed to disconnect from device',
-              backgroundColor: AppColor.redColor,
-              colorText: AppColor.whiteColor);
+          Get.snackbar(
+            'Error',
+            'Failed to disconnect from device',
+            backgroundColor: AppColor.redColor,
+            colorText: AppColor.whiteColor,
+          );
         } finally {
           setState(() {
             isLoading = false;
@@ -89,22 +93,22 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
     {
       "text": "Device Communication",
       "imagePath": ImageAsset.iconDevice,
-      "page": const DeviceCommunicationsScreen()
+      "page": const DeviceCommunicationsScreen(),
     },
     {
       "text": "Modbus Configurations",
       "imagePath": ImageAsset.iconConfig,
-      "page": const ModbusScreen()
+      "page": const ModbusScreen(),
     },
     {
       "text": "Server Configurations",
       "imagePath": ImageAsset.iconServer,
-      "page": const FormConfigServer()
+      "page": const FormConfigServer(),
     },
     {
       "text": "Logging Configurations",
       "imagePath": ImageAsset.iconLogging,
-      "page": const FormLoggingConfigScreen()
+      "page": const FormLoggingConfigScreen(),
     },
   ];
 
@@ -147,8 +151,12 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.start,
                 children: [
-                  Image.asset(ImageAsset.iconBluetooth,
-                      width: 45, height: 45, fit: BoxFit.contain),
+                  Image.asset(
+                    ImageAsset.iconBluetooth,
+                    width: 45,
+                    height: 45,
+                    fit: BoxFit.contain,
+                  ),
                   AppSpacing.md,
                   Flexible(
                     flex: 1,
@@ -176,60 +184,65 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
                         ),
                       ],
                     ),
-                  )
+                  ),
                 ],
               ),
             ),
             AppSpacing.sm,
             Obx(() {
-              final isConnected = bleController
-                  .getConnectionStatus(widget.device.remoteId.toString());
-              final isLoadingConnection = bleController
-                  .getLoadingStatus(widget.device.remoteId.toString());
+              final isConnected = bleController.getConnectionStatus(
+                widget.device.remoteId.toString(),
+              );
+              final isLoadingConnection = bleController.getLoadingStatus(
+                widget.device.remoteId.toString(),
+              );
 
               return Flexible(
                 flex: 1,
                 child: SizedBox(
                   height: 30,
                   child: Button(
-                      width: double.infinity,
-                      onPressed: disconnect,
-                      text: isLoadingConnection
-                          ? "Disconnecting..."
-                          : isConnected
-                              ? 'Disconnect'
-                              : 'Connect',
-                      btnColor: isConnected
-                          ? AppColor.redColor
-                          : AppColor.primaryColor,
-                      customStyle: context.buttonTextSmallest),
+                    width: double.infinity,
+                    onPressed: disconnect,
+                    text: isLoadingConnection
+                        ? "Disconnecting..."
+                        : isConnected
+                        ? 'Disconnect'
+                        : 'Connect',
+                    btnColor: isConnected
+                        ? AppColor.redColor
+                        : AppColor.primaryColor,
+                    customStyle: context.buttonTextSmallest,
+                  ),
                 ),
               );
-            })
+            }),
           ],
         ),
         AppSpacing.xl,
-        Text(
-          'CONFIGURATION MENU',
-          style: context.h4,
-        ),
+        Text('CONFIGURATION MENU', style: context.h4),
         AppSpacing.md,
-        LayoutBuilder(builder: (context, constraints) {
-          double cardWidth = (constraints.maxWidth / 2) - 8;
+        LayoutBuilder(
+          builder: (context, constraints) {
+            double cardWidth = (constraints.maxWidth / 2) - 8;
 
-          return Wrap(
-            spacing: 16,
-            runSpacing: 16,
-            alignment: WrapAlignment.spaceBetween,
-            children: menuItems
-                .map((item) => CardMenu(
-                    width: cardWidth,
-                    text: item['text']!,
-                    imagePath: item['imagePath']!,
-                    page: item['page']))
-                .toList(),
-          );
-        }),
+            return Wrap(
+              spacing: 16,
+              runSpacing: 16,
+              alignment: WrapAlignment.spaceBetween,
+              children: menuItems
+                  .map(
+                    (item) => CardMenu(
+                      width: cardWidth,
+                      text: item['text']!,
+                      imagePath: item['imagePath']!,
+                      page: item['page'],
+                    ),
+                  )
+                  .toList(),
+            );
+          },
+        ),
         AppSpacing.lg,
       ],
     );
@@ -246,15 +259,16 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
       centerTitle: true,
       actions: [
         IconButton(
-            onPressed: () {
-              Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => DetailDeviceInfoScreen(
-                            deviceName: title,
-                          )));
-            },
-            icon: const Icon(Icons.info))
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => DetailDeviceInfoScreen(deviceName: title),
+              ),
+            );
+          },
+          icon: const Icon(Icons.info),
+        ),
       ],
     );
   }

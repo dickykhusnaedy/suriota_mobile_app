@@ -2,10 +2,10 @@ import 'dart:async';
 
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:get/get.dart';
-import 'package:suriota_mobile_gateway/core/controllers/ble/ble_controller.dart';
-import 'package:suriota_mobile_gateway/core/utils/ble/ble_utils.dart';
-import 'package:suriota_mobile_gateway/core/utils/app_helpers.dart';
-import 'package:suriota_mobile_gateway/presentation/pages/home/home_screen.dart';
+import 'package:gateway_config/core/controllers/ble/ble_controller.dart';
+import 'package:gateway_config/core/utils/ble/ble_utils.dart';
+import 'package:gateway_config/core/utils/app_helpers.dart';
+import 'package:gateway_config/presentation/pages/home/home_screen.dart';
 
 class BLEConnection {
   BLEController? controller;
@@ -14,14 +14,17 @@ class BLEConnection {
   // Connect to a BLE device
   Future<void> connectToDevice(BluetoothDevice device) async {
     final deviceId = device.remoteId.toString();
-    final deviceName =
-        device.platformName.isNotEmpty ? device.platformName : deviceId;
+    final deviceName = device.platformName.isNotEmpty
+        ? device.platformName
+        : deviceId;
     controller!.setLoadingStatus(deviceId, true);
 
     try {
       await FlutterBluePlus.stopScan();
       await device.connect(
-          timeout: const Duration(seconds: 10), autoConnect: false);
+        timeout: const Duration(seconds: 10),
+        autoConnect: false,
+      );
       AppHelpers.debugLog('Requested MTU 512 for device: $deviceName');
 
       cancelDisconnectSubscription();
@@ -57,8 +60,9 @@ class BLEConnection {
   // Disconnect from a BLE device
   Future<void> disconnectDevice(BluetoothDevice device) async {
     final deviceId = device.remoteId.toString();
-    final deviceName =
-        device.platformName.isNotEmpty ? device.platformName : deviceId;
+    final deviceName = device.platformName.isNotEmpty
+        ? device.platformName
+        : deviceId;
     controller!.setLoadingStatus(deviceId, true);
 
     try {
@@ -101,8 +105,9 @@ class BLEConnection {
   // Discover services on a connected device
   Future<bool> _discoverServices(BluetoothDevice device) async {
     try {
-      final services =
-          await device.discoverServices().timeout(const Duration(seconds: 30));
+      final services = await device.discoverServices().timeout(
+        const Duration(seconds: 30),
+      );
       if (services.isEmpty) {
         controller!.notifyStatus('No services found on ${device.platformName}');
         return false;
@@ -131,7 +136,8 @@ class BLEConnection {
       return false;
     } catch (e) {
       controller!.notifyStatus(
-          'Failed to discover services on ${device.platformName}');
+        'Failed to discover services on ${device.platformName}',
+      );
       AppHelpers.debugLog('Service discovery error: $e');
       return false;
     }
@@ -152,7 +158,8 @@ class BLEConnection {
         controller!.dataProcessor.listenToNotifications();
 
         AppHelpers.debugLog(
-            'Notification enabled for characteristic: ${char.uuid}');
+          'Notification enabled for characteristic: ${char.uuid}',
+        );
       } catch (e) {
         controller!.notifyStatus('Failed to enable notifications');
         AppHelpers.debugLog('Notification enable error: $e');

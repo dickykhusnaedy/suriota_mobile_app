@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_color.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_gap.dart';
-import 'package:suriota_mobile_gateway/core/controllers/ble/ble_controller.dart';
-import 'package:suriota_mobile_gateway/core/utils/app_helpers.dart';
-import 'package:suriota_mobile_gateway/core/utils/extensions.dart';
-import 'package:suriota_mobile_gateway/presentation/widgets/common/custom_alert_dialog.dart';
-import 'package:suriota_mobile_gateway/presentation/widgets/common/custom_button.dart';
-import 'package:suriota_mobile_gateway/presentation/widgets/common/custom_radiotile.dart';
-import 'package:suriota_mobile_gateway/presentation/widgets/common/loading_overlay.dart';
-import 'package:suriota_mobile_gateway/presentation/widgets/spesific/title_tile.dart';
+import 'package:gateway_config/core/constants/app_color.dart';
+import 'package:gateway_config/core/constants/app_gap.dart';
+import 'package:gateway_config/core/controllers/ble/ble_controller.dart';
+import 'package:gateway_config/core/utils/app_helpers.dart';
+import 'package:gateway_config/core/utils/extensions.dart';
+import 'package:gateway_config/presentation/widgets/common/custom_alert_dialog.dart';
+import 'package:gateway_config/presentation/widgets/common/custom_button.dart';
+import 'package:gateway_config/presentation/widgets/common/custom_radiotile.dart';
+import 'package:gateway_config/presentation/widgets/common/loading_overlay.dart';
+import 'package:gateway_config/presentation/widgets/spesific/title_tile.dart';
 
 class FormLoggingConfigScreen extends StatefulWidget {
   const FormLoggingConfigScreen({super.key});
@@ -67,7 +67,9 @@ class _FormLoggingConfigScreenState extends State<FormLoggingConfigScreen> {
 
     try {
       final data = await bleController.fetchData(
-          "READ|logging_config", 'logging_config');
+        "READ|logging_config",
+        'logging_config',
+      );
 
       AppHelpers.debugLog('data logging: $data');
 
@@ -143,10 +145,7 @@ class _FormLoggingConfigScreenState extends State<FormLoggingConfigScreen> {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        Scaffold(
-          appBar: _appBar(context),
-          body: _body(context),
-        ),
+        Scaffold(appBar: _appBar(context), body: _body(context)),
         Obx(() {
           final isAnyDeviceLoading = bleController.isLoading.value;
           return LoadingOverlay(
@@ -160,8 +159,10 @@ class _FormLoggingConfigScreenState extends State<FormLoggingConfigScreen> {
 
   AppBar _appBar(BuildContext context) {
     return AppBar(
-      title: Text('Form Logging Config',
-          style: context.h5.copyWith(color: AppColor.whiteColor)),
+      title: Text(
+        'Form Logging Config',
+        style: context.h5.copyWith(color: AppColor.whiteColor),
+      ),
       iconTheme: const IconThemeData(color: AppColor.whiteColor),
       backgroundColor: AppColor.primaryColor,
       centerTitle: true,
@@ -241,8 +242,8 @@ class _FormLoggingConfigScreenState extends State<FormLoggingConfigScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const TitleTile(
-                          title:
-                              'Choose Logging Retention (w: week, m: month)'),
+                        title: 'Choose Logging Retention (w: week, m: month)',
+                      ),
                       AppSpacing.sm,
                       CustomRadioTile(
                         value: "1w",
@@ -278,7 +279,8 @@ class _FormLoggingConfigScreenState extends State<FormLoggingConfigScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const TitleTile(
-                          title: 'Choose Logging Interval (m: minute)'),
+                        title: 'Choose Logging Interval (m: minute)',
+                      ),
                       AppSpacing.sm,
                       CustomRadioTile(
                         value: "5m",

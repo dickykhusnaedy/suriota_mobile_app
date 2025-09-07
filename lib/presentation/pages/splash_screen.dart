@@ -3,11 +3,11 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_gap.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_image_assets.dart';
-import 'package:suriota_mobile_gateway/core/utils/extensions.dart';
-import 'package:suriota_mobile_gateway/presentation/pages/home/home_screen.dart';
-import 'package:suriota_mobile_gateway/core/services/bluetooth/bluetooth_permission_service.dart';
+import 'package:gateway_config/core/constants/app_gap.dart';
+import 'package:gateway_config/core/constants/app_image_assets.dart';
+import 'package:gateway_config/core/utils/extensions.dart';
+import 'package:gateway_config/presentation/pages/home/home_screen.dart';
+import 'package:gateway_config/core/services/bluetooth/bluetooth_permission_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -41,28 +41,27 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(children: [
-        Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Expanded(
-                flex: 1,
-                child: Image.asset(
-                  ImageAsset.logoSuriota, // Ganti dengan path logo Anda
-                  width: 200,
-                  height: 200,
+      body: Stack(
+        children: [
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Expanded(
+                  flex: 1,
+                  child: Image.asset(
+                    ImageAsset.logoSuriota, // Ganti dengan path logo Anda
+                    width: 200,
+                    height: 200,
+                  ),
                 ),
-              ),
-              Text(
-                "v1.0.0",
-                style: context.bodySmall,
-              ),
-              AppSpacing.lg,
-            ],
+                Text("v1.0.0", style: context.bodySmall),
+                AppSpacing.lg,
+              ],
+            ),
           ),
-        ),
-      ]),
+        ],
+      ),
     );
   }
 }

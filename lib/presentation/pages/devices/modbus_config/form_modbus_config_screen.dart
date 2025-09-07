@@ -2,18 +2,18 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_color.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_gap.dart';
-import 'package:suriota_mobile_gateway/core/controllers/ble/ble_controller.dart';
-import 'package:suriota_mobile_gateway/core/controllers/devices/device_pagination_controller.dart';
-import 'package:suriota_mobile_gateway/core/controllers/modbus/modbus_pagination_controller.dart';
-import 'package:suriota_mobile_gateway/core/utils/app_helpers.dart';
-import 'package:suriota_mobile_gateway/core/utils/extensions.dart';
-import 'package:suriota_mobile_gateway/presentation/widgets/common/custom_alert_dialog.dart';
-import 'package:suriota_mobile_gateway/presentation/widgets/common/custom_button.dart';
-import 'package:suriota_mobile_gateway/presentation/widgets/common/custom_dropdown.dart';
-import 'package:suriota_mobile_gateway/presentation/widgets/common/custom_textfield.dart';
-import 'package:suriota_mobile_gateway/presentation/widgets/common/loading_overlay.dart';
+import 'package:gateway_config/core/constants/app_color.dart';
+import 'package:gateway_config/core/constants/app_gap.dart';
+import 'package:gateway_config/core/controllers/ble/ble_controller.dart';
+import 'package:gateway_config/core/controllers/devices/device_pagination_controller.dart';
+import 'package:gateway_config/core/controllers/modbus/modbus_pagination_controller.dart';
+import 'package:gateway_config/core/utils/app_helpers.dart';
+import 'package:gateway_config/core/utils/extensions.dart';
+import 'package:gateway_config/presentation/widgets/common/custom_alert_dialog.dart';
+import 'package:gateway_config/presentation/widgets/common/custom_button.dart';
+import 'package:gateway_config/presentation/widgets/common/custom_dropdown.dart';
+import 'package:gateway_config/presentation/widgets/common/custom_textfield.dart';
+import 'package:gateway_config/presentation/widgets/common/loading_overlay.dart';
 
 class FormModbusConfigScreen extends StatefulWidget {
   final int? id;
@@ -26,10 +26,14 @@ class FormModbusConfigScreen extends StatefulWidget {
 
 class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
   final BLEController bleController = Get.put(BLEController(), permanent: true);
-  final DevicePaginationController controller =
-      Get.put(DevicePaginationController(), permanent: true);
-  final ModbusPaginationController controllerModbus =
-      Get.put(ModbusPaginationController(), permanent: true);
+  final DevicePaginationController controller = Get.put(
+    DevicePaginationController(),
+    permanent: true,
+  );
+  final ModbusPaginationController controllerModbus = Get.put(
+    ModbusPaginationController(),
+    permanent: true,
+  );
 
   Map<String, dynamic> dataModbus = {};
   bool isLoading = false;
@@ -66,8 +70,10 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
     super.initState();
 
     if (widget.id != null) {
-      dataModbus = controllerModbus.modbus
-          .firstWhere((item) => item['id'] == widget.id, orElse: () => {});
+      dataModbus = controllerModbus.modbus.firstWhere(
+        (item) => item['id'] == widget.id,
+        orElse: () => {},
+      );
 
       _fillFormFromDevice(dataModbus);
     }
@@ -91,8 +97,10 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
     });
 
     try {
-      final data =
-          await bleController.fetchData("READ|devices|names", 'devices');
+      final data = await bleController.fetchData(
+        "READ|devices|names",
+        'devices',
+      );
 
       print('data devices aa: $data');
 
@@ -203,10 +211,7 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        Scaffold(
-          appBar: _appBar(context),
-          body: _body(context),
-        ),
+        Scaffold(appBar: _appBar(context), body: _body(context)),
         Obx(() {
           final isAnyDeviceLoading = bleController.isLoading.value;
           return LoadingOverlay(
@@ -265,10 +270,7 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
                 },
               ),
               AppSpacing.md,
-              Text(
-                'Choose Device',
-                style: context.h6,
-              ),
+              Text('Choose Device', style: context.h6),
               AppSpacing.sm,
               CustomDropdown(
                 listItem: deviceNames ?? [],
@@ -287,10 +289,7 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
                 },
               ),
               AppSpacing.md,
-              Text(
-                'Choose Function',
-                style: context.h6,
-              ),
+              Text('Choose Function', style: context.h6),
               AppSpacing.sm,
               CustomDropdown(
                 listItem: modbusReadFunctions,
@@ -325,10 +324,7 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
                 },
               ),
               AppSpacing.md,
-              Text(
-                'Choose Data Type',
-                style: context.h6,
-              ),
+              Text('Choose Data Type', style: context.h6),
               AppSpacing.sm,
               CustomDropdown(
                 listItem: modbusDataTypes,

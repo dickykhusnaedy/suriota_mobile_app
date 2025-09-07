@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_color.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_gap.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_font.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_image_assets.dart';
-import 'package:suriota_mobile_gateway/core/utils/extensions.dart';
-import 'package:suriota_mobile_gateway/presentation/pages/login/login_page.dart';
-import 'package:suriota_mobile_gateway/presentation/pages/sidebar_menu/about_app.dart';
-import 'package:suriota_mobile_gateway/presentation/pages/sidebar_menu/about_us_page.dart';
-import 'package:suriota_mobile_gateway/presentation/pages/sidebar_menu/profile.dart';
+import 'package:gateway_config/core/constants/app_color.dart';
+import 'package:gateway_config/core/constants/app_gap.dart';
+import 'package:gateway_config/core/constants/app_font.dart';
+import 'package:gateway_config/core/constants/app_image_assets.dart';
+import 'package:gateway_config/core/utils/extensions.dart';
+import 'package:gateway_config/presentation/pages/login/login_page.dart';
+import 'package:gateway_config/presentation/pages/sidebar_menu/about_app.dart';
+import 'package:gateway_config/presentation/pages/sidebar_menu/about_us_page.dart';
+import 'package:gateway_config/presentation/pages/sidebar_menu/profile.dart';
 
 class SideBarMenu extends StatelessWidget {
   const SideBarMenu({super.key});
@@ -19,12 +19,12 @@ class SideBarMenu extends StatelessWidget {
     return Drawer(
       child: ListView(
         children: [
-          SizedBox(
-            height: statusBarHeight,
-          ),
+          SizedBox(height: statusBarHeight),
           const Center(
             child: CircleAvatar(
-                radius: 50, backgroundImage: AssetImage(ImageAsset.profile2)),
+              radius: 50,
+              backgroundImage: AssetImage(ImageAsset.profile2),
+            ),
           ),
           AppSpacing.md,
           Padding(
@@ -40,8 +40,10 @@ class SideBarMenu extends StatelessWidget {
           Column(
             children: [
               ListTile(
-                title: Text('Home',
-                    style: context.body.copyWith(color: AppColor.blackColor)),
+                title: Text(
+                  'Home',
+                  style: context.body.copyWith(color: AppColor.blackColor),
+                ),
                 trailing: const Icon(
                   Icons.chevron_right,
                   size: 22,
@@ -51,13 +53,12 @@ class SideBarMenu extends StatelessWidget {
                   Navigator.pop(context);
                 },
               ),
-              Divider(
-                height: 0,
-                color: Colors.grey[300],
-              ),
+              Divider(height: 0, color: Colors.grey[300]),
               ListTile(
-                title: Text('Profile',
-                    style: context.body.copyWith(color: AppColor.blackColor)),
+                title: Text(
+                  'Profile',
+                  style: context.body.copyWith(color: AppColor.blackColor),
+                ),
                 trailing: const Icon(
                   Icons.chevron_right,
                   size: 22,
@@ -65,18 +66,19 @@ class SideBarMenu extends StatelessWidget {
                 ),
                 onTap: () {
                   Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const ProfilePage()));
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ProfilePage(),
+                    ),
+                  );
                 },
               ),
-              Divider(
-                height: 0,
-                color: Colors.grey[300],
-              ),
+              Divider(height: 0, color: Colors.grey[300]),
               ListTile(
-                title: Text('About Product',
-                    style: context.body.copyWith(color: AppColor.blackColor)),
+                title: Text(
+                  'About Product',
+                  style: context.body.copyWith(color: AppColor.blackColor),
+                ),
                 trailing: const Icon(
                   Icons.chevron_right,
                   size: 22,
@@ -84,18 +86,19 @@ class SideBarMenu extends StatelessWidget {
                 ),
                 onTap: () {
                   Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const AboutUsPage()));
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const AboutUsPage(),
+                    ),
+                  );
                 },
               ),
-              Divider(
-                height: 0,
-                color: Colors.grey[300],
-              ),
+              Divider(height: 0, color: Colors.grey[300]),
               ListTile(
-                title: Text('About App',
-                    style: context.body.copyWith(color: AppColor.blackColor)),
+                title: Text(
+                  'About App',
+                  style: context.body.copyWith(color: AppColor.blackColor),
+                ),
                 trailing: const Icon(
                   Icons.chevron_right,
                   size: 22,
@@ -103,30 +106,30 @@ class SideBarMenu extends StatelessWidget {
                 ),
                 onTap: () {
                   Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const AboutApp()));
+                    context,
+                    MaterialPageRoute(builder: (context) => const AboutApp()),
+                  );
                 },
               ),
-              Divider(
-                height: 0,
-                color: Colors.grey[300],
-              ),
+              Divider(height: 0, color: Colors.grey[300]),
               ListTile(
                 leading: const Icon(
                   Icons.logout,
                   color: AppColor.redColor,
                   size: 22,
                 ),
-                title: Text('Logout',
-                    style: context.body.copyWith(
-                        color: AppColor.redColor,
-                        fontWeight: FontWeightTheme.extraBold)),
+                title: Text(
+                  'Logout',
+                  style: context.body.copyWith(
+                    color: AppColor.redColor,
+                    fontWeight: FontWeightTheme.extraBold,
+                  ),
+                ),
                 onTap: () {
                   Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(
-                          builder: (context) => const LoginPage()),
-                      (Route route) => false);
+                    MaterialPageRoute(builder: (context) => const LoginPage()),
+                    (Route route) => false,
+                  );
                 },
               ),
             ],

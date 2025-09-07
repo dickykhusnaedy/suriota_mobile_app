@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_color.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_gap.dart';
-import 'package:suriota_mobile_gateway/core/utils/extensions.dart';
+import 'package:gateway_config/core/constants/app_color.dart';
+import 'package:gateway_config/core/constants/app_gap.dart';
+import 'package:gateway_config/core/utils/extensions.dart';
 
 class LoadingProgress extends StatelessWidget {
   final double heightFactor;
@@ -42,7 +42,9 @@ class LoadingProgress extends StatelessWidget {
               return Text(
                 "Processing ${percent.toStringAsFixed(1)}% data ...",
                 style: context.bodySmall.copyWith(
-                    color: AppColor.grey, fontStyle: FontStyle.italic),
+                  color: AppColor.grey,
+                  fontStyle: FontStyle.italic,
+                ),
               );
             }),
           ],

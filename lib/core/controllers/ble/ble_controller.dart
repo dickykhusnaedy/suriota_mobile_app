@@ -2,15 +2,15 @@ import 'dart:async';
 
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:get/get.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_color.dart';
-import 'package:suriota_mobile_gateway/core/controllers/ble/ble_data_processor.dart';
-import 'package:suriota_mobile_gateway/core/services/ble/ble_connection.dart';
-import 'package:suriota_mobile_gateway/core/services/ble/ble_scan.dart';
-import 'package:suriota_mobile_gateway/core/states/ble/ble_device_status_state.dart';
-import 'package:suriota_mobile_gateway/core/utils/ble/ble_components.dart';
-import 'package:suriota_mobile_gateway/core/utils/ble/ble_utils.dart';
-import 'package:suriota_mobile_gateway/core/utils/snackbar_custom.dart';
-import 'package:suriota_mobile_gateway/core/utils/app_helpers.dart';
+import 'package:gateway_config/core/constants/app_color.dart';
+import 'package:gateway_config/core/controllers/ble/ble_data_processor.dart';
+import 'package:gateway_config/core/services/ble/ble_connection.dart';
+import 'package:gateway_config/core/services/ble/ble_scan.dart';
+import 'package:gateway_config/core/states/ble/ble_device_status_state.dart';
+import 'package:gateway_config/core/utils/ble/ble_components.dart';
+import 'package:gateway_config/core/utils/ble/ble_utils.dart';
+import 'package:gateway_config/core/utils/snackbar_custom.dart';
+import 'package:gateway_config/core/utils/app_helpers.dart';
 
 // Manages BLE operations and state
 class BLEController extends GetxController {
@@ -38,9 +38,9 @@ class BLEController extends GetxController {
     BLEScanner? scanner,
     BLEConnection? connectionManager,
     BLEDataProcessor? dataProcessor,
-  })  : _scanner = scanner ?? BLEScanner(),
-        _connectionManager = connectionManager ?? BLEConnection(),
-        dataProcessor = dataProcessor ?? BLEDataProcessor() {
+  }) : _scanner = scanner ?? BLEScanner(),
+       _connectionManager = connectionManager ?? BLEConnection(),
+       dataProcessor = dataProcessor ?? BLEDataProcessor() {
     _initializeDependencies();
     AppHelpers.debugLog('BLEController initialized');
   }
@@ -118,14 +118,20 @@ class BLEController extends GetxController {
   // Show disconnected dialog
   void showDisconnectedBottomSheet(BluetoothDevice device) {
     BLEUtils.showDisconnectedBottomSheet(
-        device, () => disconnectDevice(device));
+      device,
+      () => disconnectDevice(device),
+    );
   }
 
   // Notify status updates to UI
   void notifyStatus(String message) {
     _statusController.add(message);
     SnackbarCustom.showSnackbar(
-        '', message, AppColor.grey, AppColor.whiteColor);
+      '',
+      message,
+      AppColor.grey,
+      AppColor.whiteColor,
+    );
   }
 
   // Start loading state

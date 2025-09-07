@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_color.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_gap.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_image_assets.dart';
-import 'package:suriota_mobile_gateway/core/utils/extensions.dart';
-import 'package:suriota_mobile_gateway/presentation/widgets/spesific/field_data_widget.dart';
+import 'package:gateway_config/core/constants/app_color.dart';
+import 'package:gateway_config/core/constants/app_gap.dart';
+import 'package:gateway_config/core/constants/app_image_assets.dart';
+import 'package:gateway_config/core/utils/extensions.dart';
+import 'package:gateway_config/presentation/widgets/spesific/field_data_widget.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -45,10 +45,7 @@ class ProfilePage extends StatelessWidget {
           description: 'Fulan bin Fulan',
         ),
         AppSpacing.md,
-        const FieldDataWidget(
-          label: 'Email',
-          description: 'fulan@fulan.com',
-        ),
+        const FieldDataWidget(label: 'Email', description: 'fulan@fulan.com'),
         AppSpacing.md,
         const FieldDataWidget(
           label: 'Phone Number',

@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_color.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_gap.dart';
-import 'package:suriota_mobile_gateway/core/utils/extensions.dart';
+import 'package:gateway_config/core/constants/app_color.dart';
+import 'package:gateway_config/core/constants/app_gap.dart';
+import 'package:gateway_config/core/utils/extensions.dart';
 
 class DisplayDataPage extends StatelessWidget {
   final String title; // Parameter untuk nama perangkat
   final String modbusType; // Parameter untuk tipe Modbus
 
-  const DisplayDataPage(
-      {super.key, required this.title, required this.modbusType});
+  const DisplayDataPage({
+    super.key,
+    required this.title,
+    required this.modbusType,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -18,7 +21,7 @@ class DisplayDataPage extends StatelessWidget {
       "0x8219",
       "0x8163",
       "0x6661",
-      "0x6763"
+      "0x6763",
     ];
     List<String> valueData = ["142", "920", "821", "710", "180", "170"];
 
@@ -46,7 +49,10 @@ class DisplayDataPage extends StatelessWidget {
   }
 
   Column _bodyContent(
-      BuildContext context, List<String> addressData, List<String> valueData) {
+    BuildContext context,
+    List<String> addressData,
+    List<String> valueData,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -66,8 +72,12 @@ class DisplayDataPage extends StatelessWidget {
     );
   }
 
-  Stack _card(BuildContext context, List<String> addressData, int index,
-      List<String> valueData) {
+  Stack _card(
+    BuildContext context,
+    List<String> addressData,
+    int index,
+    List<String> valueData,
+  ) {
     return Stack(
       alignment: AlignmentDirectional.topEnd,
       children: [
@@ -104,11 +114,12 @@ class DisplayDataPage extends StatelessWidget {
           height: 30,
           width: 130,
           decoration: const BoxDecoration(
-              color: AppColor.labelColor,
-              borderRadius: BorderRadius.only(
-                topRight: Radius.circular(10.0),
-                bottomLeft: Radius.circular(10.0),
-              )),
+            color: AppColor.labelColor,
+            borderRadius: BorderRadius.only(
+              topRight: Radius.circular(10.0),
+              bottomLeft: Radius.circular(10.0),
+            ),
+          ),
           child: Center(
             child: Text(
               '25 Aug 2024 13.00', // Data statis contoh

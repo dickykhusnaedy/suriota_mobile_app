@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_color.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_gap.dart';
-import 'package:suriota_mobile_gateway/core/controllers/ble/ble_controller.dart';
-import 'package:suriota_mobile_gateway/core/controllers/modbus/modbus_pagination_controller.dart';
-import 'package:suriota_mobile_gateway/core/utils/extensions.dart';
-import 'package:suriota_mobile_gateway/core/utils/loading_progress.dart';
-import 'package:suriota_mobile_gateway/presentation/widgets/common/custom_alert_dialog.dart';
-import 'package:suriota_mobile_gateway/presentation/widgets/common/custom_button.dart';
-import 'package:suriota_mobile_gateway/presentation/pages/devices/modbus_config/form_modbus_config_screen.dart';
+import 'package:gateway_config/core/constants/app_color.dart';
+import 'package:gateway_config/core/constants/app_gap.dart';
+import 'package:gateway_config/core/controllers/ble/ble_controller.dart';
+import 'package:gateway_config/core/controllers/modbus/modbus_pagination_controller.dart';
+import 'package:gateway_config/core/utils/extensions.dart';
+import 'package:gateway_config/core/utils/loading_progress.dart';
+import 'package:gateway_config/presentation/widgets/common/custom_alert_dialog.dart';
+import 'package:gateway_config/presentation/widgets/common/custom_button.dart';
+import 'package:gateway_config/presentation/pages/devices/modbus_config/form_modbus_config_screen.dart';
 
 class ModbusScreen extends StatefulWidget {
   const ModbusScreen({super.key});
@@ -19,8 +19,10 @@ class ModbusScreen extends StatefulWidget {
 
 class _ModbusScreenState extends State<ModbusScreen> {
   final BLEController bleController = Get.put(BLEController(), permanent: true);
-  final ModbusPaginationController controller =
-      Get.put(ModbusPaginationController(), permanent: true);
+  final ModbusPaginationController controller = Get.put(
+    ModbusPaginationController(),
+    permanent: true,
+  );
 
   bool isLoading = false;
   bool isInitialized = false;
@@ -148,10 +150,7 @@ class _ModbusScreenState extends State<ModbusScreen> {
                   ),
                   TextButton.icon(
                     onPressed: _fetchDataModbus,
-                    label: const Icon(
-                      Icons.rotate_left,
-                      size: 20,
-                    ),
+                    label: const Icon(Icons.rotate_left, size: 20),
                     style: TextButton.styleFrom(
                       iconColor: AppColor.primaryColor,
                       padding: EdgeInsets.zero,
@@ -175,15 +174,16 @@ class _ModbusScreenState extends State<ModbusScreen> {
                 }
 
                 return ListView.separated(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: controller.modbus.length,
-                    separatorBuilder: (context, index) => AppSpacing.md,
-                    itemBuilder: (context, int index) {
-                      final item = controller.modbus[index];
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: controller.modbus.length,
+                  separatorBuilder: (context, index) => AppSpacing.md,
+                  itemBuilder: (context, int index) {
+                    final item = controller.modbus[index];
 
-                      return cardDataConfig(item, index);
-                    });
+                    return cardDataConfig(item, index);
+                  },
+                );
               }),
               AppSpacing.md,
               Obx(() {
@@ -217,13 +217,11 @@ class _ModbusScreenState extends State<ModbusScreen> {
       iconTheme: const IconThemeData(color: Colors.white),
       actions: [
         IconButton(
-            onPressed: () {
-              Get.to(() => const FormModbusConfigScreen());
-            },
-            icon: const Icon(
-              Icons.add_circle,
-              size: 22,
-            ))
+          onPressed: () {
+            Get.to(() => const FormModbusConfigScreen());
+          },
+          icon: const Icon(Icons.add_circle, size: 22),
+        ),
       ],
     );
   }
@@ -238,25 +236,16 @@ class _ModbusScreenState extends State<ModbusScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              modbus['name'],
-              style: context.h5,
-            ),
+            Text(modbus['name'], style: context.h5),
             AppSpacing.sm,
             Text(
               'Devices : ${modbus['device_choose']}',
               style: context.bodySmall,
             ),
             AppSpacing.sm,
-            Text(
-              'Slave ID : ${modbus['id']}',
-              style: context.bodySmall,
-            ),
+            Text('Slave ID : ${modbus['id']}', style: context.bodySmall),
             AppSpacing.xs,
-            Text(
-              'Address : ${modbus['address']}',
-              style: context.bodySmall,
-            ),
+            Text('Address : ${modbus['address']}', style: context.bodySmall),
             AppSpacing.xs,
             Text(
               'Function : ${modbus['function_code']}',
@@ -301,9 +290,9 @@ class _ModbusScreenState extends State<ModbusScreen> {
                       color: AppColor.whiteColor,
                     ),
                   ),
-                )
+                ),
               ],
-            )
+            ),
           ],
         ),
       ),

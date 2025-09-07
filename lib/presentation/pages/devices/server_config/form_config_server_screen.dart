@@ -3,19 +3,19 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:multi_dropdown/multi_dropdown.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_color.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_gap.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_font.dart';
-import 'package:suriota_mobile_gateway/core/controllers/ble/ble_controller.dart';
-import 'package:suriota_mobile_gateway/core/utils/app_helpers.dart';
-import 'package:suriota_mobile_gateway/core/utils/extensions.dart';
-import 'package:suriota_mobile_gateway/presentation/widgets/common/custom_alert_dialog.dart';
-import 'package:suriota_mobile_gateway/presentation/widgets/common/custom_button.dart';
-import 'package:suriota_mobile_gateway/presentation/widgets/common/custom_dropdown.dart';
-import 'package:suriota_mobile_gateway/presentation/widgets/common/custom_radiotile.dart';
-import 'package:suriota_mobile_gateway/presentation/widgets/common/custom_textfield.dart';
-import 'package:suriota_mobile_gateway/presentation/widgets/common/loading_overlay.dart';
-import 'package:suriota_mobile_gateway/presentation/widgets/spesific/title_tile.dart';
+import 'package:gateway_config/core/constants/app_color.dart';
+import 'package:gateway_config/core/constants/app_gap.dart';
+import 'package:gateway_config/core/constants/app_font.dart';
+import 'package:gateway_config/core/controllers/ble/ble_controller.dart';
+import 'package:gateway_config/core/utils/app_helpers.dart';
+import 'package:gateway_config/core/utils/extensions.dart';
+import 'package:gateway_config/presentation/widgets/common/custom_alert_dialog.dart';
+import 'package:gateway_config/presentation/widgets/common/custom_button.dart';
+import 'package:gateway_config/presentation/widgets/common/custom_dropdown.dart';
+import 'package:gateway_config/presentation/widgets/common/custom_radiotile.dart';
+import 'package:gateway_config/presentation/widgets/common/custom_textfield.dart';
+import 'package:gateway_config/presentation/widgets/common/loading_overlay.dart';
+import 'package:gateway_config/presentation/widgets/spesific/title_tile.dart';
 
 class FormConfigServer extends StatefulWidget {
   const FormConfigServer({super.key});
@@ -106,8 +106,9 @@ class _FormConfigServerState extends State<FormConfigServer> {
     intervalTimeController.text = data['interval']?['time']?.toString() ?? '';
 
     // Authentication settings
-    confirmAuthentication =
-        data['auth']?['username']?.isNotEmpty == true ? 'Yes' : 'No';
+    confirmAuthentication = data['auth']?['username']?.isNotEmpty == true
+        ? 'Yes'
+        : 'No';
     usernameController.text = data['auth']?['username'] ?? '';
     passwordController.text = data['auth']?['password'] ?? '';
   }
@@ -238,16 +239,21 @@ class _FormConfigServerState extends State<FormConfigServer> {
   @override
   Widget build(BuildContext context) {
     var items = [
-      DropdownItem(label: 'Sensor', value: LoggingData(name: 'Sensor', id: 1)),
       DropdownItem(
-          label: 'Tekanan', value: LoggingData(name: 'Tekanan', id: 6)),
-      DropdownItem(label: 'Suhu', value: LoggingData(name: 'Suhu', id: 2)),
+        label: 'Sensor',
+        value: LoggingData(name: 'Sensor', id: 1),
+      ),
+      DropdownItem(
+        label: 'Tekanan',
+        value: LoggingData(name: 'Tekanan', id: 6),
+      ),
+      DropdownItem(
+        label: 'Suhu',
+        value: LoggingData(name: 'Suhu', id: 2),
+      ),
     ];
 
-    List<String> typeInterval = [
-      's',
-      'm',
-    ];
+    List<String> typeInterval = ['s', 'm'];
 
     return Stack(
       children: [
@@ -266,8 +272,11 @@ class _FormConfigServerState extends State<FormConfigServer> {
     );
   }
 
-  SafeArea _body(BuildContext context, List<DropdownItem<LoggingData>> items,
-      List<String> typeInterval) {
+  SafeArea _body(
+    BuildContext context,
+    List<DropdownItem<LoggingData>> items,
+    List<String> typeInterval,
+  ) {
     return SafeArea(
       child: SingleChildScrollView(
         padding: AppPadding.horizontalMedium,
@@ -314,109 +323,117 @@ class _FormConfigServerState extends State<FormConfigServer> {
     );
   }
 
-  Column _intervalWrapper(BuildContext context,
-      List<DropdownItem<LoggingData>> items, List<String> typeInterval) {
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      TitleTile(title: 'Data Interval'),
-      AppSpacing.sm,
-      // Column(
-      //   crossAxisAlignment: CrossAxisAlignment.start,
-      //   children: [
-      //     Text('Data Interval',
-      //         style: context.h6.copyWith(fontWeight: FontWeightTheme.bold)),
-      //     AppSpacing.sm,
+  Column _intervalWrapper(
+    BuildContext context,
+    List<DropdownItem<LoggingData>> items,
+    List<String> typeInterval,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TitleTile(title: 'Data Interval'),
+        AppSpacing.sm,
+        // Column(
+        //   crossAxisAlignment: CrossAxisAlignment.start,
+        //   children: [
+        //     Text('Data Interval',
+        //         style: context.h6.copyWith(fontWeight: FontWeightTheme.bold)),
+        //     AppSpacing.sm,
 
-      //     MultiDropdown<LoggingData>(
-      //       items: items,
-      //       enabled: true,
-      //       chipDecoration: ChipDecoration(
-      //           labelStyle: context.buttonTextSmall
-      //               .copyWith(color: AppColor.whiteColor),
-      //           backgroundColor: AppColor.primaryColor,
-      //           padding: AppPadding.small,
-      //           wrap: true,
-      //           runSpacing: 10,
-      //           spacing: 5,
-      //           deleteIcon: const Icon(
-      //             Icons.cancel,
-      //             size: 17,
-      //             color: AppColor.whiteColor,
-      //           )),
-      //       fieldDecoration: FieldDecoration(
-      //         hintText: 'Choose Data Interval',
-      //         hintStyle: context.body,
-      //         showClearIcon: false,
-      //         border: OutlineInputBorder(
-      //           borderRadius: BorderRadius.circular(8),
-      //           borderSide:
-      //               const BorderSide(color: AppColor.primaryColor, width: 1),
-      //         ),
-      //         focusedBorder: OutlineInputBorder(
-      //           borderRadius: BorderRadius.circular(8),
-      //           borderSide:
-      //               const BorderSide(color: AppColor.primaryColor, width: 2),
-      //         ),
-      //       ),
-      //       dropdownItemDecoration: const DropdownItemDecoration(
-      //         textColor: AppColor.grey,
-      //         selectedTextColor: AppColor.primaryColor,
-      //         selectedIcon: Icon(Icons.check_box, color: AppColor.primaryColor),
-      //         disabledIcon: Icon(Icons.lock, color: Colors.grey),
-      //       ),
-      //       validator: (value) {
-      //         if (value == null || value.isEmpty) {
-      //           return 'Please select a data interval';
-      //         }
-      //         return null;
-      //       },
-      //       onSelectionChange: (selectedItems) {
-      //         debugPrint("OnSelectionChange: $selectedItems");
-      //       },
-      //     ),
-      //   ],
-      // ),
-      // AppSpacing.md,
-      Text('s: seconds, m: minute',
-          style: context.bodySmall.copyWith(
-            color: AppColor.grey,
-          )),
-      AppSpacing.sm,
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Interval Time',
-              style: context.h6.copyWith(fontWeight: FontWeightTheme.bold)),
-          CustomTextFormField(
-            controller: intervalTimeController,
-            hintTxt: '5000',
-            keyboardType: TextInputType.number,
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Interval Time is required';
-              }
-              return null;
-            },
-          ),
-          AppSpacing.sm,
-          CustomDropdown(
-            listItem: typeInterval,
-            hintText: 'Choose Interval Type',
-            selectedItem: selectedIntervalType,
-            onChanged: (value) {
-              setState(() {
-                selectedIntervalType = value!;
-              });
-            },
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Please select interval type';
-              }
-              return null;
-            },
-          ),
-        ],
-      )
-    ]);
+        //     MultiDropdown<LoggingData>(
+        //       items: items,
+        //       enabled: true,
+        //       chipDecoration: ChipDecoration(
+        //           labelStyle: context.buttonTextSmall
+        //               .copyWith(color: AppColor.whiteColor),
+        //           backgroundColor: AppColor.primaryColor,
+        //           padding: AppPadding.small,
+        //           wrap: true,
+        //           runSpacing: 10,
+        //           spacing: 5,
+        //           deleteIcon: const Icon(
+        //             Icons.cancel,
+        //             size: 17,
+        //             color: AppColor.whiteColor,
+        //           )),
+        //       fieldDecoration: FieldDecoration(
+        //         hintText: 'Choose Data Interval',
+        //         hintStyle: context.body,
+        //         showClearIcon: false,
+        //         border: OutlineInputBorder(
+        //           borderRadius: BorderRadius.circular(8),
+        //           borderSide:
+        //               const BorderSide(color: AppColor.primaryColor, width: 1),
+        //         ),
+        //         focusedBorder: OutlineInputBorder(
+        //           borderRadius: BorderRadius.circular(8),
+        //           borderSide:
+        //               const BorderSide(color: AppColor.primaryColor, width: 2),
+        //         ),
+        //       ),
+        //       dropdownItemDecoration: const DropdownItemDecoration(
+        //         textColor: AppColor.grey,
+        //         selectedTextColor: AppColor.primaryColor,
+        //         selectedIcon: Icon(Icons.check_box, color: AppColor.primaryColor),
+        //         disabledIcon: Icon(Icons.lock, color: Colors.grey),
+        //       ),
+        //       validator: (value) {
+        //         if (value == null || value.isEmpty) {
+        //           return 'Please select a data interval';
+        //         }
+        //         return null;
+        //       },
+        //       onSelectionChange: (selectedItems) {
+        //         debugPrint("OnSelectionChange: $selectedItems");
+        //       },
+        //     ),
+        //   ],
+        // ),
+        // AppSpacing.md,
+        Text(
+          's: seconds, m: minute',
+          style: context.bodySmall.copyWith(color: AppColor.grey),
+        ),
+        AppSpacing.sm,
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Interval Time',
+              style: context.h6.copyWith(fontWeight: FontWeightTheme.bold),
+            ),
+            CustomTextFormField(
+              controller: intervalTimeController,
+              hintTxt: '5000',
+              keyboardType: TextInputType.number,
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Interval Time is required';
+                }
+                return null;
+              },
+            ),
+            AppSpacing.sm,
+            CustomDropdown(
+              listItem: typeInterval,
+              hintText: 'Choose Interval Type',
+              selectedItem: selectedIntervalType,
+              onChanged: (value) {
+                setState(() {
+                  selectedIntervalType = value!;
+                });
+              },
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Please select interval type';
+                }
+                return null;
+              },
+            ),
+          ],
+        ),
+      ],
+    );
   }
 
   Column _protocolWrapper() {
@@ -452,10 +469,10 @@ class _FormConfigServerState extends State<FormConfigServer> {
       children: [
         const TitleTile(title: 'Choose Communication Mode'),
         AppSpacing.sm,
-        Text('ETH: Ethernet, WIFI: WiFi',
-            style: context.bodySmall.copyWith(
-              color: AppColor.grey,
-            )),
+        Text(
+          'ETH: Ethernet, WIFI: WiFi',
+          style: context.bodySmall.copyWith(color: AppColor.grey),
+        ),
         // Ethernet Option
         CustomRadioTile(
           value: "ETH",
@@ -488,17 +505,14 @@ class _FormConfigServerState extends State<FormConfigServer> {
       context: context,
       builder: (context) => AlertDialog(
         scrollable: true,
-        title: Text(
-          "Choose Ethernet Method",
-          style: context.h5,
-        ),
+        title: Text("Choose Ethernet Method", style: context.h5),
         content: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('A: Automatic, F: Following',
-                style: context.bodySmall.copyWith(
-                  color: AppColor.grey,
-                )),
+            Text(
+              'A: Automatic, F: Following',
+              style: context.bodySmall.copyWith(color: AppColor.grey),
+            ),
             AppSpacing.sm,
             // Automatic Ethernet method
             CustomRadioTile(
@@ -534,10 +548,10 @@ class _FormConfigServerState extends State<FormConfigServer> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Mode: $communcationSelected | Method Selected: $methodEthernet',
-            style: context.bodySmall.copyWith(
-              color: AppColor.grey,
-            )),
+        Text(
+          'Mode: $communcationSelected | Method Selected: $methodEthernet',
+          style: context.bodySmall.copyWith(color: AppColor.grey),
+        ),
         AppSpacing.sm,
         CustomTextFormField(
           controller: ipAddressController,
@@ -673,10 +687,7 @@ class _FormConfigServerState extends State<FormConfigServer> {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Does the broker need an authentication?',
-              style: context.h6,
-            ),
+            Text('Does the broker need an authentication?', style: context.h6),
             AppSpacing.sm,
             CustomRadioTile(
               value: "Yes",

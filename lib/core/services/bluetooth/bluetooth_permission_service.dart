@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_color.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_gap.dart';
-import 'package:suriota_mobile_gateway/core/utils/extensions.dart';
-import 'package:suriota_mobile_gateway/presentation/widgets/common/custom_button.dart';
+import 'package:gateway_config/core/constants/app_color.dart';
+import 'package:gateway_config/core/constants/app_gap.dart';
+import 'package:gateway_config/core/utils/extensions.dart';
+import 'package:gateway_config/presentation/widgets/common/custom_button.dart';
 
 class BluetoothPermissionService extends GetxController {
   static Future<bool> checkAndRequestPermissions(BuildContext context) async {
     final statuses = await [
       Permission.bluetoothScan,
       Permission.bluetoothConnect,
-      Permission.locationWhenInUse
+      Permission.locationWhenInUse,
     ].request();
 
     final allGranted = statuses.values.every((status) => status.isGranted);
@@ -40,21 +40,20 @@ class BluetoothPermissionService extends GetxController {
             Center(
               child: Column(
                 children: [
-                  Text(
-                    "Need Permissions",
-                    style: context.h4,
-                  ),
+                  Text("Need Permissions", style: context.h4),
                   AppSpacing.sm,
                   Text(
-                      "Some permissions were permanently denied. To continue, please enable them in your settings.",
-                      style: context.bodySmall),
+                    "Some permissions were permanently denied. To continue, please enable them in your settings.",
+                    style: context.bodySmall,
+                  ),
                   AppSpacing.md,
                   Row(
                     children: [
                       Expanded(
                         child: Button(
-                          onPressed: () => Navigator.of(Get.overlayContext!)
-                              .pop(), // hanya tutup bottom sheet
+                          onPressed: () => Navigator.of(
+                            Get.overlayContext!,
+                          ).pop(), // hanya tutup bottom sheet
                           text: "Close",
                           btnColor: AppColor.grey,
                           customStyle: context.bodySmall.copyWith(

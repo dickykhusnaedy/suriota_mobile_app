@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_color.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_gap.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_image_assets.dart';
-import 'package:suriota_mobile_gateway/core/controllers/ble/ble_controller.dart';
-import 'package:suriota_mobile_gateway/core/controllers/devices/device_pagination_controller.dart';
-import 'package:suriota_mobile_gateway/core/utils/extensions.dart';
-import 'package:suriota_mobile_gateway/core/utils/loading_progress.dart';
-import 'package:suriota_mobile_gateway/core/utils/snackbar_custom.dart';
-import 'package:suriota_mobile_gateway/presentation/widgets/common/custom_alert_dialog.dart';
-import 'package:suriota_mobile_gateway/presentation/widgets/common/custom_button.dart';
-import 'package:suriota_mobile_gateway/presentation/pages/devices/device_communication/data_display_screen.dart';
-import 'package:suriota_mobile_gateway/presentation/pages/devices/device_communication/form_setup_device_screen.dart';
+import 'package:gateway_config/core/constants/app_color.dart';
+import 'package:gateway_config/core/constants/app_gap.dart';
+import 'package:gateway_config/core/constants/app_image_assets.dart';
+import 'package:gateway_config/core/controllers/ble/ble_controller.dart';
+import 'package:gateway_config/core/controllers/devices/device_pagination_controller.dart';
+import 'package:gateway_config/core/utils/extensions.dart';
+import 'package:gateway_config/core/utils/loading_progress.dart';
+import 'package:gateway_config/core/utils/snackbar_custom.dart';
+import 'package:gateway_config/presentation/widgets/common/custom_alert_dialog.dart';
+import 'package:gateway_config/presentation/widgets/common/custom_button.dart';
+import 'package:gateway_config/presentation/pages/devices/device_communication/data_display_screen.dart';
+import 'package:gateway_config/presentation/pages/devices/device_communication/form_setup_device_screen.dart';
 
 class DeviceCommunicationsScreen extends StatefulWidget {
   const DeviceCommunicationsScreen({super.key});
@@ -30,10 +30,11 @@ class _DeviceCommunicationsScreenState
   bool isInitialized = false;
 
   _DeviceCommunicationsScreenState()
-      : bleController = Get.put(BLEController(), permanent: true),
-        controller = Get.put(DevicePaginationController(), permanent: true) {
+    : bleController = Get.put(BLEController(), permanent: true),
+      controller = Get.put(DevicePaginationController(), permanent: true) {
     debugPrint(
-        'Initialized BLEController and DevicePaginationController with Get.put');
+      'Initialized BLEController and DevicePaginationController with Get.put',
+    );
   }
 
   @override
@@ -70,8 +71,12 @@ class _DeviceCommunicationsScreenState
       // Periksa koneksi BLE
       if (bleController.isConnected.isEmpty ||
           !bleController.isConnected.values.any((connected) => connected)) {
-        SnackbarCustom.showSnackbar('Error', 'No BLE device connected',
-            AppColor.redColor, AppColor.whiteColor);
+        SnackbarCustom.showSnackbar(
+          'Error',
+          'No BLE device connected',
+          AppColor.redColor,
+          AppColor.whiteColor,
+        );
         setState(() => isLoading = false);
         return;
       }
@@ -79,8 +84,12 @@ class _DeviceCommunicationsScreenState
       bleController.sendCommand('READ|devices|page:1|pageSize:2', 'devices');
     } catch (e) {
       debugPrint('Error fetching devices: $e');
-      SnackbarCustom.showSnackbar('Error', 'Failed to fetch devices: $e',
-          AppColor.redColor, AppColor.whiteColor);
+      SnackbarCustom.showSnackbar(
+        'Error',
+        'Failed to fetch devices: $e',
+        AppColor.redColor,
+        AppColor.whiteColor,
+      );
     } finally {
       setState(() => isLoading = false);
     }
@@ -112,7 +121,9 @@ class _DeviceCommunicationsScreenState
         } finally {
           await Future.delayed(const Duration(milliseconds: 3000));
           bleController.sendCommand(
-              'READ|devices|page:1|pageSize:2', 'devices');
+            'READ|devices|page:1|pageSize:2',
+            'devices',
+          );
 
           setState(() => isLoading = false);
         }
@@ -154,10 +165,7 @@ class _DeviceCommunicationsScreenState
           onPressed: () {
             Get.to(() => const FormSetupDeviceScreen());
           },
-          icon: const Icon(
-            Icons.add_circle,
-            size: 22,
-          ),
+          icon: const Icon(Icons.add_circle, size: 22),
         ),
       ],
     );
@@ -178,15 +186,13 @@ class _DeviceCommunicationsScreenState
             ),
             TextButton.icon(
               onPressed: _fetchDevices,
-              label: const Icon(
-                Icons.rotate_left,
-                size: 20,
-              ),
+              label: const Icon(Icons.rotate_left, size: 20),
               style: TextButton.styleFrom(
-                  iconColor: AppColor.primaryColor,
-                  padding: EdgeInsets.zero,
-                  minimumSize: const Size(50, 30),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                iconColor: AppColor.primaryColor,
+                padding: EdgeInsets.zero,
+                minimumSize: const Size(50, 30),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
             ),
           ],
         ),
@@ -216,10 +222,9 @@ class _DeviceCommunicationsScreenState
 
               return InkWell(
                 onTap: () {
-                  Get.to(() => DisplayDataPage(
-                        title: name,
-                        modbusType: modbusType,
-                      ));
+                  Get.to(
+                    () => DisplayDataPage(title: name, modbusType: modbusType),
+                  );
                 },
                 child: _cardDeviceConnection(
                   context,
@@ -268,7 +273,11 @@ class _DeviceCommunicationsScreenState
   }
 
   Card _cardDeviceConnection(
-      BuildContext context, int deviceId, String title, String modbusType) {
+    BuildContext context,
+    int deviceId,
+    String title,
+    String modbusType,
+  ) {
     final screenWidth = MediaQuery.of(context).size.width;
 
     return Card(
@@ -333,7 +342,7 @@ class _DeviceCommunicationsScreenState
               icons: const Icon(Icons.delete, color: AppColor.whiteColor),
               btnColor: AppColor.redColor,
               customStyle: context.buttonTextSmallest,
-            )
+            ),
           ],
         ),
       ),

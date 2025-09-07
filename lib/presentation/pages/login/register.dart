@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_color.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_gap.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_image_assets.dart';
-import 'package:suriota_mobile_gateway/core/utils/extensions.dart';
-import 'package:suriota_mobile_gateway/presentation/widgets/common/custom_button.dart';
-import 'package:suriota_mobile_gateway/presentation/widgets/common/custom_textfield.dart';
-import 'package:suriota_mobile_gateway/presentation/pages/login/login_page.dart';
+import 'package:gateway_config/core/constants/app_color.dart';
+import 'package:gateway_config/core/constants/app_gap.dart';
+import 'package:gateway_config/core/constants/app_image_assets.dart';
+import 'package:gateway_config/core/utils/extensions.dart';
+import 'package:gateway_config/presentation/widgets/common/custom_button.dart';
+import 'package:gateway_config/presentation/widgets/common/custom_textfield.dart';
+import 'package:gateway_config/presentation/pages/login/login_page.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -39,15 +39,9 @@ class _RegisterPageState extends State<RegisterPage> {
                 ),
               ),
               AppSpacing.sm,
-              Text(
-                "Let's Get Started!",
-                style: context.h2,
-              ),
+              Text("Let's Get Started!", style: context.h2),
               AppSpacing.xs,
-              Text(
-                'Create an account',
-                style: context.h6,
-              ),
+              Text('Create an account', style: context.h6),
               AppSpacing.lg,
               const CustomTextFormField(
                 labelTxt: 'Full Name',
@@ -60,40 +54,44 @@ class _RegisterPageState extends State<RegisterPage> {
               ),
               AppSpacing.md,
               const CustomTextFormField(
-                  labelTxt: 'Email',
-                  hintTxt: 'Enter your email',
-                  prefixIcon: Icon(
-                    Icons.email,
-                    size: 20,
-                    color: AppColor.primaryColor,
-                  )),
+                labelTxt: 'Email',
+                hintTxt: 'Enter your email',
+                prefixIcon: Icon(
+                  Icons.email,
+                  size: 20,
+                  color: AppColor.primaryColor,
+                ),
+              ),
               AppSpacing.md,
               const CustomTextFormField(
-                  labelTxt: 'Phone Number',
-                  hintTxt: 'Enter your phone number',
-                  prefixIcon: Icon(
-                    Icons.phone_android_rounded,
-                    size: 20,
-                    color: AppColor.primaryColor,
-                  )),
+                labelTxt: 'Phone Number',
+                hintTxt: 'Enter your phone number',
+                prefixIcon: Icon(
+                  Icons.phone_android_rounded,
+                  size: 20,
+                  color: AppColor.primaryColor,
+                ),
+              ),
               AppSpacing.md,
               const CustomTextFormField(
-                  labelTxt: 'Create Password',
-                  hintTxt: 'Enter your password',
-                  prefixIcon: Icon(
-                    Icons.key,
-                    size: 20,
-                    color: AppColor.primaryColor,
-                  )),
+                labelTxt: 'Create Password',
+                hintTxt: 'Enter your password',
+                prefixIcon: Icon(
+                  Icons.key,
+                  size: 20,
+                  color: AppColor.primaryColor,
+                ),
+              ),
               AppSpacing.md,
               const CustomTextFormField(
-                  labelTxt: 'Confirm Password',
-                  hintTxt: 'Confirm your password',
-                  prefixIcon: Icon(
-                    Icons.lock,
-                    size: 20,
-                    color: AppColor.primaryColor,
-                  )),
+                labelTxt: 'Confirm Password',
+                hintTxt: 'Confirm your password',
+                prefixIcon: Icon(
+                  Icons.lock,
+                  size: 20,
+                  color: AppColor.primaryColor,
+                ),
+              ),
               AppSpacing.lg,
               Button(
                 width: MediaQuery.of(context).size.width,
@@ -139,8 +137,9 @@ class _RegisterPageState extends State<RegisterPage> {
                     Text(
                       "Sign In Here",
                       style: context.bodySmall.copyWith(
-                          color: AppColor.primaryColor,
-                          fontWeight: FontWeight.bold),
+                        color: AppColor.primaryColor,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ],
                 ),
