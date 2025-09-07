@@ -1,4 +1,4 @@
-package com.suriota.gateway_configsuriota_mobile_gateway
+package com.suriota.gateway_configgateway_config
 
 import io.flutter.embedding.android.FlutterActivity
 
