@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:gateway_config/core/constants/app_color.dart';
 import 'package:gateway_config/core/constants/app_gap.dart';
 import 'package:gateway_config/core/constants/app_image_assets.dart';
 import 'package:gateway_config/core/controllers/ble/ble_controller.dart';
 import 'package:gateway_config/core/utils/extensions.dart';
-import 'package:gateway_config/presentation/widgets/common/loading_overlay.dart';
 import 'package:gateway_config/models/device_dummy.dart';
 import 'package:gateway_config/models/device_model.dart';
-import 'package:gateway_config/presentation/pages/devices/add_device_screen.dart';
 import 'package:gateway_config/presentation/pages/devices/widgets/device_list_widget.dart';
 import 'package:gateway_config/presentation/pages/sidebar_menu/sidebar_menu.dart';
+import 'package:gateway_config/presentation/widgets/common/loading_overlay.dart';
+import 'package:get/get.dart';
+import 'package:go_router/go_router.dart';
 
 // ignore: must_be_immutable
 class HomeScreen extends StatefulWidget {
@@ -155,11 +155,8 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.circular(10),
       ),
       child: InkWell(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const AddDeviceScreen()),
-          );
+        onTap: () async {
+          context.push('/scan-devices');
         },
         child: const Icon(
           Icons.add_circle,

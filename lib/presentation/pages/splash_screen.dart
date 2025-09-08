@@ -1,13 +1,11 @@
 // ignore_for_file: use_build_context_synchronously
 
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:gateway_config/core/constants/app_gap.dart';
 import 'package:gateway_config/core/constants/app_image_assets.dart';
-import 'package:gateway_config/core/utils/extensions.dart';
-import 'package:gateway_config/presentation/pages/home/home_screen.dart';
 import 'package:gateway_config/core/services/bluetooth/bluetooth_permission_service.dart';
+import 'package:gateway_config/core/utils/extensions.dart';
+import 'package:go_router/go_router.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -26,15 +24,17 @@ class _SplashScreenState extends State<SplashScreen> {
 
   Future<void> _handleStartup() async {
     await Future.delayed(const Duration(seconds: 3));
+    if (!mounted) return;
 
     bool permissionGranted =
         await BluetoothPermissionService.checkAndRequestPermissions(context);
-
-    if (permissionGranted && context.mounted) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
-      );
+        
+    if (mounted) {
+      if (permissionGranted) {
+        context.go('/');
+      } else {
+        context.go('/permission-denied');
+      }
     }
   }
 

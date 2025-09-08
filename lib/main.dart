@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:get/get.dart';
-import 'package:provider/provider.dart';
 import 'package:gateway_config/core/constants/theme.dart';
+import 'package:gateway_config/core/router/app_router.dart';
 import 'package:gateway_config/presentation/providers/loading_provider.dart';
-import 'package:gateway_config/presentation/pages/splash_screen.dart';
+import 'package:provider/provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -34,13 +33,14 @@ class MyApp extends StatelessWidget {
       designSize: const Size(360, 690),
       minTextAdapt: true,
       splitScreenMode: true,
-      builder: (context, child) => GetMaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.lightTheme,
-        title: 'Suriota Mobile Gateway',
-        home: const SplashScreen(),
-        // home: const LoginPage(),
-      ),
+      builder: (context, child) {
+        return MaterialApp.router(
+          title: 'Gateway Config',
+          theme: AppTheme.lightTheme,
+          debugShowCheckedModeBanner: false,
+          routerConfig: AppRouter.router,
+        );
+      },
     );
   }
 }

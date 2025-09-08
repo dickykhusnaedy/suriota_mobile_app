@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:gateway_config/core/constants/app_color.dart';
-import 'package:gateway_config/core/constants/app_gap.dart';
 import 'package:gateway_config/core/constants/app_font.dart';
+import 'package:gateway_config/core/constants/app_gap.dart';
 import 'package:gateway_config/core/constants/app_image_assets.dart';
 import 'package:gateway_config/core/utils/extensions.dart';
-import 'package:gateway_config/presentation/pages/login/login_page.dart';
-import 'package:gateway_config/presentation/pages/sidebar_menu/about_app.dart';
-import 'package:gateway_config/presentation/pages/sidebar_menu/about_us_page.dart';
-import 'package:gateway_config/presentation/pages/sidebar_menu/profile.dart';
+import 'package:go_router/go_router.dart';
 
 class SideBarMenu extends StatelessWidget {
   const SideBarMenu({super.key});
@@ -64,13 +61,8 @@ class SideBarMenu extends StatelessWidget {
                   size: 22,
                   color: AppColor.blackColor,
                 ),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const ProfilePage(),
-                    ),
-                  );
+                onTap: () async {
+                  context.push('/profiles');
                 },
               ),
               Divider(height: 0, color: Colors.grey[300]),
@@ -85,12 +77,7 @@ class SideBarMenu extends StatelessWidget {
                   color: AppColor.blackColor,
                 ),
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const AboutUsPage(),
-                    ),
-                  );
+                  context.push('/about-product');
                 },
               ),
               Divider(height: 0, color: Colors.grey[300]),
@@ -105,10 +92,7 @@ class SideBarMenu extends StatelessWidget {
                   color: AppColor.blackColor,
                 ),
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const AboutApp()),
-                  );
+                  context.push('/about-app');
                 },
               ),
               Divider(height: 0, color: Colors.grey[300]),
@@ -125,11 +109,8 @@ class SideBarMenu extends StatelessWidget {
                     fontWeight: FontWeightTheme.extraBold,
                   ),
                 ),
-                onTap: () {
-                  Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(builder: (context) => const LoginPage()),
-                    (Route route) => false,
-                  );
+                onTap: () async {
+                  context.go('/login');
                 },
               ),
             ],
