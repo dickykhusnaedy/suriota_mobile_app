@@ -1,14 +1,17 @@
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:get/get.dart';
+
 class DeviceModel {
-  final String deviceTitle;
-  final String deviceAddress;
-  bool isConnected;
-  bool isAvailable;
+  final BluetoothDevice device;
+  final RxBool isConnected;
+  final RxBool isLoadingConnection;
+  final void Function() onConnect;
+  final void Function() onDisconnect;
 
   DeviceModel({
-    required this.deviceTitle,
-    required this.deviceAddress,
-    required this.isConnected,
-    required this.isAvailable,
-  });
-
+    required this.device,
+    required this.onConnect,
+    required this.onDisconnect,
+  }) : isConnected = RxBool(false),
+       isLoadingConnection = RxBool(false);
 }
