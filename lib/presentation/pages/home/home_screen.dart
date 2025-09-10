@@ -4,8 +4,6 @@ import 'package:gateway_config/core/constants/app_gap.dart';
 import 'package:gateway_config/core/constants/app_image_assets.dart';
 import 'package:gateway_config/core/controllers/ble/ble_controller.dart';
 import 'package:gateway_config/core/utils/extensions.dart';
-import 'package:gateway_config/models/device_dummy.dart';
-import 'package:gateway_config/models/device_model.dart';
 import 'package:gateway_config/presentation/pages/devices/widgets/device_list_widget.dart';
 import 'package:gateway_config/presentation/pages/sidebar_menu/sidebar_menu.dart';
 import 'package:gateway_config/presentation/widgets/common/loading_overlay.dart';
@@ -21,7 +19,6 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  List<DeviceModel> deviceList = deviceDummy;
   final BLEController bleController = Get.put(BLEController());
 
   @override
