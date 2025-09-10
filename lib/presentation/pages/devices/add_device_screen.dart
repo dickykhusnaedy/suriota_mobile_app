@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
-import 'package:get/get.dart';
 import 'package:gateway_config/core/constants/app_color.dart';
 import 'package:gateway_config/core/constants/app_gap.dart';
 import 'package:gateway_config/core/controllers/ble/ble_controller.dart';
-import 'package:gateway_config/core/utils/snackbar_custom.dart';
+import 'package:gateway_config/core/controllers/ble_controller.dart';
 import 'package:gateway_config/core/utils/app_helpers.dart';
 import 'package:gateway_config/core/utils/extensions.dart';
+import 'package:gateway_config/core/utils/snackbar_custom.dart';
+import 'package:gateway_config/presentation/pages/devices/widgets/device_list_widget.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_alert_dialog.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_button.dart';
-import 'package:gateway_config/presentation/widgets/common/loading_overlay.dart';
-import 'package:gateway_config/presentation/pages/devices/widgets/device_list_widget.dart';
+import 'package:get/get.dart';
 
 class AddDeviceScreen extends StatefulWidget {
   const AddDeviceScreen({super.key});
@@ -21,6 +21,7 @@ class AddDeviceScreen extends StatefulWidget {
 
 class _AddDeviceScreenState extends State<AddDeviceScreen> {
   final BLEController bleController = Get.put(BLEController());
+  final controller = Get.put(BleController());
 
   bool isBluetoothOn = false;
   bool isLoading = false;
@@ -77,7 +78,7 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
 
   Future<void> _checkBluetoothDevice() async {
     if (isBluetoothOn) {
-      bleController.scanDevice();
+      controller.startScan();
     } else {
       SnackbarCustom.showSnackbar(
         'Bluetooth is off',
@@ -96,13 +97,12 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
           appBar: _appBar(),
           body: SafeArea(child: SingleChildScrollView(child: _body())),
         ),
-        Obx(() {
-          final isAnyDeviceLoading = bleController.isAnyDeviceLoading;
-          return LoadingOverlay(
-            isLoading: isAnyDeviceLoading,
-            message: "Connecting device...",
-          );
-        }),
+        // Obx(() {
+        //   return LoadingOverlay(
+        //     isLoading: controller.isLoading.value,
+        //     message: "Connecting device...",
+        //   );
+        // }),
       ],
     );
   }
@@ -131,7 +131,7 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
 
   Obx _body() {
     return Obx(() {
-      if (bleController.isLoading.value) {
+      if (controller.isLoading.value) {
         return _scanningProgress();
       } else if (bleController.isDeviceListEmpty) {
         return _findDevice(context);
@@ -180,7 +180,7 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Obx(() {
-            if (bleController.isLoading.value) {
+            if (controller.isLoading.value) {
               return const CircularProgressIndicator(
                 color: AppColor.primaryColor,
               );
