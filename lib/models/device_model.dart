@@ -5,8 +5,8 @@ class DeviceModel {
   final BluetoothDevice device;
   final RxBool isConnected;
   final RxBool isLoadingConnection;
-  final void Function() onConnect;
-  final void Function() onDisconnect;
+  void Function() onConnect;
+  void Function() onDisconnect;
 
   DeviceModel({
     required this.device,
