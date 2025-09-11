@@ -118,7 +118,9 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
       ),
       actions: [
         Obx(
-          () => bleController.devices.isNotEmpty
+          () =>
+              controller.scannedDevices.isNotEmpty &&
+                  !controller.isLoading.value
               ? IconButton(
                   onPressed: _checkBluetoothDevice,
                   icon: const Icon(Icons.search, size: 24),
@@ -133,7 +135,7 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
     return Obx(() {
       if (controller.isLoading.value) {
         return _scanningProgress();
-      } else if (bleController.isDeviceListEmpty) {
+      } else if (controller.scannedDevices.isEmpty) {
         return _findDevice(context);
       } else {
         return _deviceList();
@@ -218,7 +220,7 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
           LayoutBuilder(
             builder: (context, constraints) {
               return Obx(() {
-                if (bleController.devices.isEmpty) {
+                if (controller.scannedDevices.isEmpty) {
                   return Container(
                     height: MediaQuery.of(context).size.height * 0.55,
                     alignment: Alignment.center,
@@ -241,32 +243,26 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   separatorBuilder: (context, index) => AppSpacing.sm,
-                  itemCount: bleController.devices.length,
+                  itemCount: controller.scannedDevices.length,
                   itemBuilder: (context, index) {
-                    final device = bleController.devices[index];
-                    final deviceId = device.remoteId.toString();
+                    final deviceModel = controller.scannedDevices[index];
 
                     return Obx(() {
-                      final isConnected = bleController.getConnectionStatus(
-                        deviceId,
-                      );
-                      final isLoadingConnection = bleController
-                          .getLoadingStatus(deviceId);
-
                       return DeviceListWidget(
-                        device: device,
-                        isConnected: isConnected,
-                        isLoadingConnection: isLoadingConnection,
+                        device: deviceModel.device,
+                        isConnected: deviceModel.device.isConnected,
+                        isLoadingConnection:
+                            deviceModel.isLoadingConnection.value,
                         onConnect: () async {
-                          if (!isLoadingConnection) {
-                            await bleController.connectToDevice(
-                              device,
-                            ); // Panggil fungsi connect
+                          if (!deviceModel.device.isConnected) {
+                            await controller.connectToDevice(
+                              deviceModel,
+                            ); // Call connectToDevice from BleController
                           }
                         },
                         onDisconnect: () async {
-                          if (!isLoadingConnection) {
-                            disconnect(device);
+                          if (deviceModel.device.isConnected) {
+                            controller.disconnectFromDevice(deviceModel);
                           }
                         },
                       );
@@ -279,7 +275,7 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
           AppSpacing.md,
           Center(
             child: Text(
-              'A total of ${bleController.devices.length} devices were successfully discovered.',
+              'A total of ${controller.scannedDevices.length} devices were successfully discovered.',
               style: context.bodySmall,
             ),
           ),
