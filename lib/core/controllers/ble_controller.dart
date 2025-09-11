@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:gateway_config/core/utils/app_helpers.dart';
+import 'package:gateway_config/core/utils/ble/ble_utils.dart';
 import 'package:gateway_config/models/device_model.dart';
 import 'package:get/get.dart';
 
@@ -9,9 +11,11 @@ class BleController extends GetxController {
   // Variabel state
   var isScanning = false.obs;
   var isLoading = false.obs;
+  var isLoadingConnectionGlobal = false.obs;
   var connectedDevice = Rxn<BluetoothDevice>();
   var response = ''.obs;
   var errorMessage = ''.obs;
+  var message = ''.obs;
 
   // List untuk menyimpan scanned devices sebagai DeviceModel
   var scannedDevices = <DeviceModel>[].obs;
@@ -85,6 +89,7 @@ class BleController extends GetxController {
     ) {
       deviceModel.isConnected.value =
           (state == BluetoothConnectionState.connected);
+      update();
       if (!deviceModel.isConnected.value) {
         // Reset characteristics jika disconnect
         if (connectedDevice.value?.remoteId == device.remoteId) {
@@ -108,6 +113,9 @@ class BleController extends GetxController {
   // Fungsi connect ke device
   Future<void> connectToDevice(DeviceModel deviceModel) async {
     deviceModel.isLoadingConnection.value = true;
+    isLoadingConnectionGlobal.value = true;
+    errorMessage.value = '';
+    message.value = 'Connecting device...';
 
     try {
       await deviceModel.device.connect();
@@ -122,6 +130,7 @@ class BleController extends GetxController {
 
       if (service == null) {
         errorMessage.value = 'Service not found';
+
         await disconnectFromDevice(deviceModel);
         return;
       }
@@ -139,23 +148,50 @@ class BleController extends GetxController {
       responseSubscription = responseChar?.lastValueStream.listen(
         _handleNotification,
       );
+
+      BLEUtils.showConnectedBottomSheet(deviceModel.device);
     } catch (e) {
-      errorMessage.value = 'Error connecting: $e';
+      errorMessage.value = 'Error connecting';
+      AppHelpers.debugLog('Connection error: $e');
       await disconnectFromDevice(deviceModel);
     } finally {
       deviceModel.isLoadingConnection.value = false;
+      isLoadingConnectionGlobal.value = false;
+      message.value = 'Success connected...';
     }
   }
 
   // Fungsi disconnect
   Future<void> disconnectFromDevice(DeviceModel deviceModel) async {
-    responseSubscription?.cancel();
-    await deviceModel.device.disconnect();
-    connectedDevice.value = null;
-    commandChar = null;
-    responseChar = null;
-    response.value = '';
-    responseBuffer = '';
+    isLoadingConnectionGlobal.value = true; // Set global loading
+    message.value = 'Disconnecting...';
+
+    try {
+      await Future.delayed(const Duration(seconds: 3));
+
+      responseSubscription?.cancel();
+      await deviceModel.device.disconnect();
+      commandChar = null;
+      responseChar = null;
+      response.value = '';
+      responseBuffer = '';
+      connectedDevice.value = null;
+      deviceModel.isConnected.value = false;
+
+      final currentState = await deviceModel.device.connectionState.first;
+      if (currentState == BluetoothConnectionState.connected) {
+        deviceModel.isConnected.value = true;
+      } else {
+        deviceModel.isConnected.value = false;
+      }
+      update();
+    } catch (e) {
+      errorMessage.value = 'Error disconnecting';
+      AppHelpers.debugLog('Disconnecting error: $e');
+    } finally {
+      isLoadingConnectionGlobal.value = false; // Reset global loading
+      message.value = 'Success disconnected...';
+    }
   }
 
   // Fungsi handle notifikasi
@@ -172,6 +208,13 @@ class BleController extends GetxController {
     } else {
       responseBuffer += fragment;
     }
+  }
+
+  DeviceModel? findDeviceByRemoteId(String remoteId) {
+    final deviceModel = scannedDevices.firstWhereOrNull(
+      (deviceModel) => deviceModel.device.remoteId.toString() == remoteId,
+    );
+    return deviceModel;
   }
 
   // Fungsi kirim command
