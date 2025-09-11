@@ -3,7 +3,7 @@ import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:gateway_config/core/constants/app_color.dart';
 import 'package:gateway_config/core/utils/snackbar_custom.dart';
 import 'package:gateway_config/presentation/widgets/spesific/device_card.dart';
-import 'package:gateway_config/presentation/pages/devices/detail_device_screen.dart';
+import 'package:go_router/go_router.dart';
 
 class DeviceListWidget extends StatelessWidget {
   final BluetoothDevice device;
@@ -33,12 +33,7 @@ class DeviceListWidget extends StatelessWidget {
             AppColor.whiteColor,
           );
         } else {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => DetailDeviceScreen(device: device),
-            ),
-          );
+          context.push('/devices?deviceId=${device.remoteId}');
         }
       },
       child: DeviceCard(
