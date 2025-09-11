@@ -41,9 +41,7 @@ class BleController extends GetxController {
       // Listen hasil scan
       FlutterBluePlus.scanResults.listen((results) {
         for (ScanResult r in results) {
-          if (r.device.name == 'SURIOTA CRUD Service') {
-            handleScannedDevice(r.device);
-          }
+          handleScannedDevice(r.device);
         }
       });
     } catch (e) {
@@ -51,6 +49,7 @@ class BleController extends GetxController {
     } finally {
       await Future.delayed(const Duration(seconds: 10));
       await stopScan();
+      isScanning.value = false;
       isLoading.value = false;
     }
   }
@@ -58,23 +57,32 @@ class BleController extends GetxController {
   // Fungsi handle data device yang berhasil di-scan
   void handleScannedDevice(BluetoothDevice device) {
     // Cek jika device sudah ada di list (hindari duplikat)
-    if (scannedDevices.any((model) => model.device.id == device.id)) {
+    if (scannedDevices.any(
+      (model) => model.device.remoteId == device.remoteId,
+    )) {
       return;
     }
 
     // Buat DeviceModel dengan info dari BluetoothDevice
     final deviceModel = DeviceModel(
       device: device,
-      onConnect: () => connectToDevice(deviceModel),
-      onDisconnect: () => disconnectFromDevice(deviceModel),
+      onConnect: () {},
+      onDisconnect: () {},
     );
+
+    deviceModel.onConnect = () => connectToDevice(deviceModel);
+    deviceModel.onDisconnect = () => disconnectFromDevice(deviceModel);
 
     // Tambahkan ke list scannedDevices
     scannedDevices.add(deviceModel);
 
     // Listen connection state untuk update isConnected
     // Pindahkan setelah deviceModel dideklarasikan
-    device.connectionState.listen((BluetoothConnectionState state) {
+    // ignore: unused_local_variable
+    StreamSubscription<BluetoothConnectionState>? connectionSubscription;
+    connectionSubscription = device.connectionState.listen((
+      BluetoothConnectionState state,
+    ) {
       deviceModel.isConnected.value =
           (state == BluetoothConnectionState.connected);
       if (!deviceModel.isConnected.value) {
@@ -100,6 +108,7 @@ class BleController extends GetxController {
   // Fungsi connect ke device
   Future<void> connectToDevice(DeviceModel deviceModel) async {
     deviceModel.isLoadingConnection.value = true;
+
     try {
       await deviceModel.device.connect();
       connectedDevice.value = deviceModel.device;
