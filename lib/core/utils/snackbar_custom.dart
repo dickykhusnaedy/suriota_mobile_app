@@ -22,7 +22,7 @@ class SnackbarCustom {
             color: textColor ?? AppColor.whiteColor,
           ),
         ),
-        duration: const Duration(seconds: 3),
+        duration: const Duration(milliseconds: 1500),
         margin: const EdgeInsets.all(16),
         padding: title.isEmpty
             ? const EdgeInsets.fromLTRB(12.0, 8.0, 12.0, 12.0)
