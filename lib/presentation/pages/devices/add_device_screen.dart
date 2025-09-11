@@ -2,14 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:gateway_config/core/constants/app_color.dart';
 import 'package:gateway_config/core/constants/app_gap.dart';
-import 'package:gateway_config/core/controllers/ble/ble_controller.dart';
 import 'package:gateway_config/core/controllers/ble_controller.dart';
 import 'package:gateway_config/core/utils/app_helpers.dart';
 import 'package:gateway_config/core/utils/extensions.dart';
 import 'package:gateway_config/core/utils/snackbar_custom.dart';
+import 'package:gateway_config/models/device_model.dart';
 import 'package:gateway_config/presentation/pages/devices/widgets/device_list_widget.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_alert_dialog.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_button.dart';
+import 'package:gateway_config/presentation/widgets/common/loading_overlay.dart';
 import 'package:get/get.dart';
 
 class AddDeviceScreen extends StatefulWidget {
@@ -20,7 +21,6 @@ class AddDeviceScreen extends StatefulWidget {
 }
 
 class _AddDeviceScreenState extends State<AddDeviceScreen> {
-  final BLEController bleController = Get.put(BLEController());
   final controller = Get.put(BleController());
 
   bool isBluetoothOn = false;
@@ -32,11 +32,11 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
     _checkBluetoothStatus();
   }
 
-  void disconnect(BluetoothDevice device) async {
+  void disconnect(DeviceModel deviceModel) async {
     CustomAlertDialog.show(
       title: "Disconnect Device",
       message:
-          "Are you sure you want to disconnect from ${device.platformName}?",
+          "Are you sure you want to disconnect from ${deviceModel.device.platformName}?",
       primaryButtonText: 'Yes',
       secondaryButtonText: 'No',
       onPrimaryPressed: () async {
@@ -48,7 +48,7 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
         });
 
         try {
-          await bleController.disconnectDevice(device);
+          await controller.disconnectFromDevice(deviceModel);
         } catch (e) {
           AppHelpers.debugLog('Error disconnecting from device: $e');
           Get.snackbar(
@@ -97,12 +97,14 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
           appBar: _appBar(),
           body: SafeArea(child: SingleChildScrollView(child: _body())),
         ),
-        // Obx(() {
-        //   return LoadingOverlay(
-        //     isLoading: controller.isLoading.value,
-        //     message: "Connecting device...",
-        //   );
-        // }),
+        Obx(() {
+          return LoadingOverlay(
+            isLoading: controller.isLoadingConnectionGlobal.value,
+            message: controller.message.value.isNotEmpty
+                ? controller.message.value
+                : controller.errorMessage.value,
+          );
+        }),
       ],
     );
   }
@@ -191,17 +193,9 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
             }
           }),
           AppSpacing.md,
-          StreamBuilder<String>(
-            stream: bleController.statusStream,
-            builder: (context, snapshot) {
-              return Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Text(
-                  snapshot.data ?? "Scanning device...",
-                  style: context.body.copyWith(color: AppColor.grey),
-                ),
-              );
-            },
+          Text(
+            "Scanning device...",
+            style: context.body.copyWith(color: AppColor.grey),
           ),
         ],
       ),
@@ -250,19 +244,19 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
                     return Obx(() {
                       return DeviceListWidget(
                         device: deviceModel.device,
-                        isConnected: deviceModel.device.isConnected,
+                        isConnected: deviceModel.isConnected.value,
                         isLoadingConnection:
                             deviceModel.isLoadingConnection.value,
                         onConnect: () async {
-                          if (!deviceModel.device.isConnected) {
+                          if (!deviceModel.isConnected.value) {
                             await controller.connectToDevice(
                               deviceModel,
                             ); // Call connectToDevice from BleController
                           }
                         },
                         onDisconnect: () async {
-                          if (deviceModel.device.isConnected) {
-                            controller.disconnectFromDevice(deviceModel);
+                          if (deviceModel.isConnected.value) {
+                            disconnect(deviceModel);
                           }
                         },
                       );
