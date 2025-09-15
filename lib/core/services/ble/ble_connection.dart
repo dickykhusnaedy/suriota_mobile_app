@@ -1,11 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
-import 'package:get/get.dart';
 import 'package:gateway_config/core/controllers/ble/ble_controller.dart';
-import 'package:gateway_config/core/utils/ble/ble_utils.dart';
 import 'package:gateway_config/core/utils/app_helpers.dart';
 import 'package:gateway_config/presentation/pages/home/home_screen.dart';
+import 'package:get/get.dart';
 
 class BLEConnection {
   BLEController? controller;
@@ -40,7 +39,7 @@ class BLEConnection {
 
       final isServiceDiscovered = await _discoverServices(device);
       if (isServiceDiscovered) {
-        BLEUtils.showConnectedBottomSheet(device);
+        // BLEUtils.showConnectedBottomSheet(device);
       } else {
         await disconnectDevice(device);
       }
