@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:gateway_config/core/constants/app_color.dart';
 import 'package:gateway_config/core/constants/app_gap.dart';
 import 'package:gateway_config/core/constants/app_image_assets.dart';
-import 'package:gateway_config/core/controllers/ble/ble_controller.dart';
 import 'package:gateway_config/core/controllers/ble_controller.dart';
 import 'package:gateway_config/core/utils/app_helpers.dart';
 import 'package:gateway_config/core/utils/extensions.dart';
@@ -27,7 +26,6 @@ class DetailDeviceScreen extends StatefulWidget {
 }
 
 class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
-  final BLEController bleController = Get.put(BLEController());
   final controller = Get.put(BleController());
 
   bool isLoading = false;
@@ -62,7 +60,7 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
         });
 
         try {
-          await bleController.disconnectDevice(widget.model.device);
+          await controller.disconnectFromDevice(widget.model);
 
           AppHelpers.debugLog(
             'Successfully disconnected from ${widget.model.device.platformName}',
