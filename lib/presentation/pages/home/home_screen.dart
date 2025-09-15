@@ -1,3 +1,4 @@
+import 'package:app_settings/app_settings.dart';
 import 'package:flutter/material.dart';
 import 'package:gateway_config/core/constants/app_color.dart';
 import 'package:gateway_config/core/constants/app_gap.dart';
@@ -5,10 +6,12 @@ import 'package:gateway_config/core/constants/app_image_assets.dart';
 import 'package:gateway_config/core/controllers/ble_controller.dart';
 import 'package:gateway_config/core/utils/app_helpers.dart';
 import 'package:gateway_config/core/utils/extensions.dart';
+import 'package:gateway_config/core/utils/snackbar_custom.dart';
 import 'package:gateway_config/models/device_model.dart';
 import 'package:gateway_config/presentation/pages/devices/widgets/device_list_widget.dart';
 import 'package:gateway_config/presentation/pages/sidebar_menu/sidebar_menu.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_alert_dialog.dart';
+import 'package:gateway_config/presentation/widgets/common/custom_button.dart';
 import 'package:gateway_config/presentation/widgets/common/loading_overlay.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
@@ -76,7 +79,12 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           endDrawer: const SideBarMenu(),
-          floatingActionButton: _floatingButtonCustom(context),
+          floatingActionButton:
+              controller.errorMessage.value.contains(
+                'Bluetooth has been turned off',
+              )
+              ? null
+              : _floatingButtonCustom(context),
         ),
         Obx(() {
           return LoadingOverlay(
@@ -123,6 +131,55 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         AppSpacing.sm,
         Obx(() {
+          if (controller.errorMessage.value.contains(
+            'Bluetooth has been turned off',
+          )) {
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.55,
+              alignment: Alignment.center,
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Bluetooth has been turned off. \nPlease turn it back on to connect to devices.',
+                      textAlign: TextAlign.center,
+                      style: context.body.copyWith(color: AppColor.grey),
+                    ),
+                    AppSpacing.md,
+                    Button(
+                      onPressed: () async {
+                        try {
+                          await AppSettings.openAppSettings(
+                            type: AppSettingsType.bluetooth,
+                          );
+                        } catch (e) {
+                          AppHelpers.debugLog(
+                            'Error opening Bluetooth settings: $e',
+                          );
+
+                          SnackbarCustom.showSnackbar(
+                            '',
+                            'Could not open settings Bluetooth',
+                            AppColor.redColor,
+                            AppColor.whiteColor,
+                          );
+                        }
+                      },
+                      text: 'Open Settings',
+                      icons: const Icon(
+                        Icons.settings,
+                        color: AppColor.whiteColor,
+                        size: 23,
+                      ),
+                      height: 42,
+                      width: MediaQuery.of(context).size.width * 0.4,
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
           // ignore: prefer_is_empty
           if (controller.scannedDevices.isEmpty) {
             return Container(
