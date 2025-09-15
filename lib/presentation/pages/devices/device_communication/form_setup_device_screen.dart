@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:gateway_config/presentation/widgets/common/dropdown.dart';
 import 'package:get/get.dart';
 import 'package:gateway_config/core/constants/app_color.dart';
 import 'package:gateway_config/core/constants/app_gap.dart';
@@ -326,7 +327,17 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
   }
 
   Widget _formRS485Wrapper() {
-    final baudrates = ['9600', '19200', '38400', '57600', '115200'];
+    final baudrates = [
+      '9600',
+      '19200',
+      '38400',
+      '57600',
+      '115200',
+      '115200',
+      '115200',
+      '115200',
+      '115200',
+    ];
     final bitData = ['7', '8'];
     final parity = ['none', 'even', 'odd'];
     final stopBits = ['1', '2'];
@@ -337,79 +348,80 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
       children: [
         Text('Choose Baudrate', style: context.h6),
         AppSpacing.sm,
-        CustomDropdown(
-          listItem: baudrates,
-          hintText: 'Choose the baudrate',
-          selectedItem: selectedBaudRate,
-          onChanged: (value) {
-            setState(() {
-              selectedBaudRate = value;
-            });
-          },
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return 'Please select baudrate data';
-            }
-            return null;
-          },
-        ),
+        Dropdown(items: baudrates, hint: 'Choose the baudrate'),
+        // CustomDropdown(
+        //   listItem: baudrates,
+        //   hintText: 'Choose the baudrate',
+        //   selectedItem: selectedBaudRate,
+        //   onChanged: (value) {
+        //     setState(() {
+        //       selectedBaudRate = value;
+        //     });
+        //   },
+        //   validator: (value) {
+        //     if (value == null || value.isEmpty) {
+        //       return 'Please select baudrate data';
+        //     }
+        //     return null;
+        //   },
+        // ),
         AppSpacing.md,
         Text('Choose Bit Data', style: context.h6),
         AppSpacing.sm,
-        CustomDropdown(
-          listItem: bitData,
-          hintText: 'Choose bit data',
-          selectedItem: selectedBitData,
-          onChanged: (value) {
-            setState(() {
-              selectedBitData = value;
-            });
-          },
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return 'Please select bit data';
-            }
-            return null;
-          },
-        ),
+        // CustomDropdown(
+        //   listItem: bitData,
+        //   hintText: 'Choose bit data',
+        //   selectedItem: selectedBitData,
+        //   onChanged: (value) {
+        //     setState(() {
+        //       selectedBitData = value;
+        //     });
+        //   },
+        //   validator: (value) {
+        //     if (value == null || value.isEmpty) {
+        //       return 'Please select bit data';
+        //     }
+        //     return null;
+        //   },
+        // ),
         AppSpacing.md,
         Text('Choose Parity', style: context.h6),
         AppSpacing.sm,
-        CustomDropdown(
-          listItem: parity,
-          hintText: 'Choose the parity',
-          selectedItem: selectedParity,
-          onChanged: (value) {
-            setState(() {
-              selectedParity = value;
-            });
-          },
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return 'Please select parity data';
-            }
-            return null;
-          },
-        ),
+        // CustomDropdown(
+        //   listItem: parity,
+        //   hintText: 'Choose the parity',
+        //   selectedItem: selectedParity,
+        //   onChanged: (value) {
+        //     setState(() {
+        //       selectedParity = value;
+        //     });
+        //   },
+        //   validator: (value) {
+        //     if (value == null || value.isEmpty) {
+        //       return 'Please select parity data';
+        //     }
+        //     return null;
+        //   },
+        // ),
         AppSpacing.md,
         Text('Choose Stop Bit', style: context.h6),
         AppSpacing.sm,
-        CustomDropdown(
-          listItem: stopBits,
-          hintText: 'Choose the stop bit',
-          selectedItem: selectedStopBit,
-          onChanged: (value) {
-            setState(() {
-              selectedStopBit = value;
-            });
-          },
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return 'Please select stop bit data';
-            }
-            return null;
-          },
-        ),
+        // CustomDropdown(
+        //   listItem: stopBits,
+        //   hintText: 'Choose the stop bit',
+        //   selectedItem: selectedStopBit,
+        //   onChanged: (value) {
+        //     setState(() {
+        //       selectedStopBit = value;
+        //     });
+        //   },
+        //   validator: (value) {
+        //     if (value == null || value.isEmpty) {
+        //       return 'Please select stop bit data';
+        //     }
+        //     return null;
+        //   },
+        // ),
       ],
     );
   }
