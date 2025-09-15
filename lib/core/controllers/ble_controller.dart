@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:gateway_config/core/utils/app_helpers.dart';
 import 'package:gateway_config/core/utils/ble/ble_utils.dart';
@@ -149,7 +150,7 @@ class BleController extends GetxController {
         _handleNotification,
       );
 
-      BLEUtils.showConnectedBottomSheet(deviceModel.device);
+      BLEUtils.showConnectedBottomSheet(deviceModel);
     } catch (e) {
       errorMessage.value = 'Error connecting';
       AppHelpers.debugLog('Connection error: $e');
@@ -194,7 +195,7 @@ class BleController extends GetxController {
     }
   }
 
-  // Fungsi handle notifikasi
+  // Function handle notification from characteristic
   void _handleNotification(List<int> data) {
     String fragment = utf8.decode(data);
     if (fragment == '<END>') {
@@ -208,6 +209,11 @@ class BleController extends GetxController {
     } else {
       responseBuffer += fragment;
     }
+  }
+
+  @visibleForTesting
+  void handleNotificationForTest(List<int> data) {
+    _handleNotification(data);
   }
 
   DeviceModel? findDeviceByRemoteId(String remoteId) {
