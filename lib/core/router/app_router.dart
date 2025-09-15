@@ -3,6 +3,7 @@ import 'package:gateway_config/core/constants/app_color.dart';
 import 'package:gateway_config/core/controllers/ble_controller.dart';
 import 'package:gateway_config/core/utils/extensions.dart';
 import 'package:gateway_config/presentation/pages/devices/add_device_screen.dart';
+import 'package:gateway_config/presentation/pages/devices/detail_device_info_screen.dart';
 import 'package:gateway_config/presentation/pages/devices/detail_device_screen.dart';
 import 'package:gateway_config/presentation/pages/home/home_screen.dart';
 import 'package:gateway_config/presentation/pages/login/login_page.dart';
@@ -72,13 +73,21 @@ class AppRouter {
             return _deviceNotFound(context);
           }
 
-          return DetailDeviceScreen(device: model.device);
+          return DetailDeviceScreen(model: model);
         },
         routes: [
           GoRoute(
             path: '/add',
             name: 'add-device',
             builder: (context, state) => const AddDeviceScreen(),
+          ),
+          GoRoute(
+            path: '/info',
+            name: 'info-device',
+            builder: (BuildContext context, GoRouterState state) {
+              final name = state.uri.queryParameters['name'];
+              return DetailDeviceInfoScreen(deviceName: name!);
+            },
           ),
         ],
         // builder: (context, state) => const AddDeviceScreen(),
