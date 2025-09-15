@@ -3,10 +3,13 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:gateway_config/core/constants/app_color.dart';
 import 'package:gateway_config/core/utils/app_helpers.dart';
 import 'package:gateway_config/core/utils/ble/ble_utils.dart';
+import 'package:gateway_config/core/utils/snackbar_custom.dart';
 import 'package:gateway_config/models/device_model.dart';
 import 'package:get/get.dart';
+import 'package:go_router/go_router.dart';
 
 class BleController extends GetxController {
   // Variabel state
@@ -23,6 +26,7 @@ class BleController extends GetxController {
 
   BluetoothCharacteristic? commandChar;
   BluetoothCharacteristic? responseChar;
+  StreamSubscription<BluetoothAdapterState>? adapterStateSubscription;
 
   StreamSubscription? responseSubscription;
   String responseBuffer = '';
@@ -30,6 +34,15 @@ class BleController extends GetxController {
   final serviceUUID = Guid('00001830-0000-1000-8000-00805f9b34fb');
   final commandUUID = Guid('11111111-1111-1111-1111-111111111101');
   final responseUUID = Guid('11111111-1111-1111-1111-111111111102');
+
+  @override
+  void onInit() {
+    super.onInit();
+    adapterStateSubscription = FlutterBluePlus.adapterState.listen(
+      _handleAdapterStateChange,
+    );
+    AppHelpers.debugLog('Bluetooth adapter state listener initialized');
+  }
 
   // Fungsi scan device
   Future<void> startScan() async {
@@ -109,6 +122,16 @@ class BleController extends GetxController {
   Future<void> stopScan() async {
     await FlutterBluePlus.stopScan();
     isScanning.value = false;
+  }
+
+  void _handleAdapterStateChange(BluetoothAdapterState state) {
+    AppHelpers.debugLog('Bluetooth adapter state changed: $state');
+    if (state == BluetoothAdapterState.off) {
+      _handleBluetoothOff();
+    } else if (state == BluetoothAdapterState.on) {
+      errorMessage.value = '';
+      update();
+    }
   }
 
   // Fungsi connect ke device
@@ -195,6 +218,38 @@ class BleController extends GetxController {
     }
   }
 
+  Future<void> _handleBluetoothOff() async {
+    AppHelpers.debugLog('Handling Bluetooth turned off');
+
+    errorMessage.value =
+        'Bluetooth has been turned off. Please turn it back on to connect to devices.';
+
+    // Disconnect all connected devices
+    for (var deviceModel in scannedDevices.toList()) {
+      if (deviceModel.isConnected.value) {
+        await disconnectFromDevice(deviceModel);
+        AppHelpers.debugLog('Disconnected device: ${deviceModel.device.remoteId}');
+      }
+    }
+
+    // Optional: Clear scannedDevices jika ingin reset list
+    // scannedDevices.clear();
+
+    SnackbarCustom.showSnackbar(
+      'Bluetooth Turned Off',
+      'Bluetooth has been disabled. Enable it to connect to devices.',
+      AppColor.redColor,
+      AppColor.whiteColor,
+    );
+
+    // Redirect ke home
+    if (Get.context != null) {
+      GoRouter.of(Get.context!).go('/');
+    } else {
+      AppHelpers.debugLog('Warning: Get.context is null, cannot redirect');
+    }
+  }
+
   // Function handle notification from characteristic
   void _handleNotification(List<int> data) {
     String fragment = utf8.decode(data);
@@ -253,6 +308,8 @@ class BleController extends GetxController {
 
   @override
   void onClose() {
+    adapterStateSubscription?.cancel();
+
     for (var model in scannedDevices) {
       disconnectFromDevice(model);
     }
