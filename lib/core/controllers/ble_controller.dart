@@ -7,6 +7,7 @@ import 'package:gateway_config/core/constants/app_color.dart';
 import 'package:gateway_config/core/utils/app_helpers.dart';
 import 'package:gateway_config/core/utils/ble/ble_utils.dart';
 import 'package:gateway_config/core/utils/snackbar_custom.dart';
+import 'package:gateway_config/models/command_response.dart';
 import 'package:gateway_config/models/device_model.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
@@ -20,6 +21,12 @@ class BleController extends GetxController {
   var response = ''.obs;
   var errorMessage = ''.obs;
   var message = ''.obs;
+
+  var commandLoading = false.obs;
+  var commandProgress = 0.0.obs;
+  var lastCommand = <String, dynamic>{}.obs;
+  var commandCache = <String, CommandResponse>{}.obs;
+  final _deviceCache = <String, DeviceModel>{}.obs;
 
   // List untuk menyimpan scanned devices sebagai DeviceModel
   var scannedDevices = <DeviceModel>[].obs;
@@ -75,9 +82,9 @@ class BleController extends GetxController {
   // Fungsi handle data device yang berhasil di-scan
   void handleScannedDevice(BluetoothDevice device) {
     // Cek jika device sudah ada di list (hindari duplikat)
-    if (scannedDevices.any(
-      (model) => model.device.remoteId == device.remoteId,
-    )) {
+    final deviceId = device.id.toString();
+    if (_deviceCache.containsKey(deviceId)) {
+      AppHelpers.debugLog('Device $deviceId already in cache');
       return;
     }
 
@@ -93,6 +100,7 @@ class BleController extends GetxController {
 
     // Tambahkan ke list scannedDevices
     scannedDevices.add(deviceModel);
+    _deviceCache[deviceId] = deviceModel;
 
     // Listen connection state untuk update isConnected
     // Pindahkan setelah deviceModel dideklarasikan
@@ -190,6 +198,8 @@ class BleController extends GetxController {
     isLoadingConnectionGlobal.value = true; // Set global loading
     message.value = 'Disconnecting...';
 
+    _deviceCache.remove(deviceModel.device.remoteId.toString());
+
     try {
       await Future.delayed(const Duration(seconds: 3));
 
@@ -228,7 +238,9 @@ class BleController extends GetxController {
     for (var deviceModel in scannedDevices.toList()) {
       if (deviceModel.isConnected.value) {
         await disconnectFromDevice(deviceModel);
-        AppHelpers.debugLog('Disconnected device: ${deviceModel.device.remoteId}');
+        AppHelpers.debugLog(
+          'Disconnected device: ${deviceModel.device.remoteId}',
+        );
       }
     }
 
@@ -257,6 +269,14 @@ class BleController extends GetxController {
       try {
         var jsonResponse = jsonDecode(responseBuffer);
         response.value = jsonEncode(jsonResponse);
+        final cmdResponse = CommandResponse.fromJson(jsonResponse);
+
+        // Cache with ID (ex. from lastCommand)
+        if (lastCommand.isNotEmpty) {
+          final commandId =
+              '${lastCommand['op']}_${lastCommand['type'] ?? 'general'}_${DateTime.now().toIso8601String().split('T')[0]}';
+          _cacheResponse(commandId, cmdResponse);
+        }
       } catch (e) {
         errorMessage.value = 'Invalid response JSON: $e';
       }
@@ -271,11 +291,25 @@ class BleController extends GetxController {
     _handleNotification(data);
   }
 
+  // Method save response
+  void _cacheResponse(String commandId, CommandResponse response) {
+    commandCache[commandId] = response;
+    AppHelpers.debugLog('Cached response for $commandId: ${response.status}');
+  }
+
+  // Method get data
+  CommandResponse? getCachedResponse(String commandId) {
+    return commandCache[commandId];
+  }
+
   DeviceModel? findDeviceByRemoteId(String remoteId) {
-    final deviceModel = scannedDevices.firstWhereOrNull(
-      (deviceModel) => deviceModel.device.remoteId.toString() == remoteId,
-    );
-    return deviceModel;
+    return _deviceCache[remoteId]; // O(1)
+  }
+
+  // Method clear cache (ex. when disconnect or manual)
+  void clearCommandCache() {
+    commandCache.clear();
+    AppHelpers.debugLog('Command cache cleared');
   }
 
   // Fungsi kirim command
@@ -285,30 +319,58 @@ class BleController extends GetxController {
       return;
     }
 
-    isLoading.value = true;
+    commandLoading.value = true;
+    commandProgress.value = 0.0;
+    lastCommand.value = command; // Cache last command
     String jsonStr = jsonEncode(command);
+
     const chunkSize = 18;
+    int totalChunks = (jsonStr.length / chunkSize).ceil() + 1; // +1 for <END>
+    int currentChunk = 0;
 
     try {
       for (int i = 0; i < jsonStr.length; i += chunkSize) {
         String chunk = jsonStr.substring(
           i,
-          i + chunkSize > jsonStr.length ? jsonStr.length : i + chunkSize,
+          (i + chunkSize > jsonStr.length) ? jsonStr.length : i + chunkSize,
         );
         await commandChar!.write(utf8.encode(chunk));
+        currentChunk++;
+        commandProgress.value = currentChunk / totalChunks; // Update progress
         await Future.delayed(const Duration(milliseconds: 100));
       }
-      await commandChar!.write(utf8.encode('<END>'));
+      await commandChar!.write(utf8.encode('<END>'), allowLongWrite: true);
+      currentChunk++;
+      commandProgress.value = 1.0;
     } catch (e) {
-      errorMessage.value = 'Error sending command: $e';
+      errorMessage.value = 'Error sending command';
+      commandProgress.value = 0.0;
+      AppHelpers.debugLog('Error sending command: $e');
     } finally {
-      isLoading.value = false;
+      commandLoading.value = false;
+      if (errorMessage.value.isEmpty) {
+        SnackbarCustom.showSnackbar(
+          '',
+          'Success save data',
+          Colors.green,
+          AppColor.whiteColor,
+        );
+      } else {
+        SnackbarCustom.showSnackbar(
+          '',
+          errorMessage.value,
+          Colors.red,
+          AppColor.whiteColor,
+        );
+      }
     }
   }
 
   @override
   void onClose() {
+    _deviceCache.clear();
     adapterStateSubscription?.cancel();
+    clearCommandCache();
 
     for (var model in scannedDevices) {
       disconnectFromDevice(model);
