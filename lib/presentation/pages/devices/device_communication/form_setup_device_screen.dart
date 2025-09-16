@@ -1,22 +1,21 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:gateway_config/presentation/widgets/common/dropdown.dart';
-import 'package:get/get.dart';
 import 'package:gateway_config/core/constants/app_color.dart';
 import 'package:gateway_config/core/constants/app_gap.dart';
 import 'package:gateway_config/core/controllers/ble/ble_controller.dart';
 import 'package:gateway_config/core/controllers/devices/device_pagination_controller.dart';
-import 'package:gateway_config/core/utils/snackbar_custom.dart';
 import 'package:gateway_config/core/utils/app_helpers.dart';
 import 'package:gateway_config/core/utils/extensions.dart';
+import 'package:gateway_config/core/utils/snackbar_custom.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_alert_dialog.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_button.dart';
-import 'package:gateway_config/presentation/widgets/common/custom_dropdown.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_radiotile.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_textfield.dart';
+import 'package:gateway_config/presentation/widgets/common/dropdown.dart';
 import 'package:gateway_config/presentation/widgets/common/loading_overlay.dart';
 import 'package:gateway_config/presentation/widgets/spesific/title_tile.dart';
+import 'package:get/get.dart';
 
 class FormSetupDeviceScreen extends StatefulWidget {
   final int? id;
@@ -245,6 +244,7 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
                   return null;
                 },
                 readOnly: widget.id != null,
+                isRequired: true,
               ),
               AppSpacing.md,
               CustomTextFormField(
@@ -271,6 +271,7 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
                     ),
                   ],
                 ),
+                isRequired: true,
               ),
               AppSpacing.md,
               Column(
@@ -327,17 +328,7 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
   }
 
   Widget _formRS485Wrapper() {
-    final baudrates = [
-      '9600',
-      '19200',
-      '38400',
-      '57600',
-      '115200',
-      '115200',
-      '115200',
-      '115200',
-      '115200',
-    ];
+    final baudrates = ['9600', '19200', '38400', '57600', '115200'];
     final bitData = ['7', '8'];
     final parity = ['none', 'even', 'odd'];
     final stopBits = ['1', '2'];
@@ -346,82 +337,85 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
       mainAxisAlignment: MainAxisAlignment.start,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Choose Baudrate', style: context.h6),
-        AppSpacing.sm,
-        Dropdown(items: baudrates, hint: 'Choose the baudrate'),
-        // CustomDropdown(
-        //   listItem: baudrates,
-        //   hintText: 'Choose the baudrate',
-        //   selectedItem: selectedBaudRate,
-        //   onChanged: (value) {
-        //     setState(() {
-        //       selectedBaudRate = value;
-        //     });
-        //   },
-        //   validator: (value) {
-        //     if (value == null || value.isEmpty) {
-        //       return 'Please select baudrate data';
-        //     }
-        //     return null;
-        //   },
-        // ),
+        Dropdown(
+          label: 'Choose Baudrate',
+          items: baudrates,
+          hint: 'Choose the baudrate',
+          selectedItem: selectedBaudRate,
+          onChanged: (value) {
+            setState(() {
+              selectedBaudRate = value;
+            });
+          },
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Please select baudrate data';
+            }
+            return null;
+          },
+          showSearchBox: baudrates.length > 5 ? true : false,
+          isRequired: true,
+        ),
         AppSpacing.md,
-        Text('Choose Bit Data', style: context.h6),
-        AppSpacing.sm,
-        // CustomDropdown(
-        //   listItem: bitData,
-        //   hintText: 'Choose bit data',
-        //   selectedItem: selectedBitData,
-        //   onChanged: (value) {
-        //     setState(() {
-        //       selectedBitData = value;
-        //     });
-        //   },
-        //   validator: (value) {
-        //     if (value == null || value.isEmpty) {
-        //       return 'Please select bit data';
-        //     }
-        //     return null;
-        //   },
-        // ),
+        Dropdown(
+          label: 'Choose Bit Data',
+          items: bitData,
+          hint: 'Choose bit data',
+          selectedItem: selectedBitData,
+          onChanged: (value) {
+            setState(() {
+              selectedBitData = value;
+            });
+          },
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Please select bit data';
+            }
+            return null;
+          },
+          showSearchBox: bitData.length > 5 ? true : false,
+          isRequired: true,
+        ),
         AppSpacing.md,
-        Text('Choose Parity', style: context.h6),
-        AppSpacing.sm,
-        // CustomDropdown(
-        //   listItem: parity,
-        //   hintText: 'Choose the parity',
-        //   selectedItem: selectedParity,
-        //   onChanged: (value) {
-        //     setState(() {
-        //       selectedParity = value;
-        //     });
-        //   },
-        //   validator: (value) {
-        //     if (value == null || value.isEmpty) {
-        //       return 'Please select parity data';
-        //     }
-        //     return null;
-        //   },
-        // ),
+        Dropdown(
+          label: 'Choose Parity',
+          items: parity,
+          hint: 'Choose the parity',
+          selectedItem: selectedParity,
+          onChanged: (value) {
+            setState(() {
+              selectedParity = value;
+            });
+          },
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Please select the parity';
+            }
+            return null;
+          },
+          showSearchBox: parity.length > 5 ? true : false,
+          isRequired: true,
+        ),
         AppSpacing.md,
-        Text('Choose Stop Bit', style: context.h6),
-        AppSpacing.sm,
-        // CustomDropdown(
-        //   listItem: stopBits,
-        //   hintText: 'Choose the stop bit',
-        //   selectedItem: selectedStopBit,
-        //   onChanged: (value) {
-        //     setState(() {
-        //       selectedStopBit = value;
-        //     });
-        //   },
-        //   validator: (value) {
-        //     if (value == null || value.isEmpty) {
-        //       return 'Please select stop bit data';
-        //     }
-        //     return null;
-        //   },
-        // ),
+        Dropdown(
+          label: 'Choose Stop Bit',
+          items: stopBits,
+          hint: 'Choose the stop bit',
+          selectedItem: selectedStopBit,
+          onChanged: (value) {
+            setState(() {
+              selectedStopBit = value;
+            });
+          },
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Please select the stop bit';
+            }
+            return null;
+          },
+          showSearchBox: stopBits.length > 5 ? true : false,
+          isRequired: true,
+        ),
       ],
     );
   }
@@ -441,6 +435,7 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
             if (!ipPattern.hasMatch(value)) return 'Invalid IP address format';
             return null;
           },
+          isRequired: true,
         ),
         AppSpacing.md,
         CustomTextFormField(
@@ -458,6 +453,7 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
             }
             return null;
           },
+          isRequired: true,
         ),
         AppSpacing.md,
         CustomTextFormField(
@@ -482,6 +478,7 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
               ),
             ],
           ),
+          isRequired: true,
         ),
       ],
     );
