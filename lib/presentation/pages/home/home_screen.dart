@@ -245,7 +245,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       child: InkWell(
         onTap: () async {
-          context.push('/devices/add');
+          context.pushNamed('add-device');
         },
         child: const Icon(
           Icons.add_circle,
