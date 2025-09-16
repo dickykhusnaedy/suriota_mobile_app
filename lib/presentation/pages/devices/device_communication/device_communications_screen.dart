@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:gateway_config/models/device_model.dart';
 import 'package:get/get.dart';
 import 'package:gateway_config/core/constants/app_color.dart';
 import 'package:gateway_config/core/constants/app_gap.dart';
@@ -12,9 +13,11 @@ import 'package:gateway_config/presentation/widgets/common/custom_alert_dialog.d
 import 'package:gateway_config/presentation/widgets/common/custom_button.dart';
 import 'package:gateway_config/presentation/pages/devices/device_communication/data_display_screen.dart';
 import 'package:gateway_config/presentation/pages/devices/device_communication/form_setup_device_screen.dart';
+import 'package:go_router/go_router.dart';
 
 class DeviceCommunicationsScreen extends StatefulWidget {
-  const DeviceCommunicationsScreen({super.key});
+  const DeviceCommunicationsScreen({super.key, required this.model});
+  final DeviceModel model;
 
   @override
   State<DeviceCommunicationsScreen> createState() =>
@@ -163,7 +166,9 @@ class _DeviceCommunicationsScreenState
       actions: [
         IconButton(
           onPressed: () {
-            Get.to(() => const FormSetupDeviceScreen());
+            context.push(
+              '/devices/device-communication/add?id=${widget.model.device.remoteId}',
+            );
           },
           icon: const Icon(Icons.add_circle, size: 22),
         ),
