@@ -20,6 +20,7 @@ class CustomTextFormField extends StatelessWidget {
   final EdgeInsetsGeometry padding;
   final TextInputType? keyboardType;
   final bool? obscureText;
+  final bool isRequired;
 
   const CustomTextFormField({
     super.key,
@@ -38,6 +39,7 @@ class CustomTextFormField extends StatelessWidget {
     this.onChanges,
     this.keyboardType,
     this.obscureText,
+    this.isRequired = false,
   });
 
   @override
@@ -47,11 +49,28 @@ class CustomTextFormField extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         if (labelTxt != null)
-          Text(
-            labelTxt!,
-            style:
-                labelTxtStyle ??
-                context.h6.copyWith(fontWeight: FontWeightTheme.bold),
+          Column(
+            children: [
+              Row(
+                children: [
+                  Text(
+                    labelTxt!,
+                    style:
+                        labelTxtStyle ??
+                        context.h6.copyWith(fontWeight: FontWeightTheme.bold),
+                  ),
+                  AppSpacing.xs,
+                  if (isRequired)
+                    Text(
+                      '*required',
+                      style: context.buttonTextSmallest.copyWith(
+                        color: Colors.red,
+                      ),
+                    ),
+                ],
+              ),
+              AppSpacing.sm,
+            ],
           ),
         AppSpacing.sm,
         TextFormField(
@@ -69,7 +88,7 @@ class CustomTextFormField extends StatelessWidget {
             fillColor: readOnly ? Colors.grey[200] : Colors.white,
             floatingLabelBehavior: FloatingLabelBehavior.always,
             alignLabelWithHint: false,
-            contentPadding: AppPadding.horizontalMedium,
+            contentPadding: AppPadding.small,
             hintText: hintTxt,
             hintStyle:
                 hintTxtStyle ?? context.body.copyWith(color: AppColor.grey),
@@ -89,22 +108,22 @@ class CustomTextFormField extends StatelessWidget {
   }
 
   OutlineInputBorder get borderStyle => OutlineInputBorder(
-    borderRadius: BorderRadius.circular(8),
-    borderSide: const BorderSide(color: AppColor.primaryColor, width: 1),
+    borderRadius: BorderRadius.circular(12),
+    borderSide: const BorderSide(color: AppColor.lightGrey, width: 1),
   );
 
   OutlineInputBorder get focusedBorder => OutlineInputBorder(
-    borderRadius: BorderRadius.circular(8),
-    borderSide: const BorderSide(color: AppColor.primaryColor, width: 2),
+    borderRadius: BorderRadius.circular(12),
+    borderSide: const BorderSide(color: AppColor.primaryColor, width: 1),
   );
 
   OutlineInputBorder get errorBorder => OutlineInputBorder(
-    borderRadius: BorderRadius.circular(8),
+    borderRadius: BorderRadius.circular(12),
     borderSide: const BorderSide(color: Colors.red, width: 1),
   );
 
   OutlineInputBorder get focusedErrorBorder => OutlineInputBorder(
-    borderRadius: BorderRadius.circular(8),
-    borderSide: const BorderSide(color: Colors.red, width: 2),
+    borderRadius: BorderRadius.circular(12),
+    borderSide: const BorderSide(color: Colors.red, width: 1),
   );
 }
