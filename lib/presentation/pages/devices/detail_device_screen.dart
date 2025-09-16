@@ -6,10 +6,6 @@ import 'package:gateway_config/core/controllers/ble_controller.dart';
 import 'package:gateway_config/core/utils/app_helpers.dart';
 import 'package:gateway_config/core/utils/extensions.dart';
 import 'package:gateway_config/models/device_model.dart';
-import 'package:gateway_config/presentation/pages/devices/device_communication/device_communications_screen.dart';
-import 'package:gateway_config/presentation/pages/devices/logging_config/form_logging_config_screen.dart';
-import 'package:gateway_config/presentation/pages/devices/modbus_config/modbus_screen.dart';
-import 'package:gateway_config/presentation/pages/devices/server_config/form_config_server_screen.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_alert_dialog.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_button.dart';
 import 'package:gateway_config/presentation/widgets/common/loading_overlay.dart';
@@ -85,29 +81,6 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
     );
   }
 
-  final List<Map<String, dynamic>> menuItems = [
-    {
-      "text": "Device Communication",
-      "imagePath": ImageAsset.iconDevice,
-      "page": const DeviceCommunicationsScreen(),
-    },
-    {
-      "text": "Modbus Configurations",
-      "imagePath": ImageAsset.iconConfig,
-      "page": const ModbusScreen(),
-    },
-    {
-      "text": "Server Configurations",
-      "imagePath": ImageAsset.iconServer,
-      "page": const FormConfigServer(),
-    },
-    {
-      "text": "Logging Configurations",
-      "imagePath": ImageAsset.iconLogging,
-      "page": const FormLoggingConfigScreen(),
-    },
-  ];
-
   @override
   Widget build(BuildContext context) {
     return Stack(
@@ -135,6 +108,33 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
 
   Column _bodyContent(BuildContext context) {
     double screenWidth = MediaQuery.of(context).size.width;
+
+    final List<Map<String, dynamic>> menuItems = [
+      {
+        "text": "Device Communication",
+        "imagePath": ImageAsset.iconDevice,
+        "page":
+            '/devices/device-communication?id=${widget.model.device.remoteId}',
+      },
+      {
+        "text": "Modbus Configurations",
+        "imagePath": ImageAsset.iconConfig,
+        "page": '/devices/modbus-config?id=${widget.model.device.remoteId}',
+        // "page": const ModbusScreen(),
+      },
+      {
+        "text": "Server Configurations",
+        "imagePath": ImageAsset.iconServer,
+        // "page": const FormConfigServer(),
+        "page": '/devices/server-config?id=${widget.model.device.remoteId}',
+      },
+      {
+        "text": "Logging Configurations",
+        "imagePath": ImageAsset.iconLogging,
+        "page": '/devices/logging?id=${widget.model.device.remoteId}',
+        // "page": const FormLoggingConfigScreen(),
+      },
+    ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
