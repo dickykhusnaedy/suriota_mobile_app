@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:gateway_config/core/constants/app_gap.dart';
 import 'package:gateway_config/core/utils/extensions.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_button.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_color.dart';
 import '../../../core/constants/app_font.dart';
@@ -56,7 +57,7 @@ class CardMenu extends StatelessWidget {
   final String text;
   final double width;
   final String? imagePath;
-  final Widget page;
+  final String page;
 
   const CardMenu({
     super.key,
@@ -73,7 +74,7 @@ class CardMenu extends StatelessWidget {
       height: 185,
       child: GestureDetector(
         onTap: () {
-          Get.to(() => page);
+          context.push(page);
         },
         child: Card(
           color: AppColor.cardColor,
