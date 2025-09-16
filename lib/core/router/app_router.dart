@@ -5,6 +5,8 @@ import 'package:gateway_config/core/utils/extensions.dart';
 import 'package:gateway_config/presentation/pages/devices/add_device_screen.dart';
 import 'package:gateway_config/presentation/pages/devices/detail_device_info_screen.dart';
 import 'package:gateway_config/presentation/pages/devices/detail_device_screen.dart';
+import 'package:gateway_config/presentation/pages/devices/device_communication/device_communications_screen.dart';
+import 'package:gateway_config/presentation/pages/devices/device_communication/form_setup_device_screen.dart';
 import 'package:gateway_config/presentation/pages/home/home_screen.dart';
 import 'package:gateway_config/presentation/pages/login/login_page.dart';
 import 'package:gateway_config/presentation/pages/permission_denied.dart';
@@ -87,6 +89,83 @@ class AppRouter {
             builder: (BuildContext context, GoRouterState state) {
               final name = state.uri.queryParameters['name'];
               return DetailDeviceInfoScreen(deviceName: name!);
+            },
+          ),
+          GoRoute(
+            path: '/device-communication',
+            name: 'device-communication',
+            builder: (context, state) {
+              final deviceId = state.uri.queryParameters['id'];
+              if (deviceId == null) {
+                return _deviceNotFound(context);
+              }
+              final bleController = Get.find<BleController>();
+              final model = bleController.findDeviceByRemoteId(deviceId);
+              return model != null
+                  ? DeviceCommunicationsScreen(model: model)
+                  : _deviceNotFound(context);
+            },
+            routes: [
+              GoRoute(
+                path: '/add',
+                name: 'device-communication-add',
+                builder: (context, state) {
+                  final deviceId = state.uri.queryParameters['id'];
+                  if (deviceId == null) {
+                    return _deviceNotFound(context);
+                  }
+                  final bleController = Get.find<BleController>();
+                  final model = bleController.findDeviceByRemoteId(deviceId);
+                  return model != null
+                      ? FormSetupDeviceScreen()
+                      : _deviceNotFound(context);
+                },
+              ),
+            ],
+          ),
+          GoRoute(
+            path: '/modbus-config',
+            name: 'modbus',
+            builder: (context, state) {
+              final deviceId = state.uri.queryParameters['id'];
+              if (deviceId == null) {
+                return _deviceNotFound(context);
+              }
+              final bleController = Get.find<BleController>();
+              final model = bleController.findDeviceByRemoteId(deviceId);
+              return model != null
+                  ? DeviceCommunicationsScreen(model: model)
+                  : _deviceNotFound(context);
+            },
+          ),
+          GoRoute(
+            path: '/server-config',
+            name: 'server',
+            builder: (context, state) {
+              final deviceId = state.uri.queryParameters['id'];
+              if (deviceId == null) {
+                return _deviceNotFound(context);
+              }
+              final bleController = Get.find<BleController>();
+              final model = bleController.findDeviceByRemoteId(deviceId);
+              return model != null
+                  ? DeviceCommunicationsScreen(model: model)
+                  : _deviceNotFound(context);
+            },
+          ),
+          GoRoute(
+            path: '/logging',
+            name: 'logging',
+            builder: (context, state) {
+              final deviceId = state.uri.queryParameters['id'];
+              if (deviceId == null) {
+                return _deviceNotFound(context);
+              }
+              final bleController = Get.find<BleController>();
+              final model = bleController.findDeviceByRemoteId(deviceId);
+              return model != null
+                  ? DeviceCommunicationsScreen(model: model)
+                  : _deviceNotFound(context);
             },
           ),
         ],
