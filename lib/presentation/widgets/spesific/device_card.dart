@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:gateway_config/core/constants/app_gap.dart';
 import 'package:gateway_config/core/utils/extensions.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_button.dart';
