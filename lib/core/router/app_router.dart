@@ -117,7 +117,7 @@ class AppRouter {
                   final bleController = Get.find<BleController>();
                   final model = bleController.findDeviceByRemoteId(deviceId);
                   return model != null
-                      ? FormSetupDeviceScreen()
+                      ? FormSetupDeviceScreen(model: model)
                       : _deviceNotFound(context);
                 },
               ),
