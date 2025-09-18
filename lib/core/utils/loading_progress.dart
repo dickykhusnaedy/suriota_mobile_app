@@ -1,20 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:gateway_config/core/constants/app_color.dart';
 import 'package:gateway_config/core/constants/app_gap.dart';
 import 'package:gateway_config/core/utils/extensions.dart';
 
 class LoadingProgress extends StatelessWidget {
   final double heightFactor;
-  final RxInt receivedPackets;
-  final RxInt expectedPackets;
 
-  const LoadingProgress({
-    Key? key,
-    required this.receivedPackets,
-    required this.expectedPackets,
-    this.heightFactor = 0.85,
-  }) : super(key: key);
+  const LoadingProgress({super.key, this.heightFactor = 0.85});
 
   @override
   Widget build(BuildContext context) {
@@ -26,27 +18,21 @@ class LoadingProgress extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             const SizedBox(
-              width: 55,
-              height: 55,
+              width: 40,
+              height: 40,
               child: CircularProgressIndicator(
-                strokeWidth: 5,
+                strokeWidth: 4,
                 color: AppColor.primaryColor,
               ),
             ),
             AppSpacing.md,
-            Obx(() {
-              double percent = 0;
-              if (expectedPackets.value > 0) {
-                percent = (receivedPackets.value / expectedPackets.value * 100);
-              }
-              return Text(
-                "Processing ${percent.toStringAsFixed(1)}% data ...",
-                style: context.bodySmall.copyWith(
-                  color: AppColor.grey,
-                  fontStyle: FontStyle.italic,
-                ),
-              );
-            }),
+            Text(
+              "Processing data ...",
+              style: context.bodySmall.copyWith(
+                color: AppColor.grey,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
           ],
         ),
       ),
