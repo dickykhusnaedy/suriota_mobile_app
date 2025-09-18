@@ -1,35 +1,17 @@
-import 'dart:convert';
+import 'package:json_annotation/json_annotation.dart';
 
+part 'command_response.g.dart';
+
+@JsonSerializable()
 class CommandResponse {
   final String status;
-  final dynamic data;
   final String? message;
-  final DateTime timestamp;
+  final String? type;
+  final dynamic config;
 
-  CommandResponse({
-    required this.status,
-    required this.data,
-    this.message,
-    required this.timestamp,
-  });
+  CommandResponse({required this.status, this.message, this.type, this.config});
 
-  factory CommandResponse.fromJson(Map<String, dynamic> json) {
-    return CommandResponse(
-      status: json['status'] ?? 'unknown',
-      data: json['data'] ?? json['devices'] ?? {},
-      message: json['message'],
-      timestamp: DateTime.now(),
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'status': status,
-      'data': data,
-      'message': message,
-      'timestamp': timestamp.toIso8601String(),
-    };
-  }
-
-  String toJsonString() => jsonEncode(toJson());
+  factory CommandResponse.fromJson(Map<String, dynamic> json) =>
+      _$CommandResponseFromJson(json);
+  Map<String, dynamic> toJson() => _$CommandResponseToJson(this);
 }
