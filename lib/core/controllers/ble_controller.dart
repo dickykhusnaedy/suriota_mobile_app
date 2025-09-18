@@ -13,7 +13,7 @@ import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
 
 class BleController extends GetxController {
-  // Variabel state
+  // State variables
   var isScanning = false.obs;
   var isLoading = false.obs;
   var isLoadingConnectionGlobal = false.obs;
@@ -26,9 +26,11 @@ class BleController extends GetxController {
   var commandProgress = 0.0.obs;
   var lastCommand = <String, dynamic>{}.obs;
   var commandCache = <String, CommandResponse>{}.obs;
+  var gatewayDeviceResponses = <CommandResponse>[].obs;
+
   final _deviceCache = <String, DeviceModel>{}.obs;
 
-  // List untuk menyimpan scanned devices sebagai DeviceModel
+  // List for scanned devices as DeviceModel
   var scannedDevices = <DeviceModel>[].obs;
 
   BluetoothCharacteristic? commandChar;
@@ -36,7 +38,6 @@ class BleController extends GetxController {
   StreamSubscription<BluetoothAdapterState>? adapterStateSubscription;
 
   StreamSubscription? responseSubscription;
-  String responseBuffer = '';
 
   final serviceUUID = Guid('00001830-0000-1000-8000-00805f9b34fb');
   final commandUUID = Guid('11111111-1111-1111-1111-111111111101');
@@ -45,25 +46,26 @@ class BleController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+
     adapterStateSubscription = FlutterBluePlus.adapterState.listen(
       _handleAdapterStateChange,
     );
     AppHelpers.debugLog('Bluetooth adapter state listener initialized');
   }
 
-  // Fungsi scan device
+  // Function to scan devices
   Future<void> startScan() async {
     if (isScanning.value || isLoading.value) return;
 
     isLoading.value = true;
     isScanning.value = true;
     errorMessage.value = '';
-    scannedDevices.clear(); // Kosongkan list sebelum scan baru
+    scannedDevices.clear(); // Clear old response
 
     try {
       await FlutterBluePlus.startScan(timeout: const Duration(seconds: 10));
 
-      // Listen hasil scan
+      // Listen from scan result
       FlutterBluePlus.scanResults.listen((results) {
         for (ScanResult r in results) {
           handleScannedDevice(r.device);
@@ -79,16 +81,16 @@ class BleController extends GetxController {
     }
   }
 
-  // Fungsi handle data device yang berhasil di-scan
+  // Function to handle scanned device data
   void handleScannedDevice(BluetoothDevice device) {
-    // Cek jika device sudah ada di list (hindari duplikat)
-    final deviceId = device.id.toString();
+    // Check for duplicate device
+    final deviceId = device.remoteId.toString();
     if (_deviceCache.containsKey(deviceId)) {
       AppHelpers.debugLog('Device $deviceId already in cache');
       return;
     }
 
-    // Buat DeviceModel dengan info dari BluetoothDevice
+    // Create DeviceModel with info from BluetoothDevice
     final deviceModel = DeviceModel(
       device: device,
       onConnect: () {},
@@ -98,12 +100,11 @@ class BleController extends GetxController {
     deviceModel.onConnect = () => connectToDevice(deviceModel);
     deviceModel.onDisconnect = () => disconnectFromDevice(deviceModel);
 
-    // Tambahkan ke list scannedDevices
+    // Add to scannedDevices list
     scannedDevices.add(deviceModel);
     _deviceCache[deviceId] = deviceModel;
 
-    // Listen connection state untuk update isConnected
-    // Pindahkan setelah deviceModel dideklarasikan
+    // Listen to connection state to update isConnected
     // ignore: unused_local_variable
     StreamSubscription<BluetoothConnectionState>? connectionSubscription;
     connectionSubscription = device.connectionState.listen((
@@ -113,12 +114,11 @@ class BleController extends GetxController {
           (state == BluetoothConnectionState.connected);
       update();
       if (!deviceModel.isConnected.value) {
-        // Reset characteristics jika disconnect
+        // Reset characteristics if disconnected
         if (connectedDevice.value?.remoteId == device.remoteId) {
           commandChar = null;
           responseChar = null;
           responseSubscription?.cancel();
-          responseBuffer = '';
           response.value = '';
           connectedDevice.value = null;
         }
@@ -126,7 +126,7 @@ class BleController extends GetxController {
     });
   }
 
-  // Fungsi stop scan
+  // Function to stop scan
   Future<void> stopScan() async {
     await FlutterBluePlus.stopScan();
     isScanning.value = false;
@@ -142,7 +142,7 @@ class BleController extends GetxController {
     }
   }
 
-  // Fungsi connect ke device
+  // Function to connect to device
   Future<void> connectToDevice(DeviceModel deviceModel) async {
     deviceModel.isLoadingConnection.value = true;
     isLoadingConnectionGlobal.value = true;
@@ -162,12 +162,11 @@ class BleController extends GetxController {
 
       if (service == null) {
         errorMessage.value = 'Service not found';
-
         await disconnectFromDevice(deviceModel);
         return;
       }
 
-      // Ambil characteristics
+      // Get characteristics
       commandChar = service.characteristics.firstWhere(
         (c) => c.uuid == commandUUID,
       );
@@ -175,12 +174,16 @@ class BleController extends GetxController {
         (c) => c.uuid == responseUUID,
       );
 
-      // Subscribe ke response
-      await responseChar?.setNotifyValue(true);
-      responseSubscription = responseChar?.lastValueStream.listen(
-        _handleNotification,
+      // ADDED: Log characteristic properties
+      AppHelpers.debugLog(
+        'Command characteristic properties: write=${commandChar?.properties.write}, writeWithoutResponse=${commandChar?.properties.writeWithoutResponse}',
+      );
+      AppHelpers.debugLog(
+        'Response characteristic properties: notify=${responseChar?.properties.notify}',
       );
 
+      // Subscribe to response
+      await responseChar?.setNotifyValue(true);
       BLEUtils.showConnectedBottomSheet(deviceModel);
     } catch (e) {
       errorMessage.value = 'Error connecting';
@@ -193,7 +196,7 @@ class BleController extends GetxController {
     }
   }
 
-  // Fungsi disconnect
+  // Function to disconnect
   Future<void> disconnectFromDevice(DeviceModel deviceModel) async {
     isLoadingConnectionGlobal.value = true; // Set global loading
     message.value = 'Disconnecting...';
@@ -208,7 +211,6 @@ class BleController extends GetxController {
       commandChar = null;
       responseChar = null;
       response.value = '';
-      responseBuffer = '';
       connectedDevice.value = null;
       deviceModel.isConnected.value = false;
 
@@ -244,9 +246,6 @@ class BleController extends GetxController {
       }
     }
 
-    // Optional: Clear scannedDevices jika ingin reset list
-    // scannedDevices.clear();
-
     SnackbarCustom.showSnackbar(
       'Bluetooth Turned Off',
       'Bluetooth has been disabled. Enable it to connect to devices.',
@@ -254,7 +253,7 @@ class BleController extends GetxController {
       AppColor.whiteColor,
     );
 
-    // Redirect ke home
+    // Redirect to home
     if (Get.context != null) {
       GoRouter.of(Get.context!).go('/');
     } else {
@@ -262,42 +261,13 @@ class BleController extends GetxController {
     }
   }
 
-  // Function handle notification from characteristic
-  void _handleNotification(List<int> data) {
-    String fragment = utf8.decode(data);
-    if (fragment == '<END>') {
-      try {
-        var jsonResponse = jsonDecode(responseBuffer);
-        response.value = jsonEncode(jsonResponse);
-        final cmdResponse = CommandResponse.fromJson(jsonResponse);
-
-        // Cache with ID (ex. from lastCommand)
-        if (lastCommand.isNotEmpty) {
-          final commandId =
-              '${lastCommand['op']}_${lastCommand['type'] ?? 'general'}_${DateTime.now().toIso8601String().split('T')[0]}';
-          _cacheResponse(commandId, cmdResponse);
-        }
-      } catch (e) {
-        errorMessage.value = 'Invalid response JSON: $e';
-      }
-      responseBuffer = '';
-    } else {
-      responseBuffer += fragment;
-    }
-  }
-
-  @visibleForTesting
-  void handleNotificationForTest(List<int> data) {
-    _handleNotification(data);
-  }
-
-  // Method save response
+  // Method to save response
   void _cacheResponse(String commandId, CommandResponse response) {
     commandCache[commandId] = response;
     AppHelpers.debugLog('Cached response for $commandId: ${response.status}');
   }
 
-  // Method get data
+  // Method to get data
   CommandResponse? getCachedResponse(String commandId) {
     return commandCache[commandId];
   }
@@ -306,17 +276,28 @@ class BleController extends GetxController {
     return _deviceCache[remoteId]; // O(1)
   }
 
-  // Method clear cache (ex. when disconnect or manual)
+  // Method to clear cache (ex. when disconnect or manual)
   void clearCommandCache() {
     commandCache.clear();
     AppHelpers.debugLog('Command cache cleared');
   }
 
-  // Fungsi kirim command
-  Future<void> sendCommand(Map<String, dynamic> command) async {
-    if (commandChar == null) {
+  // Function to send command
+  Future<CommandResponse> sendCommand(Map<String, dynamic> command) async {
+    if (commandChar == null || responseChar == null) {
       errorMessage.value = 'Not connected';
-      return;
+      return CommandResponse(status: 'error', message: 'Not connected');
+    }
+
+    // Validate command
+    if (!command.containsKey('op') ||
+        !command.containsKey('type') ||
+        !command.containsKey('config')) {
+      errorMessage.value = 'Invalid command format';
+      return CommandResponse(
+        status: 'error',
+        message: 'Invalid command format',
+      );
     }
 
     commandLoading.value = true;
@@ -329,52 +310,310 @@ class BleController extends GetxController {
     int currentChunk = 0;
 
     try {
+      // Ensure subscription is active before sending command
+      await responseChar!.setNotifyValue(true);
+      await Future.delayed(
+        const Duration(milliseconds: 100),
+      ); // Wait for subscription
+
+      // CHANGED: Check if writeWithoutResponse is supported
+      final bool useWriteWithResponse =
+          !(commandChar?.properties.writeWithoutResponse ?? false);
+      AppHelpers.debugLog('Using write with response: $useWriteWithResponse');
+
+      // Send command in chunks
       for (int i = 0; i < jsonStr.length; i += chunkSize) {
         String chunk = jsonStr.substring(
           i,
           (i + chunkSize > jsonStr.length) ? jsonStr.length : i + chunkSize,
         );
-        await commandChar!.write(utf8.encode(chunk));
+        await commandChar!.write(
+          utf8.encode(chunk),
+          withoutResponse: !useWriteWithResponse,
+        );
+        AppHelpers.debugLog('Sent chunk: $chunk'); // ADDED: Log sent chunk
         currentChunk++;
         commandProgress.value = currentChunk / totalChunks; // Update progress
-        await Future.delayed(const Duration(milliseconds: 100));
+        await Future.delayed(
+          const Duration(milliseconds: 50),
+        ); // Optimized delay
       }
-      await commandChar!.write(utf8.encode('<END>'), allowLongWrite: true);
+      await commandChar!.write(
+        utf8.encode('<END>'),
+        withoutResponse: !useWriteWithResponse,
+      );
+      AppHelpers.debugLog('Sent chunk: <END>'); // ADDED: Log sent chunk
       currentChunk++;
       commandProgress.value = 1.0;
-    } catch (e) {
-      errorMessage.value = 'Error sending command';
-      commandProgress.value = 0.0;
-      AppHelpers.debugLog('Error sending command: $e');
-    } finally {
-      commandLoading.value = false;
-      if (errorMessage.value.isEmpty) {
-        SnackbarCustom.showSnackbar(
-          '',
-          'Success save data',
-          Colors.green,
-          AppColor.whiteColor,
+
+      // Wait for response via notification
+      final response = await _waitForNotification();
+      if (response == null) {
+        throw Exception('No response received');
+      }
+
+      // Save response if success
+      if (response.status == 'success' || response.status == 'ok') {
+        gatewayDeviceResponses.add(response);
+        AppHelpers.debugLog(
+          'Saved response for command ${command['type']}: ${response.toJson()}',
         );
       } else {
-        SnackbarCustom.showSnackbar(
-          '',
-          errorMessage.value,
-          Colors.red,
-          AppColor.whiteColor,
-        );
+        errorMessage.value = response.message ?? 'Failed to save configuration';
       }
+
+      // Show feedback
+      SnackbarCustom.showSnackbar(
+        '',
+        response.status == 'success' || response.status == 'ok'
+            ? 'Success save data'
+            : errorMessage.value,
+        response.status == 'success' || response.status == 'ok'
+            ? Colors.green
+            : Colors.red,
+        AppColor.whiteColor,
+      );
+
+      return response;
+    } catch (e) {
+      errorMessage.value = 'Error sending command: $e';
+      commandProgress.value = 0.0;
+      AppHelpers.debugLog('Error sending command: $e');
+      SnackbarCustom.showSnackbar(
+        '',
+        errorMessage.value,
+        Colors.red,
+        AppColor.whiteColor,
+      );
+      return CommandResponse(status: 'error', message: errorMessage.value);
+    } finally {
+      commandLoading.value = false;
     }
+  }
+
+  // Function to read command response using notification
+  Future<CommandResponse> readCommandResponse(
+    DeviceModel gatewayModel, {
+    required String type,
+  }) async {
+    if (commandChar == null || responseChar == null) {
+      errorMessage.value = 'Not connected';
+      return CommandResponse(status: 'error', message: 'Not connected');
+    }
+
+    // Set command data
+    final readCommand = {
+      'op': 'read',
+      'type': type, // Dynamic: 'device', 'modbus', 'server', 'logging'
+    };
+    String jsonStr = jsonEncode(readCommand);
+
+    const chunkSize = 18;
+    int totalChunks = (jsonStr.length / chunkSize).ceil() + 1;
+    int currentChunk = 0;
+
+    commandLoading.value = true;
+    commandProgress.value = 0.0;
+
+    try {
+      // Ensure subscription is active before sending command
+      await responseChar!.setNotifyValue(true);
+      await Future.delayed(
+        const Duration(milliseconds: 100),
+      ); // Wait for subscription
+
+      // CHANGED: Check if writeWithoutResponse is supported
+      final bool useWriteWithResponse =
+          !(commandChar?.properties.writeWithoutResponse ?? false);
+      AppHelpers.debugLog('Using write with response: $useWriteWithResponse');
+
+      // Send read command in chunks
+      for (int i = 0; i < jsonStr.length; i += chunkSize) {
+        String chunk = jsonStr.substring(
+          i,
+          (i + chunkSize > jsonStr.length) ? jsonStr.length : i + chunkSize,
+        );
+        await commandChar!.write(
+          utf8.encode(chunk),
+          withoutResponse: !useWriteWithResponse,
+        );
+        AppHelpers.debugLog('Sent chunk: $chunk'); // ADDED: Log sent chunk
+        currentChunk++;
+        commandProgress.value = currentChunk / totalChunks;
+        await Future.delayed(
+          const Duration(milliseconds: 50),
+        ); // Optimized delay
+      }
+      await commandChar!.write(
+        utf8.encode('<END>'),
+        withoutResponse: !useWriteWithResponse,
+      );
+      AppHelpers.debugLog('Sent chunk: <END>'); // ADDED: Log sent chunk
+      currentChunk++;
+      commandProgress.value = 1.0;
+
+      // Wait for response via notification
+      final response = await _waitForNotification();
+      if (response == null) {
+        throw Exception('No response received');
+      }
+
+      // Save response if success
+      if (response.status == 'success' || response.status == 'ok') {
+        gatewayDeviceResponses.add(response);
+        AppHelpers.debugLog(
+          'Saved read response for type "$type" in Gateway ${gatewayModel.device.remoteId}: ${response.toJson()}',
+        );
+      } else {
+        errorMessage.value = response.message ?? 'Failed to read data';
+      }
+
+      return response;
+    } catch (e) {
+      errorMessage.value = 'Error reading command: $e';
+      AppHelpers.debugLog('Error reading command for type "$type": $e');
+      return CommandResponse(status: 'error', message: errorMessage.value);
+    } finally {
+      commandLoading.value = false;
+      commandProgress.value = 0.0;
+    }
+  }
+
+  // Helper to wait for notification response
+  Future<CommandResponse?> _waitForNotification() async {
+    final completer = Completer<CommandResponse?>();
+    StringBuffer buffer = StringBuffer();
+
+    // Cancel previous subscription to avoid conflicts
+    responseSubscription?.cancel();
+
+    // Log subscription status
+    AppHelpers.debugLog(
+      'Starting new response subscription in _waitForNotification',
+    );
+
+    // Subscribe to notification
+    responseSubscription = responseChar!.lastValueStream.listen(
+      (data) {
+        final chunk = utf8.decode(
+          data,
+          allowMalformed: true,
+        ); // Allow malformed UTF-8
+        AppHelpers.debugLog(
+          'Notify chunk received in _waitForNotification: $chunk',
+        );
+        buffer.write(chunk); // Append all chunks, including <END>
+        if (chunk == '<END>') {
+          AppHelpers.debugLog(
+            'Buffer before parsing in _waitForNotification: ${buffer.toString()}',
+          );
+          try {
+            // Remove <END> from buffer
+            final cleanedBuffer = buffer
+                .toString()
+                .replaceAll('<END>', '')
+                .replaceAll(RegExp(r'[\x00-\x1F\x7F]'), '');
+            // Validate JSON before parsing
+            if (cleanedBuffer.isEmpty) {
+              errorMessage.value = 'Invalid response JSON: Empty buffer';
+              AppHelpers.debugLog('Empty buffer in _waitForNotification');
+              completer.complete(
+                CommandResponse(status: 'error', message: 'Empty buffer'),
+              );
+              return;
+            }
+            // Validate JSON structure
+            if (!cleanedBuffer.startsWith('{') &&
+                !cleanedBuffer.startsWith('[')) {
+              errorMessage.value = 'Invalid response JSON: Malformed structure';
+              AppHelpers.debugLog('Malformed JSON structure: $cleanedBuffer');
+              completer.complete(
+                CommandResponse(
+                  status: 'error',
+                  message: 'Malformed JSON structure',
+                ),
+              );
+              return;
+            }
+            // Validate JSON end
+            if (!cleanedBuffer.endsWith('}') && !cleanedBuffer.endsWith(']')) {
+              errorMessage.value =
+                  'Invalid response JSON: Incomplete structure';
+              AppHelpers.debugLog('Incomplete JSON structure: $cleanedBuffer');
+              completer.complete(
+                CommandResponse(
+                  status: 'error',
+                  message: 'Incomplete JSON structure',
+                ),
+              );
+              return;
+            }
+            final responseJson =
+                jsonDecode(cleanedBuffer) as Map<String, dynamic>;
+            final cmdResponse = CommandResponse.fromJson(responseJson);
+
+            // Cache with ID (ex. from lastCommand)
+            if (lastCommand.isNotEmpty) {
+              final commandId =
+                  '${lastCommand['op']}_${lastCommand['type'] ?? 'general'}_${DateTime.now().toIso8601String().split('T')[0]}';
+              _cacheResponse(commandId, cmdResponse);
+            }
+
+            AppHelpers.debugLog(
+              'Parsed response in _waitForNotification: ${cmdResponse.toJson()}',
+            );
+            completer.complete(cmdResponse);
+          } catch (e) {
+            errorMessage.value = 'Invalid response JSON: $e';
+            AppHelpers.debugLog(
+              'JSON parsing error in _waitForNotification: $e',
+            );
+            completer.complete(
+              CommandResponse(
+                status: 'error',
+                message: 'Invalid response JSON: $e',
+              ),
+            );
+          }
+          buffer.clear();
+        }
+      },
+      onError: (e) {
+        errorMessage.value = 'Notification error: $e';
+        AppHelpers.debugLog('Notification error in _waitForNotification: $e');
+        completer.complete(
+          CommandResponse(status: 'error', message: 'Notification error: $e'),
+        );
+      },
+    );
+
+    // Timeout after 10 seconds
+    Future.delayed(Duration(seconds: 10), () {
+      if (!completer.isCompleted) {
+        errorMessage.value = 'Response timeout';
+        AppHelpers.debugLog('Response timeout in _waitForNotification');
+        completer.complete(
+          CommandResponse(status: 'error', message: 'Response timeout'),
+        );
+        responseSubscription?.cancel();
+      }
+    });
+
+    return completer.future;
+  }
+
+  // Function to get responses by type
+  List<CommandResponse> getResponsesByType(String type) {
+    return gatewayDeviceResponses.where((resp) => resp.type == type).toList();
   }
 
   @override
   void onClose() {
     _deviceCache.clear();
     adapterStateSubscription?.cancel();
+    gatewayDeviceResponses.clear();
     clearCommandCache();
-
-    for (var model in scannedDevices) {
-      disconnectFromDevice(model);
-    }
+    responseSubscription?.cancel();
     super.onClose();
   }
 }
