@@ -79,12 +79,14 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           endDrawer: const SideBarMenu(),
-          floatingActionButton:
-              controller.errorMessage.value.contains(
+          floatingActionButton: Obx(() {
+            return Visibility(
+              visible: !controller.errorMessage.value.contains(
                 'Bluetooth has been turned off',
-              )
-              ? null
-              : _floatingButtonCustom(context),
+              ),
+              child: _floatingButtonCustom(context),
+            );
+          }),
         ),
         Obx(() {
           return LoadingOverlay(
