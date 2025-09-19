@@ -4,6 +4,7 @@ import 'package:gateway_config/core/constants/app_gap.dart';
 import 'package:gateway_config/core/constants/app_image_assets.dart';
 import 'package:gateway_config/core/controllers/ble_controller.dart';
 import 'package:gateway_config/core/controllers/devices/device_pagination_controller.dart';
+import 'package:gateway_config/core/utils/app_helpers.dart';
 import 'package:gateway_config/core/utils/extensions.dart';
 import 'package:gateway_config/core/utils/loading_progress.dart';
 import 'package:gateway_config/core/utils/snackbar_custom.dart';
@@ -81,9 +82,7 @@ class _DeviceCommunicationsScreenState
         type: 'devices_summary',
       );
 
-      if (response.status == 'success') {
-        dataDevice = response.config as Map<String, dynamic>? ?? {};
-      } else {
+      if (response.status == 'error') {
         SnackbarCustom.showSnackbar(
           '',
           response.message ?? 'Failed to fetch devices',
@@ -91,11 +90,13 @@ class _DeviceCommunicationsScreenState
           AppColor.whiteColor,
         );
       }
+      AppHelpers.debugLog('Devices Summary: ${response.toJson()}');
     } catch (e) {
-      debugPrint('Error fetching devices: $e');
+      AppHelpers.debugLog('Error fetching devices: $e');
+
       SnackbarCustom.showSnackbar(
         'Error',
-        'Failed to fetch devices: $e',
+        'Failed to fetch devices',
         AppColor.redColor,
         AppColor.whiteColor,
       );
@@ -243,7 +244,7 @@ class _DeviceCommunicationsScreenState
         AppSpacing.md,
         Obx(() {
           if (bleController.gatewayDeviceResponses.isNotEmpty &&
-              !bleController.isLoading.value) {
+              !bleController.commandLoading.value) {
             return Center(
               child: Text(
                 'Showing ${controller.totalRecords.value} entries',
