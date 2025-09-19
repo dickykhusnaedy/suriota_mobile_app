@@ -10,8 +10,8 @@ CommandResponse _$CommandResponseFromJson(Map<String, dynamic> json) =>
     CommandResponse(
       status: json['status'] as String,
       message: json['message'] as String?,
-      type: json['type'] as String?,
-      config: json['config'],
+      type: json['type'] as String? ?? 'unknown',
+      config: json['config'] ?? [],
     );
 
 Map<String, dynamic> _$CommandResponseToJson(CommandResponse instance) =>

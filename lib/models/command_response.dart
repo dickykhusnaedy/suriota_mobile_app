@@ -6,10 +6,17 @@ part 'command_response.g.dart';
 class CommandResponse {
   final String status;
   final String? message;
-  final String? type;
+  @JsonKey(defaultValue: 'unknown')
+  final String type;
+  @JsonKey(defaultValue: [])
   final dynamic config;
 
-  CommandResponse({required this.status, this.message, this.type, this.config});
+  CommandResponse({
+    required this.status,
+    this.message,
+    required this.type,
+    this.config,
+  });
 
   factory CommandResponse.fromJson(Map<String, dynamic> json) =>
       _$CommandResponseFromJson(json);
