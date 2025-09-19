@@ -174,7 +174,7 @@ class BleController extends GetxController {
         (c) => c.uuid == responseUUID,
       );
 
-      // ADDED: Log characteristic properties
+      // Log characteristic properties
       AppHelpers.debugLog(
         'Command characteristic properties: write=${commandChar?.properties.write}, writeWithoutResponse=${commandChar?.properties.writeWithoutResponse}',
       );
@@ -286,7 +286,11 @@ class BleController extends GetxController {
   Future<CommandResponse> sendCommand(Map<String, dynamic> command) async {
     if (commandChar == null || responseChar == null) {
       errorMessage.value = 'Not connected';
-      return CommandResponse(status: 'error', message: 'Not connected');
+      return CommandResponse(
+        status: 'error',
+        message: 'Not connected',
+        type: command['type'] ?? 'device',
+      );
     }
 
     // Validate command
@@ -297,6 +301,7 @@ class BleController extends GetxController {
       return CommandResponse(
         status: 'error',
         message: 'Invalid command format',
+        type: command['type'] ?? 'device',
       );
     }
 
@@ -304,52 +309,167 @@ class BleController extends GetxController {
     commandProgress.value = 0.0;
     lastCommand.value = command; // Cache last command
     String jsonStr = jsonEncode(command);
+    AppHelpers.debugLog('Full command JSON: $jsonStr');
 
     const chunkSize = 18;
     int totalChunks = (jsonStr.length / chunkSize).ceil() + 1; // +1 for <END>
     int currentChunk = 0;
 
     try {
-      // Ensure subscription is active before sending command
+      // Cancel sub lama jika ada
+      responseSubscription?.cancel();
+
+      // Setup buffer dan completer UNTUK RESPONSE (sebelum kirim command)
+      final responseCompleter = Completer<CommandResponse?>();
+      StringBuffer responseBuffer = StringBuffer();
+
+      // Set subscription SEKALI, sebelum kirim, dan collect di sini
+      AppHelpers.debugLog(
+        'Starting response subscription before sending command',
+      );
+      responseSubscription = responseChar!.lastValueStream.listen(
+        (data) {
+          final chunk = utf8.decode(data, allowMalformed: true);
+          AppHelpers.debugLog('Notify chunk received: $chunk');
+          responseBuffer.write(chunk);
+
+          if (chunk.contains('<END>')) {
+            // Deteksi <END> di chunk apapun
+            AppHelpers.debugLog(
+              'Buffer before parsing: ${responseBuffer.toString()}',
+            );
+            try {
+              // Clean buffer: hapus <END> dan control chars
+              final cleanedBuffer = responseBuffer
+                  .toString()
+                  .replaceAll('<END>', '')
+                  .replaceAll(RegExp(r'[\x00-\x1F\x7F]'), '')
+                  .trim();
+
+              if (cleanedBuffer.isEmpty) {
+                throw Exception('Empty buffer');
+              }
+              if (!cleanedBuffer.startsWith('{') &&
+                  !cleanedBuffer.startsWith('[')) {
+                throw Exception('Malformed JSON structure');
+              }
+              if (!cleanedBuffer.endsWith('}') &&
+                  !cleanedBuffer.endsWith(']')) {
+                throw Exception('Incomplete JSON structure');
+              }
+
+              final responseJson =
+                  jsonDecode(cleanedBuffer) as Map<String, dynamic>;
+              final cmdResponse = CommandResponse.fromJson(responseJson);
+
+              // Cache dengan ID (ex. from lastCommand)
+              if (lastCommand.isNotEmpty) {
+                final commandId =
+                    '${lastCommand['op']}_${lastCommand['type'] ?? 'general'}_${DateTime.now().toIso8601String().split('T')[0]}';
+                _cacheResponse(commandId, cmdResponse);
+              }
+
+              AppHelpers.debugLog('Parsed response: ${cmdResponse.toJson()}');
+              responseCompleter.complete(cmdResponse);
+            } catch (e) {
+              errorMessage.value = 'Invalid response JSON: $e';
+              AppHelpers.debugLog('JSON parsing error: $e');
+              responseCompleter.complete(
+                CommandResponse(
+                  status: 'error',
+                  message: 'Invalid response JSON: $e',
+                  type: command['type'] ?? 'device',
+                ),
+              );
+            }
+            responseBuffer.clear();
+          }
+        },
+        onError: (e) {
+          errorMessage.value = 'Notification error: $e';
+          AppHelpers.debugLog('Notification error: $e');
+          responseCompleter.complete(
+            CommandResponse(
+              status: 'error',
+              message: 'Notification error: $e',
+              type: command['type'] ?? 'device',
+            ),
+          );
+        },
+      );
+
+      // Enable notify jika belum
       await responseChar!.setNotifyValue(true);
       await Future.delayed(
-        const Duration(milliseconds: 100),
-      ); // Wait for subscription
+        const Duration(milliseconds: 300),
+      ); // Tingkatkan delay ke 300ms untuk safety
 
-      // CHANGED: Check if writeWithoutResponse is supported
+      // Check if writeWithoutResponse is supported
       final bool useWriteWithResponse =
           !(commandChar?.properties.writeWithoutResponse ?? false);
       AppHelpers.debugLog('Using write with response: $useWriteWithResponse');
 
       // Send command in chunks
+      StringBuffer sentCommand = StringBuffer(); // Track sent command
       for (int i = 0; i < jsonStr.length; i += chunkSize) {
         String chunk = jsonStr.substring(
           i,
           (i + chunkSize > jsonStr.length) ? jsonStr.length : i + chunkSize,
         );
+        sentCommand.write(chunk); // Build sent command
         await commandChar!.write(
           utf8.encode(chunk),
           withoutResponse: !useWriteWithResponse,
         );
-        AppHelpers.debugLog('Sent chunk: $chunk'); // ADDED: Log sent chunk
+        AppHelpers.debugLog('Sent chunk: $chunk');
         currentChunk++;
         commandProgress.value = currentChunk / totalChunks; // Update progress
         await Future.delayed(
           const Duration(milliseconds: 50),
         ); // Optimized delay
       }
+      // Validate sent command
+      AppHelpers.debugLog('Full sent command: ${sentCommand.toString()}');
+      try {
+        jsonDecode(sentCommand.toString());
+        AppHelpers.debugLog('Sent command is valid JSON');
+      } catch (e) {
+        AppHelpers.debugLog('Sent command is not valid JSON: $e');
+      }
+
+      // Add delay before sending <END>
+      await Future.delayed(const Duration(milliseconds: 100));
       await commandChar!.write(
         utf8.encode('<END>'),
         withoutResponse: !useWriteWithResponse,
       );
-      AppHelpers.debugLog('Sent chunk: <END>'); // ADDED: Log sent chunk
+      AppHelpers.debugLog('Sent chunk: <END>');
       currentChunk++;
       commandProgress.value = 1.0;
 
-      // Wait for response via notification
-      final response = await _waitForNotification();
+      // Tunggu response via completer (timeout 15s)
+      final response = await responseCompleter.future.timeout(
+        const Duration(seconds: 15),
+        onTimeout: () {
+          AppHelpers.debugLog('Response timeout');
+          return CommandResponse(
+            status: 'error',
+            message: 'Response timeout',
+            type: command['type'] ?? 'device',
+          );
+        },
+      );
+
       if (response == null) {
         throw Exception('No response received');
+      }
+
+      // Warn if devices_summary is empty
+      if (response.status == 'ok' &&
+          response.config is List &&
+          (response.config as List).isEmpty) {
+        errorMessage.value = 'Warning: No devices found in response';
+        AppHelpers.debugLog('Empty devices_summary in response');
       }
 
       // Save response if success
@@ -385,7 +505,11 @@ class BleController extends GetxController {
         Colors.red,
         AppColor.whiteColor,
       );
-      return CommandResponse(status: 'error', message: errorMessage.value);
+      return CommandResponse(
+        status: 'error',
+        message: errorMessage.value,
+        type: command['type'] ?? 'device',
+      );
     } finally {
       commandLoading.value = false;
     }
@@ -398,15 +522,16 @@ class BleController extends GetxController {
   }) async {
     if (commandChar == null || responseChar == null) {
       errorMessage.value = 'Not connected';
-      return CommandResponse(status: 'error', message: 'Not connected');
+      return CommandResponse(
+        status: 'error',
+        message: 'Not connected',
+        type: type,
+      );
     }
 
-    // Set command data
-    final readCommand = {
-      'op': 'read',
-      'type': type, // Dynamic: 'device', 'modbus', 'server', 'logging'
-    };
+    final readCommand = {'op': 'read', 'type': type};
     String jsonStr = jsonEncode(readCommand);
+    AppHelpers.debugLog('Full read command JSON: $jsonStr');
 
     const chunkSize = 18;
     int totalChunks = (jsonStr.length / chunkSize).ceil() + 1;
@@ -416,190 +541,189 @@ class BleController extends GetxController {
     commandProgress.value = 0.0;
 
     try {
-      // Ensure subscription is active before sending command
-      await responseChar!.setNotifyValue(true);
-      await Future.delayed(
-        const Duration(milliseconds: 100),
-      ); // Wait for subscription
+      responseSubscription?.cancel();
+      final responseCompleter = Completer<CommandResponse?>();
+      StringBuffer responseBuffer = StringBuffer();
 
-      // CHANGED: Check if writeWithoutResponse is supported
+      AppHelpers.debugLog(
+        'Starting new response subscription before sending read command',
+      );
+      responseSubscription = responseChar!.lastValueStream.listen(
+        (data) {
+          final chunk = utf8.decode(data, allowMalformed: true);
+          AppHelpers.debugLog('Notify chunk received: $chunk');
+          responseBuffer.write(chunk);
+
+          if (chunk.contains('<END>')) {
+            AppHelpers.debugLog(
+              'Buffer before parsing: ${responseBuffer.toString()}',
+            );
+            try {
+              final cleanedBuffer = responseBuffer
+                  .toString()
+                  .replaceAll('<END>', '')
+                  .replaceAll(RegExp(r'[\x00-\x1F\x7F]'), '')
+                  .trim();
+
+              AppHelpers.debugLog('Raw cleaned buffer: $cleanedBuffer');
+
+              if (cleanedBuffer.isEmpty) {
+                throw Exception('Empty buffer');
+              }
+              if (!cleanedBuffer.startsWith('{') &&
+                  !cleanedBuffer.startsWith('[')) {
+                throw Exception('Malformed JSON structure');
+              }
+              if (!cleanedBuffer.endsWith('}') &&
+                  !cleanedBuffer.endsWith(']')) {
+                throw Exception('Incomplete JSON structure');
+              }
+
+              final responseJson =
+                  jsonDecode(cleanedBuffer) as Map<String, dynamic>;
+
+              // Validasi dan mapping manual untuk config
+              if (!responseJson.containsKey('status')) {
+                throw Exception('Missing status field in response');
+              }
+
+              // Map field lain ke config jika config tidak ada
+              responseJson['config'] =
+                  responseJson['config'] ?? responseJson[type] ?? [];
+              responseJson['message'] = "Get data successfully";
+              responseJson['type'] = responseJson['type'] ?? type;
+
+              final cmdResponse = CommandResponse.fromJson(responseJson);
+
+              AppHelpers.debugLog(
+                'Parsed response status: ${cmdResponse.status}, full: ${cmdResponse.toJson()}',
+              );
+
+              // Cache jika perlu
+              if (lastCommand.isNotEmpty) {
+                final commandId =
+                    '${lastCommand['op']}_${lastCommand['type'] ?? 'general'}_${DateTime.now().toIso8601String().split('T')[0]}';
+                _cacheResponse(commandId, cmdResponse);
+              }
+
+              responseCompleter.complete(cmdResponse);
+            } catch (e) {
+              errorMessage.value = 'Invalid response JSON: $e';
+              AppHelpers.debugLog('JSON parsing error: $e');
+              responseCompleter.complete(
+                CommandResponse(
+                  status: 'error',
+                  message: 'Invalid response JSON: $e',
+                  type: type,
+                  config: [],
+                ),
+              );
+            }
+            responseBuffer.clear();
+          }
+        },
+        onError: (e) {
+          AppHelpers.debugLog('Notification error: $e');
+          responseCompleter.complete(
+            CommandResponse(
+              status: 'error',
+              message: 'Notification error: $e',
+              type: type,
+              config: [],
+            ),
+          );
+        },
+      );
+
+      await responseChar!.setNotifyValue(true);
+      await Future.delayed(const Duration(milliseconds: 300));
+
       final bool useWriteWithResponse =
           !(commandChar?.properties.writeWithoutResponse ?? false);
       AppHelpers.debugLog('Using write with response: $useWriteWithResponse');
 
-      // Send read command in chunks
+      StringBuffer sentCommand = StringBuffer();
       for (int i = 0; i < jsonStr.length; i += chunkSize) {
         String chunk = jsonStr.substring(
           i,
           (i + chunkSize > jsonStr.length) ? jsonStr.length : i + chunkSize,
         );
+        sentCommand.write(chunk);
         await commandChar!.write(
           utf8.encode(chunk),
           withoutResponse: !useWriteWithResponse,
         );
-        AppHelpers.debugLog('Sent chunk: $chunk'); // ADDED: Log sent chunk
+        AppHelpers.debugLog('Sent chunk: $chunk');
         currentChunk++;
         commandProgress.value = currentChunk / totalChunks;
-        await Future.delayed(
-          const Duration(milliseconds: 50),
-        ); // Optimized delay
+        await Future.delayed(const Duration(milliseconds: 50));
       }
+
+      AppHelpers.debugLog('Full sent read command: ${sentCommand.toString()}');
+      try {
+        jsonDecode(sentCommand.toString());
+        AppHelpers.debugLog('Sent read command is valid JSON');
+      } catch (e) {
+        AppHelpers.debugLog('Sent read command is not valid JSON: $e');
+      }
+
+      await Future.delayed(const Duration(milliseconds: 100));
       await commandChar!.write(
         utf8.encode('<END>'),
         withoutResponse: !useWriteWithResponse,
       );
-      AppHelpers.debugLog('Sent chunk: <END>'); // ADDED: Log sent chunk
+      AppHelpers.debugLog('Sent chunk: <END>');
       currentChunk++;
       commandProgress.value = 1.0;
 
-      // Wait for response via notification
-      final response = await _waitForNotification();
+      final response = await responseCompleter.future.timeout(
+        const Duration(seconds: 15),
+        onTimeout: () {
+          AppHelpers.debugLog('Response timeout');
+          return CommandResponse(
+            status: 'error',
+            message: 'Response timeout',
+            type: type,
+            config: [],
+          );
+        },
+      );
+
       if (response == null) {
         throw Exception('No response received');
       }
 
-      // Save response if success
-      if (response.status == 'success' || response.status == 'ok') {
-        gatewayDeviceResponses.add(response);
-        AppHelpers.debugLog(
-          'Saved read response for type "$type" in Gateway ${gatewayModel.device.remoteId}: ${response.toJson()}',
-        );
-      } else {
-        errorMessage.value = response.message ?? 'Failed to read data';
+      if (response.status == 'ok' &&
+          response.config is List &&
+          (response.config as List).isEmpty) {
+        errorMessage.value = 'Warning: No devices found in response';
+        AppHelpers.debugLog('Empty devices_summary in response');
       }
+
+      // Simpan response bahkan jika status bukan ok/success untuk debugging
+      gatewayDeviceResponses.add(response);
+      AppHelpers.debugLog(
+        'Saved read response for type "$type" in Gateway ${gatewayModel.device.remoteId}: ${response.toJson()}',
+      );
+
+      AppHelpers.debugLog(
+        'gatewayDeviceResponses: ${gatewayDeviceResponses.map((r) => r.toJson()).toList()}',
+      );
 
       return response;
     } catch (e) {
       errorMessage.value = 'Error reading command: $e';
       AppHelpers.debugLog('Error reading command for type "$type": $e');
-      return CommandResponse(status: 'error', message: errorMessage.value);
+      return CommandResponse(
+        status: 'error',
+        message: errorMessage.value,
+        type: type,
+        config: [],
+      );
     } finally {
       commandLoading.value = false;
       commandProgress.value = 0.0;
     }
-  }
-
-  // Helper to wait for notification response
-  Future<CommandResponse?> _waitForNotification() async {
-    final completer = Completer<CommandResponse?>();
-    StringBuffer buffer = StringBuffer();
-
-    // Cancel previous subscription to avoid conflicts
-    responseSubscription?.cancel();
-
-    // Log subscription status
-    AppHelpers.debugLog(
-      'Starting new response subscription in _waitForNotification',
-    );
-
-    // Subscribe to notification
-    responseSubscription = responseChar!.lastValueStream.listen(
-      (data) {
-        final chunk = utf8.decode(
-          data,
-          allowMalformed: true,
-        ); // Allow malformed UTF-8
-        AppHelpers.debugLog(
-          'Notify chunk received in _waitForNotification: $chunk',
-        );
-        buffer.write(chunk); // Append all chunks, including <END>
-        if (chunk == '<END>') {
-          AppHelpers.debugLog(
-            'Buffer before parsing in _waitForNotification: ${buffer.toString()}',
-          );
-          try {
-            // Remove <END> from buffer
-            final cleanedBuffer = buffer
-                .toString()
-                .replaceAll('<END>', '')
-                .replaceAll(RegExp(r'[\x00-\x1F\x7F]'), '');
-            // Validate JSON before parsing
-            if (cleanedBuffer.isEmpty) {
-              errorMessage.value = 'Invalid response JSON: Empty buffer';
-              AppHelpers.debugLog('Empty buffer in _waitForNotification');
-              completer.complete(
-                CommandResponse(status: 'error', message: 'Empty buffer'),
-              );
-              return;
-            }
-            // Validate JSON structure
-            if (!cleanedBuffer.startsWith('{') &&
-                !cleanedBuffer.startsWith('[')) {
-              errorMessage.value = 'Invalid response JSON: Malformed structure';
-              AppHelpers.debugLog('Malformed JSON structure: $cleanedBuffer');
-              completer.complete(
-                CommandResponse(
-                  status: 'error',
-                  message: 'Malformed JSON structure',
-                ),
-              );
-              return;
-            }
-            // Validate JSON end
-            if (!cleanedBuffer.endsWith('}') && !cleanedBuffer.endsWith(']')) {
-              errorMessage.value =
-                  'Invalid response JSON: Incomplete structure';
-              AppHelpers.debugLog('Incomplete JSON structure: $cleanedBuffer');
-              completer.complete(
-                CommandResponse(
-                  status: 'error',
-                  message: 'Incomplete JSON structure',
-                ),
-              );
-              return;
-            }
-            final responseJson =
-                jsonDecode(cleanedBuffer) as Map<String, dynamic>;
-            final cmdResponse = CommandResponse.fromJson(responseJson);
-
-            // Cache with ID (ex. from lastCommand)
-            if (lastCommand.isNotEmpty) {
-              final commandId =
-                  '${lastCommand['op']}_${lastCommand['type'] ?? 'general'}_${DateTime.now().toIso8601String().split('T')[0]}';
-              _cacheResponse(commandId, cmdResponse);
-            }
-
-            AppHelpers.debugLog(
-              'Parsed response in _waitForNotification: ${cmdResponse.toJson()}',
-            );
-            completer.complete(cmdResponse);
-          } catch (e) {
-            errorMessage.value = 'Invalid response JSON: $e';
-            AppHelpers.debugLog(
-              'JSON parsing error in _waitForNotification: $e',
-            );
-            completer.complete(
-              CommandResponse(
-                status: 'error',
-                message: 'Invalid response JSON: $e',
-              ),
-            );
-          }
-          buffer.clear();
-        }
-      },
-      onError: (e) {
-        errorMessage.value = 'Notification error: $e';
-        AppHelpers.debugLog('Notification error in _waitForNotification: $e');
-        completer.complete(
-          CommandResponse(status: 'error', message: 'Notification error: $e'),
-        );
-      },
-    );
-
-    // Timeout after 10 seconds
-    Future.delayed(Duration(seconds: 10), () {
-      if (!completer.isCompleted) {
-        errorMessage.value = 'Response timeout';
-        AppHelpers.debugLog('Response timeout in _waitForNotification');
-        completer.complete(
-          CommandResponse(status: 'error', message: 'Response timeout'),
-        );
-        responseSubscription?.cancel();
-      }
-    });
-
-    return completer.future;
   }
 
   // Function to get responses by type
@@ -614,6 +738,7 @@ class BleController extends GetxController {
     gatewayDeviceResponses.clear();
     clearCommandCache();
     responseSubscription?.cancel();
+
     super.onClose();
   }
 }
