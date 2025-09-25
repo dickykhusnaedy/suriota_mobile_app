@@ -3,8 +3,7 @@ import 'package:gateway_config/core/constants/app_color.dart';
 import 'package:gateway_config/core/constants/app_gap.dart';
 import 'package:gateway_config/core/constants/app_image_assets.dart';
 import 'package:gateway_config/core/controllers/ble_controller.dart';
-import 'package:gateway_config/core/controllers/devices/device_pagination_controller.dart';
-import 'package:gateway_config/core/utils/app_helpers.dart';
+import 'package:gateway_config/core/controllers/devices_controller.dart';
 import 'package:gateway_config/core/utils/extensions.dart';
 import 'package:gateway_config/core/utils/loading_progress.dart';
 import 'package:gateway_config/core/utils/snackbar_custom.dart';
@@ -27,7 +26,7 @@ class DeviceCommunicationsScreen extends StatefulWidget {
 class _DeviceCommunicationsScreenState
     extends State<DeviceCommunicationsScreen> {
   final BleController bleController;
-  final DevicePaginationController controller;
+  final DevicesController controller;
 
   Map<String, dynamic>? dataDevice = {};
 
@@ -36,7 +35,7 @@ class _DeviceCommunicationsScreenState
 
   _DeviceCommunicationsScreenState()
     : bleController = Get.put(BleController(), permanent: true),
-      controller = Get.put(DevicePaginationController(), permanent: true) {
+      controller = Get.put(DevicesController(), permanent: true) {
     debugPrint(
       'Initialized BLEController and DevicePaginationController with Get.put',
     );
@@ -52,7 +51,7 @@ class _DeviceCommunicationsScreenState
     super.didChangeDependencies();
     if (!isInitialized) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _fetchDevices();
+        controller.fetchDevices(widget.model);
         isInitialized = true;
       });
     }
@@ -64,46 +63,7 @@ class _DeviceCommunicationsScreenState
     super.dispose();
   }
 
-  void _fetchDevices() async {
-    try {
-      // Periksa koneksi BLE
-      if (!widget.model.isConnected.value) {
-        SnackbarCustom.showSnackbar(
-          '',
-          'Device not connected',
-          AppColor.redColor,
-          AppColor.whiteColor,
-        );
-        return;
-      }
-
-      final response = await bleController.readCommandResponse(
-        widget.model,
-        type: 'devices_summary',
-      );
-
-      if (response.status == 'error') {
-        SnackbarCustom.showSnackbar(
-          '',
-          response.message ?? 'Failed to fetch devices',
-          AppColor.redColor,
-          AppColor.whiteColor,
-        );
-      }
-      AppHelpers.debugLog('Devices Summary: ${response.toJson()}');
-    } catch (e) {
-      AppHelpers.debugLog('Error fetching devices: $e');
-
-      SnackbarCustom.showSnackbar(
-        'Error',
-        'Failed to fetch devices',
-        AppColor.redColor,
-        AppColor.whiteColor,
-      );
-    }
-  }
-
-  void _deleteDevice(int deviceId) async {
+  void _deleteDevice(String deviceId) async {
     if (!widget.model.isConnected.value) {
       SnackbarCustom.showSnackbar(
         '',
@@ -170,7 +130,7 @@ class _DeviceCommunicationsScreenState
         IconButton(
           onPressed: () {
             context.push(
-              '/devices/device-communication/add?id=${widget.model.device.remoteId}',
+              '/devices/device-communication/add?d=${widget.model.device.remoteId}',
             );
           },
           icon: const Icon(Icons.add_circle, size: 22),
@@ -193,7 +153,9 @@ class _DeviceCommunicationsScreenState
               overflow: TextOverflow.ellipsis,
             ),
             TextButton.icon(
-              onPressed: _fetchDevices,
+              onPressed: () async {
+                await controller.fetchDevices(widget.model);
+              },
               label: const Icon(Icons.rotate_left, size: 20),
               style: TextButton.styleFrom(
                 iconColor: AppColor.primaryColor,
@@ -206,24 +168,23 @@ class _DeviceCommunicationsScreenState
         ),
         AppSpacing.sm,
         Obx(() {
-          if (bleController.commandLoading.value) {
+          if (controller.isFetching.value) {
             return LoadingProgress();
           }
 
-          if (bleController.gatewayDeviceResponses.isEmpty) {
+          if (controller.dataDevices.isEmpty) {
             return _emptyView(context);
           }
 
           return ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            itemCount: controller.devices.length,
+            itemCount: controller.dataDevices.length,
             separatorBuilder: (context, index) => AppSpacing.sm,
             itemBuilder: (context, index) {
-              final item = controller.devices[index];
-              final deviceId = item['id'] as int? ?? 0;
-              final name = item['name'] as String? ?? 'Unknown';
-              final modbusType = item['modbus_type'] as String? ?? 'Unknown';
+              final device = controller.dataDevices[index];
+              final name = device['device_name'] as String? ?? 'Unknown';
+              final modbusType = device['protocol'] as String? ?? 'Unknown';
 
               return InkWell(
                 onTap: () {
@@ -233,9 +194,9 @@ class _DeviceCommunicationsScreenState
                 },
                 child: _cardDeviceConnection(
                   context,
-                  deviceId,
-                  name,
-                  modbusType,
+                  device['device_id'] ?? 'No ID',
+                  device['device_name'] ?? 'Unknown Device',
+                  device['protocol'] ?? 'Unknown',
                 ),
               );
             },
@@ -243,11 +204,11 @@ class _DeviceCommunicationsScreenState
         }),
         AppSpacing.md,
         Obx(() {
-          if (bleController.gatewayDeviceResponses.isNotEmpty &&
-              !bleController.commandLoading.value) {
+          if (controller.dataDevices.isNotEmpty &&
+              !controller.isFetching.value) {
             return Center(
               child: Text(
-                'Showing ${controller.totalRecords.value} entries',
+                'Showing ${controller.dataDevices.length} entries',
                 style: context.bodySmall,
               ),
             );
@@ -268,7 +229,7 @@ class _DeviceCommunicationsScreenState
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'You don`t have any devices yet.',
+              'You don`t have any devices yet.\n Please add a new device.',
               textAlign: TextAlign.center,
               style: context.body.copyWith(color: AppColor.grey),
             ),
@@ -280,7 +241,7 @@ class _DeviceCommunicationsScreenState
 
   Card _cardDeviceConnection(
     BuildContext context,
-    int deviceId,
+    String deviceId,
     String title,
     String modbusType,
   ) {
@@ -334,7 +295,9 @@ class _DeviceCommunicationsScreenState
               width: 50,
               height: 32,
               onPressed: () {
-                // Get.to(() => FormSetupDeviceScreen(id: deviceId));
+                context.push(
+                  '/devices/device-communication/edit?d=${widget.model.device.remoteId}&edit=$deviceId',
+                );
               },
               icons: const Icon(Icons.edit, color: AppColor.whiteColor),
               btnColor: AppColor.primaryColor,
