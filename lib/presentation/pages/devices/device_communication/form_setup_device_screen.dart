@@ -19,9 +19,13 @@ import 'package:get/get.dart';
 
 class FormSetupDeviceScreen extends StatefulWidget {
   final DeviceModel model;
-  final int? id;
+  final Map<String, dynamic>? deviceData;
 
-  const FormSetupDeviceScreen({super.key, required this.model, this.id});
+  const FormSetupDeviceScreen({
+    super.key,
+    required this.model,
+    this.deviceData,
+  });
 
   @override
   State<FormSetupDeviceScreen> createState() => _FormSetupDeviceScreenState();
@@ -121,8 +125,7 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
 
     CustomAlertDialog.show(
       title: "Are you sure?",
-      message:
-          "Are you sure you want to ${widget.id != null ? 'update' : 'save'} this device?",
+      message: "Are you sure you want to save} this device?",
       primaryButtonText: 'Yes',
       secondaryButtonText: 'No',
       onPrimaryPressed: () async {
@@ -256,7 +259,7 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
                   }
                   return null;
                 },
-                readOnly: widget.id != null,
+                readOnly: false,
                 isRequired: true,
               ),
               AppSpacing.md,
@@ -271,7 +274,7 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
                   }
                   return null;
                 },
-                readOnly: widget.id != null,
+                readOnly: false,
                 isRequired: true,
               ),
               AppSpacing.md,
@@ -390,7 +393,7 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
               Button(
                 width: MediaQuery.of(context).size.width,
                 onPressed: _submit,
-                text: widget.id != null ? 'Update' : 'Save',
+                text: 'Save',
                 height: 50,
               ),
               AppSpacing.lg,
