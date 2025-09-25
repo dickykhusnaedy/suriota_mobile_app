@@ -162,12 +162,12 @@ class _ModbusScreenState extends State<ModbusScreen> {
               ),
               AppSpacing.sm,
               Obx(() {
-                if (isLoading || bleController.isLoading.value) {
-                  return LoadingProgress(
-                    receivedPackets: bleController.receivedPackets,
-                    expectedPackets: bleController.expectedPackets,
-                  );
-                }
+                // if (isLoading || bleController.isLoading.value) {
+                //   return LoadingProgress(
+                //     receivedPackets: bleController.receivedPackets,
+                //     expectedPackets: bleController.expectedPackets,
+                //   );
+                // }
 
                 if (controller.modbus.isEmpty) {
                   return _emptyView(context);
