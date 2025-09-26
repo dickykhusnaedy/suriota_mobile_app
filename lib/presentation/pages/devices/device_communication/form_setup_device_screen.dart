@@ -90,7 +90,7 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
       modBusSelected = device['protocol'] ?? 'RTU';
 
       if (device['protocol'] == 'TCP') {
-        ipAddressController.text = device['ip_address'] ?? '';
+        ipAddressController.text = device['ip'] ?? '';
         serverPortController.text = device['port']?.toString() ?? '';
       } else {
         final serialPort = device['serial_port']?.toString();
@@ -256,7 +256,9 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
       children: [
         Scaffold(appBar: _appBar(context), body: _body(context)),
         Obx(() {
-          final isAnyDeviceLoading = devicesController.isFetching.value;
+          final isAnyDeviceLoading =
+              controller.commandLoading.value ||
+              devicesController.isFetching.value;
           return LoadingOverlay(
             isLoading: isAnyDeviceLoading,
             message: 'Processing request...',
