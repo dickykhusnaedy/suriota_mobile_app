@@ -519,6 +519,7 @@ class BleController extends GetxController {
   Future<CommandResponse> readCommandResponse(
     DeviceModel gatewayModel, {
     required String type,
+    Map<String, dynamic>? additionalParams,
   }) async {
     if (commandChar == null || responseChar == null) {
       errorMessage.value = 'Not connected';
@@ -529,7 +530,7 @@ class BleController extends GetxController {
       );
     }
 
-    final readCommand = {'op': 'read', 'type': type};
+    final readCommand = {'op': 'read', 'type': type, ...?additionalParams};
     String jsonStr = jsonEncode(readCommand);
     AppHelpers.debugLog('Full read command JSON: $jsonStr');
 
@@ -589,7 +590,10 @@ class BleController extends GetxController {
 
               // Map field lain ke config jika config tidak ada
               responseJson['config'] =
-                  responseJson['config'] ?? responseJson[type] ?? [];
+                  responseJson['config'] ??
+                  responseJson[type] ??
+                  responseJson['data'] ??
+                  {};
               responseJson['message'] = "Get data successfully";
               responseJson['type'] = responseJson['type'] ?? type;
 
@@ -718,7 +722,7 @@ class BleController extends GetxController {
         status: 'error',
         message: errorMessage.value,
         type: type,
-        config: [],
+        config: {},
       );
     } finally {
       commandLoading.value = false;
