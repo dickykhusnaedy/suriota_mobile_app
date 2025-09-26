@@ -294,9 +294,7 @@ class BleController extends GetxController {
     }
 
     // Validate command
-    if (!command.containsKey('op') ||
-        !command.containsKey('type') ||
-        !command.containsKey('config')) {
+    if (!command.containsKey('op') || !command.containsKey('type')) {
       errorMessage.value = 'Invalid command format';
       return CommandResponse(
         status: 'error',
@@ -483,16 +481,22 @@ class BleController extends GetxController {
       }
 
       // Show feedback
-      SnackbarCustom.showSnackbar(
-        '',
-        response.status == 'success' || response.status == 'ok'
-            ? 'Success save data'
-            : errorMessage.value,
-        response.status == 'success' || response.status == 'ok'
-            ? Colors.green
-            : Colors.red,
-        AppColor.whiteColor,
-      );
+      if (command['op'] != 'delete') {
+        SnackbarCustom.showSnackbar(
+          '',
+          response.status == 'success' || response.status == 'ok'
+              ? command['op'] == 'create'
+                    ? 'Data saved successfully'
+                    : command['op'] == 'update'
+                    ? 'Data updated successfully'
+                    : 'Data fetched successfully'
+              : errorMessage.value,
+          response.status == 'success' || response.status == 'ok'
+              ? Colors.green
+              : Colors.red,
+          AppColor.whiteColor,
+        );
+      }
 
       return response;
     } catch (e) {
