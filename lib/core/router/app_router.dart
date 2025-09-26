@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:gateway_config/core/constants/app_color.dart';
 import 'package:gateway_config/core/controllers/ble_controller.dart';
-import 'package:gateway_config/core/controllers/devices_controller.dart';
 import 'package:gateway_config/core/utils/extensions.dart';
 import 'package:gateway_config/presentation/pages/devices/add_device_screen.dart';
 import 'package:gateway_config/presentation/pages/devices/detail_device_info_screen.dart';
@@ -127,7 +126,6 @@ class AppRouter {
                 name: 'device-communication-edit',
                 builder: (context, state) {
                   final bleController = Get.find<BleController>();
-                  final device = Get.find<DevicesController>();
 
                   final deviceId = state.uri.queryParameters['d'];
                   final getId = state.uri.queryParameters['edit'];
@@ -137,14 +135,8 @@ class AppRouter {
                   }
 
                   final model = bleController.findDeviceByRemoteId(deviceId);
-                  final deviceData = device.getDeviceById(getId);
 
-                  return model != null
-                      ? FormSetupDeviceScreen(
-                          model: model,
-                          deviceData: deviceData,
-                        )
-                      : _deviceNotFound(context);
+                  return FormSetupDeviceScreen(model: model!, deviceId: getId);
                 },
               ),
             ],
