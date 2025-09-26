@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:gateway_config/core/constants/app_color.dart';
 import 'package:gateway_config/core/constants/app_gap.dart';
 import 'package:gateway_config/core/controllers/ble_controller.dart';
+import 'package:gateway_config/core/controllers/devices_controller.dart';
 import 'package:gateway_config/core/utils/app_helpers.dart';
 import 'package:gateway_config/core/utils/extensions.dart';
 import 'package:gateway_config/core/utils/snackbar_custom.dart';
@@ -19,13 +20,9 @@ import 'package:get/get.dart';
 
 class FormSetupDeviceScreen extends StatefulWidget {
   final DeviceModel model;
-  final Map<String, dynamic>? deviceData;
+  final String? deviceId;
 
-  const FormSetupDeviceScreen({
-    super.key,
-    required this.model,
-    this.deviceData,
-  });
+  const FormSetupDeviceScreen({super.key, required this.model, this.deviceId});
 
   @override
   State<FormSetupDeviceScreen> createState() => _FormSetupDeviceScreenState();
@@ -33,6 +30,9 @@ class FormSetupDeviceScreen extends StatefulWidget {
 
 class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
   final controller = Get.put(BleController());
+  final DevicesController devicesController = Get.put(DevicesController());
+
+  bool isLoading = true;
 
   Map<String, dynamic> dataDevice = {};
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
@@ -52,44 +52,86 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
   final serverPortController = TextEditingController();
   final connectionTimeoutController = TextEditingController();
 
+  final serialData = ['1', '2'];
+  final baudrates = ['9600', '19200', '38400', '57600', '115200'];
+  final bitData = ['7', '8'];
+  final parity = ['None', 'Even', 'Odd'];
+  final stopBits = ['1', '2'];
+
   @override
   void initState() {
     super.initState();
-    // Inisialisasi controller dengan pengecekan untuk mencegah error Get.find
-    // bleController = Get.put(BLEController());
 
-    // if (widget.id != null) {
-    //   dataDevice = controller.devices.firstWhere(
-    //     (item) => item['id'] == widget.id,
-    //     orElse: () => {},
-    //   );
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (widget.deviceId != null) {
+        await devicesController.getDeviceById(widget.model, widget.deviceId!);
 
-    //   _fillFormFromDevice(dataDevice);
-    // } else {
-    // }
-    modBusSelected = 'RTU';
+        if (mounted) {
+          setState(() {
+            isLoading = false;
+            dataDevice = devicesController.selectedDevice.value ?? {};
+          });
+        }
+
+        _fillFormFromDevice(dataDevice);
+      } else {
+        setState(() {
+          isLoading = false;
+          modBusSelected = 'RTU';
+        });
+      }
+    });
   }
 
-  // void _fillFormFromDevice(Map<String, dynamic> device) {
-  //   setState(() {
-  //     modBusSelected = device['modbus_type'] ?? 'RTU';
-  //     deviceNameController.text = device['name'] ?? '';
-  //     refreshRateController.text = device['refresh_rate']?.toString() ?? '';
+  void _fillFormFromDevice(Map<String, dynamic> device) {
+    setState(() {
+      deviceNameController.text = device['device_name'] ?? '';
+      slaveIdController.text = device['slave_id']?.toString() ?? '';
+      modBusSelected = device['protocol'] ?? 'RTU';
 
-  //     if (device['modbus_type'] == 'TCP') {
-  //       ipAddressController.text = device['ip_address'] ?? '';
-  //       serverPortController.text = device['port']?.toString() ?? '';
-  //       connectionTimeoutController.text =
-  //           device['connection_timeout']?.toString() ?? '';
-  //     } else {
-  //       selectedBaudRate = device['baudrate']?.toString();
-  //       selectedBitData = device['data_bits']?.toString();
-  //       selectedParity = device['parity'];
-  //       selectedStopBit = device['stop_bits']?.toString();
-  //       selectedSerialPort = device['serial_port']?.toString();
-  //     }
-  //   });
-  // }
+      if (device['protocol'] == 'TCP') {
+        ipAddressController.text = device['ip_address'] ?? '';
+        serverPortController.text = device['port']?.toString() ?? '';
+      } else {
+        final serialPort = device['serial_port']?.toString();
+        selectedSerialPort = serialData.contains(serialPort)
+            ? serialPort
+            : serialData.isNotEmpty
+            ? serialData.first
+            : null;
+        final baudRate = device['baud_rate']?.toString();
+        selectedBaudRate = baudrates.contains(baudRate)
+            ? baudRate
+            : baudrates.isNotEmpty
+            ? baudrates.first
+            : null;
+        final dataBits = device['data_bits']?.toString();
+        selectedBitData = bitData.contains(dataBits)
+            ? dataBits
+            : bitData.isNotEmpty
+            ? bitData.first
+            : null;
+        final parityValue = device['parity']?.toString();
+        selectedParity = parity.contains(parityValue)
+            ? parityValue
+            : parity.isNotEmpty
+            ? parity.first
+            : null;
+        final stopBitsValue = device['stop_bits']?.toString();
+        selectedStopBit = stopBits.contains(stopBitsValue)
+            ? stopBitsValue
+            : stopBits.isNotEmpty
+            ? stopBits.first
+            : null;
+
+        AppHelpers.debugLog('selectedSerialPort: $selectedSerialPort');
+      }
+
+      retryCountController.text = device['retry_count']?.toString() ?? '';
+      connectionTimeoutController.text = device['timeout']?.toString() ?? '';
+      refreshRateController.text = device['refresh_rate_ms']?.toString() ?? '';
+    });
+  }
 
   void _submit() async {
     // if (widget.id == null) {
@@ -214,7 +256,7 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
       children: [
         Scaffold(appBar: _appBar(context), body: _body(context)),
         Obx(() {
-          final isAnyDeviceLoading = controller.commandLoading.value;
+          final isAnyDeviceLoading = devicesController.isFetching.value;
           return LoadingOverlay(
             isLoading: isAnyDeviceLoading,
             message: 'Processing request...',
@@ -405,12 +447,6 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
   }
 
   Widget _formRS485Wrapper() {
-    final serialData = ['1', '2'];
-    final baudrates = ['9600', '19200', '38400', '57600', '115200'];
-    final bitData = ['7', '8'];
-    final parity = ['None', 'Even', 'Odd'];
-    final stopBits = ['1', '2'];
-
     return Column(
       mainAxisAlignment: MainAxisAlignment.start,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -431,7 +467,7 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
             }
             return null;
           },
-          showSearchBox: serialData.length > 5 ? true : false,
+          showSearchBox: serialData.length > 5,
           isRequired: true,
         ),
         AppSpacing.md,
@@ -451,7 +487,7 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
             }
             return null;
           },
-          showSearchBox: baudrates.length > 5 ? true : false,
+          showSearchBox: baudrates.length > 5,
           isRequired: true,
         ),
         AppSpacing.md,
@@ -471,7 +507,7 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
             }
             return null;
           },
-          showSearchBox: bitData.length > 5 ? true : false,
+          showSearchBox: bitData.length > 5,
           isRequired: true,
         ),
         AppSpacing.md,
@@ -491,7 +527,7 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
             }
             return null;
           },
-          showSearchBox: parity.length > 5 ? true : false,
+          showSearchBox: parity.length > 5,
           isRequired: true,
         ),
         AppSpacing.md,
@@ -511,7 +547,7 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
             }
             return null;
           },
-          showSearchBox: stopBits.length > 5 ? true : false,
+          showSearchBox: stopBits.length > 5,
           isRequired: true,
         ),
       ],
