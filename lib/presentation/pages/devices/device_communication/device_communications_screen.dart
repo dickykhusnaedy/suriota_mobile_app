@@ -80,19 +80,10 @@ class _DeviceCommunicationsScreenState
       primaryButtonText: 'Yes',
       secondaryButtonText: 'No',
       onPrimaryPressed: () async {
-        setState(() => isLoading = true);
-
         Get.back();
         await Future.delayed(const Duration(seconds: 1));
 
-        try {
-          // bleController.sendCommand('DELETE|devices|id:$deviceId', 'devices');
-        } catch (e) {
-          debugPrint('Error deleting device: $e');
-          Get.snackbar('Error', 'Failed to delete device: $e');
-        } finally {
-          setState(() => isLoading = false);
-        }
+        await controller.deleteDevice(widget.model, deviceId);
       },
       barrierDismissible: false,
     );
