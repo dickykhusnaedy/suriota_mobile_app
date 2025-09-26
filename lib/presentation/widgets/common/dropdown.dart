@@ -4,9 +4,21 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gateway_config/core/constants/app_color.dart';
 import 'package:gateway_config/core/constants/app_font.dart';
 import 'package:gateway_config/core/constants/app_gap.dart';
+import 'package:gateway_config/core/utils/app_helpers.dart';
 import 'package:gateway_config/core/utils/extensions.dart';
 
 class Dropdown extends StatefulWidget {
+  final String? label;
+  final List<String> items;
+  final void Function(String?)? onChanged;
+  final void Function(String?)? disabledItemFn;
+  final String? Function(String?)? validator;
+  final String? hint;
+  final String? selectedItem;
+  final bool isDisabled;
+  final bool showSearchBox;
+  final bool isRequired;
+
   const Dropdown({
     super.key,
     this.label,
@@ -21,17 +33,6 @@ class Dropdown extends StatefulWidget {
     this.isRequired = false,
   });
 
-  final String? label;
-  final List<String> items;
-  final void Function(String?)? onChanged;
-  final void Function(String?)? disabledItemFn;
-  final String? Function(String?)? validator;
-  final String? hint;
-  final String? selectedItem;
-  final bool isDisabled;
-  final bool showSearchBox;
-  final bool isRequired;
-
   @override
   State<Dropdown> createState() => _DropdownState();
 }
@@ -45,6 +46,9 @@ class _DropdownState extends State<Dropdown> {
     super.initState();
 
     initialSelect = widget.selectedItem;
+    AppHelpers.debugLog(
+      'Dropdown init, selectedItem from parent: ${widget.selectedItem}, initialSelect: $initialSelect, items: ${widget.items}',
+    );
 
     if (widget.validator != null && initialSelect != null) {
       errorText = widget.validator!(initialSelect);
@@ -53,6 +57,13 @@ class _DropdownState extends State<Dropdown> {
 
   @override
   Widget build(BuildContext context) {
+    AppHelpers.debugLog(
+      'Dropdown build, selectedItem: ${widget.selectedItem}, items: ${widget.items}',
+    );
+    AppHelpers.debugLog(
+      'Dropdown build, initialSelect: $initialSelect, items: ${widget.items}',
+    );
+
     return AbsorbPointer(
       absorbing: widget.isDisabled,
       child: Column(
@@ -84,7 +95,7 @@ class _DropdownState extends State<Dropdown> {
               ],
             ),
           DropdownSearch<String>(
-            items: (f, cs) => widget.items,
+            items: (String? filter, LoadProps? loadProps) async => widget.items,
             decoratorProps: _dropdownDecoratorProps(context),
             onChanged: (value) {
               setState(() {
@@ -96,9 +107,7 @@ class _DropdownState extends State<Dropdown> {
               });
               widget.onChanged?.call(value);
             },
-            selectedItem: initialSelect?.isNotEmpty == true
-                ? initialSelect
-                : null,
+            selectedItem: initialSelect,
             popupProps: _popupProps(context),
             validator: widget.validator,
           ),
