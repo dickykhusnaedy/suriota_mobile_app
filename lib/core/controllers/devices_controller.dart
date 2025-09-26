@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:gateway_config/core/constants/app_color.dart';
 import 'package:gateway_config/core/controllers/ble_controller.dart';
 import 'package:gateway_config/core/utils/app_helpers.dart';
@@ -109,6 +110,45 @@ class DevicesController extends GetxController {
       );
 
       selectedDevice.value = null;
+    } finally {
+      isFetching.value = false;
+    }
+  }
+
+  Future<void> deleteDevice(DeviceModel model, String deviceId) async {
+    isFetching.value = true;
+
+    try {
+      final command = {"op": "delete", "type": "device", "device_id": deviceId};
+
+      final response = await bleController.sendCommand(command);
+
+      if (response.status == 'ok' || response.status == 'success') {
+        SnackbarCustom.showSnackbar(
+          '',
+          'Device deleted successfully',
+          Colors.green,
+          AppColor.whiteColor,
+        );
+
+        await Future.delayed(const Duration(seconds: 3));
+        await fetchDevices(model);
+      } else {
+        SnackbarCustom.showSnackbar(
+          '',
+          response.message ?? 'Failed to delete device',
+          AppColor.redColor,
+          AppColor.whiteColor,
+        );
+      }
+    } catch (e) {
+      AppHelpers.debugLog('Error deleting device: $e');
+      SnackbarCustom.showSnackbar(
+        'Error',
+        'Failed to delete device',
+        AppColor.redColor,
+        AppColor.whiteColor,
+      );
     } finally {
       isFetching.value = false;
     }
