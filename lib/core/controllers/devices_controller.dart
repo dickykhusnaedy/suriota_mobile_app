@@ -7,14 +7,17 @@ import 'package:get/get.dart';
 
 class DevicesController extends GetxController {
   final RxList<Map<String, dynamic>> dataDevices = <Map<String, dynamic>>[].obs;
+  final Rx<Map<String, dynamic>?> selectedDevice = Rx<Map<String, dynamic>?>(
+    null,
+  );
   final RxBool isFetching = false.obs;
 
   final BleController bleController = Get.put(BleController());
 
   Future<void> fetchDevices(DeviceModel model) async {
-    try {
-      isFetching.value = true;
+    isFetching.value = true;
 
+    try {
       if (!model.isConnected.value) {
         SnackbarCustom.showSnackbar(
           '',
@@ -59,23 +62,55 @@ class DevicesController extends GetxController {
     }
   }
 
-  Map<String, dynamic>? getDeviceById(String deviceId) {
+  Future<void> getDeviceById(DeviceModel model, String deviceId) async {
+    isFetching.value = true;
+
     try {
-      final device = dataDevices.firstWhere(
-        (device) => device['device_id'] == deviceId,
-        orElse: () => <String, dynamic>{},
+      if (!model.isConnected.value) {
+        SnackbarCustom.showSnackbar(
+          '',
+          'Device not connected',
+          AppColor.redColor,
+          AppColor.whiteColor,
+        );
+        return;
+      }
+
+      final command = {'device_id': deviceId};
+      final response = await bleController.readCommandResponse(
+        model,
+        type: 'device',
+        additionalParams: command,
       );
 
-      return device.isNotEmpty ? device : null;
+      if (response.status == 'ok' || response.status == 'success') {
+        selectedDevice.value = response.config is Map<String, dynamic>
+            ? response.config
+            : null;
+
+        AppHelpers.debugLog('Device by ID ($deviceId): ${response.toJson()}');
+      } else {
+        SnackbarCustom.showSnackbar(
+          '',
+          response.message ?? 'Failed to fetch device with ID: $deviceId',
+          AppColor.redColor,
+          AppColor.whiteColor,
+        );
+
+        selectedDevice.value = null;
+      }
     } catch (e) {
-      AppHelpers.debugLog('Error finding device by ID: $e');
+      AppHelpers.debugLog('Error getting device by ID: $e');
       SnackbarCustom.showSnackbar(
-        '',
-        'Failed to find device with ID: $deviceId',
+        'Error',
+        'Failed to fetch device with ID: $deviceId',
         AppColor.redColor,
         AppColor.whiteColor,
       );
-      return null;
+
+      selectedDevice.value = null;
+    } finally {
+      isFetching.value = false;
     }
   }
 }
