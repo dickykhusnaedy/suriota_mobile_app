@@ -4,7 +4,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gateway_config/core/constants/app_color.dart';
 import 'package:gateway_config/core/constants/app_font.dart';
 import 'package:gateway_config/core/constants/app_gap.dart';
-import 'package:gateway_config/core/utils/app_helpers.dart';
 import 'package:gateway_config/core/utils/extensions.dart';
 
 class Dropdown extends StatefulWidget {
@@ -45,11 +44,6 @@ class _DropdownState extends State<Dropdown> {
   void initState() {
     super.initState();
 
-    initialSelect = widget.selectedItem;
-    AppHelpers.debugLog(
-      'Dropdown init, selectedItem from parent: ${widget.selectedItem}, initialSelect: $initialSelect, items: ${widget.items}',
-    );
-
     if (widget.validator != null && initialSelect != null) {
       errorText = widget.validator!(initialSelect);
     }
@@ -57,13 +51,6 @@ class _DropdownState extends State<Dropdown> {
 
   @override
   Widget build(BuildContext context) {
-    AppHelpers.debugLog(
-      'Dropdown build, selectedItem: ${widget.selectedItem}, items: ${widget.items}',
-    );
-    AppHelpers.debugLog(
-      'Dropdown build, initialSelect: $initialSelect, items: ${widget.items}',
-    );
-
     return AbsorbPointer(
       absorbing: widget.isDisabled,
       child: Column(
@@ -95,19 +82,10 @@ class _DropdownState extends State<Dropdown> {
               ],
             ),
           DropdownSearch<String>(
-            items: (String? filter, LoadProps? loadProps) async => widget.items,
+            items: (filter, infiniteScrollProps) => widget.items,
             decoratorProps: _dropdownDecoratorProps(context),
-            onChanged: (value) {
-              setState(() {
-                initialSelect = value;
-                // Validate on change if validator exists
-                errorText = widget.validator != null
-                    ? widget.validator!(value)
-                    : null;
-              });
-              widget.onChanged?.call(value);
-            },
-            selectedItem: initialSelect,
+            onChanged: widget.onChanged,
+            selectedItem: widget.selectedItem,
             popupProps: _popupProps(context),
             validator: widget.validator,
           ),
