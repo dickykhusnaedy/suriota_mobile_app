@@ -189,7 +189,7 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
           };
 
           var formData = {
-            "op": "create",
+            "op": widget.deviceId != null ? "update" : "create",
             "type": "device",
             "config": {
               "device_name": _sanitizeInput(deviceNameController.text),
@@ -345,11 +345,21 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
                     onChanges: () {
                       setState(() {
                         modBusSelected = 'TCP';
-                        selectedBaudRate = null;
-                        selectedBitData = null;
-                        selectedParity = null;
-                        selectedStopBit = null;
-                        selectedSerialPort = null;
+                        selectedBaudRate = widget.deviceId != null
+                            ? selectedBaudRate
+                            : null;
+                        selectedBitData = widget.deviceId != null
+                            ? selectedBitData
+                            : null;
+                        selectedParity = widget.deviceId != null
+                            ? selectedParity
+                            : null;
+                        selectedStopBit = widget.deviceId != null
+                            ? selectedStopBit
+                            : null;
+                        selectedSerialPort = widget.deviceId != null
+                            ? selectedSerialPort
+                            : null;
                       });
                     },
                   ),
