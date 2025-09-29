@@ -7,6 +7,7 @@ import 'package:gateway_config/presentation/pages/devices/detail_device_info_scr
 import 'package:gateway_config/presentation/pages/devices/detail_device_screen.dart';
 import 'package:gateway_config/presentation/pages/devices/device_communication/device_communications_screen.dart';
 import 'package:gateway_config/presentation/pages/devices/device_communication/form_setup_device_screen.dart';
+import 'package:gateway_config/presentation/pages/devices/server_config/form_config_server_screen.dart';
 import 'package:gateway_config/presentation/pages/home/home_screen.dart';
 import 'package:gateway_config/presentation/pages/login/login_page.dart';
 import 'package:gateway_config/presentation/pages/permission_denied.dart';
@@ -151,6 +152,7 @@ class AppRouter {
               }
               final bleController = Get.find<BleController>();
               final model = bleController.findDeviceByRemoteId(deviceId);
+
               return model != null
                   ? DeviceCommunicationsScreen(model: model)
                   : _deviceNotFound(context);
@@ -166,8 +168,9 @@ class AppRouter {
               }
               final bleController = Get.find<BleController>();
               final model = bleController.findDeviceByRemoteId(deviceId);
+
               return model != null
-                  ? DeviceCommunicationsScreen(model: model)
+                  ? FormConfigServer()
                   : _deviceNotFound(context);
             },
           ),
