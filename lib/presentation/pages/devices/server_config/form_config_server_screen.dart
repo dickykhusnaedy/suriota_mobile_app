@@ -1,21 +1,23 @@
 // ignore_for_file: prefer_const_literals_to_create_immutables, prefer_const_constructors
 
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-import 'package:multi_dropdown/multi_dropdown.dart';
 import 'package:gateway_config/core/constants/app_color.dart';
-import 'package:gateway_config/core/constants/app_gap.dart';
 import 'package:gateway_config/core/constants/app_font.dart';
+import 'package:gateway_config/core/constants/app_gap.dart';
 import 'package:gateway_config/core/controllers/ble/ble_controller.dart';
+import 'package:gateway_config/core/controllers/ble_controller.dart';
 import 'package:gateway_config/core/utils/app_helpers.dart';
 import 'package:gateway_config/core/utils/extensions.dart';
+import 'package:gateway_config/core/utils/snackbar_custom.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_alert_dialog.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_button.dart';
-import 'package:gateway_config/presentation/widgets/common/custom_dropdown.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_radiotile.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_textfield.dart';
+import 'package:gateway_config/presentation/widgets/common/dropdown.dart';
 import 'package:gateway_config/presentation/widgets/common/loading_overlay.dart';
 import 'package:gateway_config/presentation/widgets/spesific/title_tile.dart';
+import 'package:get/get.dart';
+import 'package:multi_dropdown/multi_dropdown.dart';
 
 class FormConfigServer extends StatefulWidget {
   const FormConfigServer({super.key});
@@ -38,14 +40,17 @@ class LoggingData {
 
 class _FormConfigServerState extends State<FormConfigServer> {
   final BLEController bleController = Get.put(BLEController(), permanent: true);
+  final BleController controller = Get.put(BleController());
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
-  String protocolSelected = 'MQTT';
+  String protocolSelected = 'mqtt';
   String communcationSelected = 'ETH';
-  String methodEthernet = "A";
+  String methodEthernet = "Automatic";
   String confirmAuthentication = "Yes";
-  String selectedIntervalType = 's';
+  String selectedIntervalType = 'ms';
+  String cleanSessionSelected = 'true';
+  String useTlsSelected = 'true';
 
   bool isInitialized = false;
   bool isLoading = false;
@@ -60,11 +65,20 @@ class _FormConfigServerState extends State<FormConfigServer> {
   final serverNameController = TextEditingController();
   final portMqttController = TextEditingController();
   final publishTopicController = TextEditingController();
+  final subscribeTopicController = TextEditingController();
+  final keepAliveController = TextEditingController();
   final clientIdController = TextEditingController();
   final qosLevelController = TextEditingController();
   final urlLinkController = TextEditingController();
+  final methodRequestController = TextEditingController(text: 'POST');
+  final timeoutController = TextEditingController();
+  final retryController = TextEditingController();
   final usernameController = TextEditingController();
   final passwordController = TextEditingController();
+  final authorizationController = TextEditingController();
+  final xCustomHeaderController = TextEditingController();
+  final contentTypeController = TextEditingController(text: 'application/json');
+  final bodyFormatController = TextEditingController(text: 'json');
 
   @override
   void initState() {
@@ -77,41 +91,41 @@ class _FormConfigServerState extends State<FormConfigServer> {
     super.didChangeDependencies();
     if (!isInitialized) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        fetchData();
+        // fetchData();
         isInitialized = true;
       });
     }
   }
 
-  void _updateFormWithConfigData(Map<String, dynamic> data) {
-    // Communication settings
-    communcationSelected = data['communication']?['type'] ?? 'ETH';
-    methodEthernet = data['communication']?['mode'] ?? 'A';
-    ipAddressController.text = data['communication']?['ip'] ?? '';
-    macAddressController.text = data['communication']?['mac'] ?? '';
-    wifiSsidController.text = data['communication']?['ssid'] ?? '';
-    wifiPasswordController.text = data['communication']?['pass'] ?? '';
+  // void _updateFormWithConfigData(Map<String, dynamic> data) {
+  //   // Communication settings
+  //   communcationSelected = data['communication']?['type'] ?? 'ETH';
+  //   methodEthernet = data['communication']?['mode'] ?? 'Automatic';
+  //   ipAddressController.text = data['communication']?['ip'] ?? '';
+  //   macAddressController.text = data['communication']?['mac'] ?? '';
+  //   wifiSsidController.text = data['communication']?['ssid'] ?? '';
+  //   wifiPasswordController.text = data['communication']?['pass'] ?? '';
 
-    // Protocol settings
-    protocolSelected = data['protocol']?['type'] ?? 'MQTT';
-    serverNameController.text = data['protocol']?['server'] ?? '';
-    portMqttController.text = data['protocol']?['port']?.toString() ?? '';
-    publishTopicController.text = data['protocol']?['topic'] ?? '';
-    clientIdController.text = data['protocol']?['clientid'] ?? '';
-    qosLevelController.text = data['protocol']?['qos']?.toString() ?? '';
-    urlLinkController.text = data['protocol']?['url_link'] ?? '';
+  //   // Protocol settings
+  //   protocolSelected = data['protocol']?['type'] ?? 'MQTT';
+  //   serverNameController.text = data['protocol']?['server'] ?? '';
+  //   portMqttController.text = data['protocol']?['port']?.toString() ?? '';
+  //   publishTopicController.text = data['protocol']?['topic'] ?? '';
+  //   clientIdController.text = data['protocol']?['clientid'] ?? '';
+  //   qosLevelController.text = data['protocol']?['qos']?.toString() ?? '';
+  //   urlLinkController.text = data['protocol']?['url_link'] ?? '';
 
-    // Interval settings
-    selectedIntervalType = data['interval']?['type'] ?? 's';
-    intervalTimeController.text = data['interval']?['time']?.toString() ?? '';
+  //   // Interval settings
+  //   selectedIntervalType = data['interval']?['type'] ?? 's';
+  //   intervalTimeController.text = data['interval']?['time']?.toString() ?? '';
 
-    // Authentication settings
-    confirmAuthentication = data['auth']?['username']?.isNotEmpty == true
-        ? 'Yes'
-        : 'No';
-    usernameController.text = data['auth']?['username'] ?? '';
-    passwordController.text = data['auth']?['password'] ?? '';
-  }
+  //   // Authentication settings
+  //   confirmAuthentication = data['auth']?['username']?.isNotEmpty == true
+  //       ? 'Yes'
+  //       : 'No';
+  //   usernameController.text = data['auth']?['username'] ?? '';
+  //   passwordController.text = data['auth']?['password'] ?? '';
+  // }
 
   Future<void> fetchData() async {
     setState(() {
@@ -120,10 +134,10 @@ class _FormConfigServerState extends State<FormConfigServer> {
     });
 
     try {
-      final data = await bleController.fetchData("READ|config", 'config');
+      // final data = await bleController.fetchData("READ|config", 'config');
 
       setState(() {
-        _updateFormWithConfigData(data);
+        // _updateFormWithConfigData(data);
 
         isLoading = false;
       });
@@ -147,12 +161,69 @@ class _FormConfigServerState extends State<FormConfigServer> {
         Get.back();
         await Future.delayed(const Duration(seconds: 1));
 
+        var wifiConfig = {
+          "ssid": wifiSsidController.text,
+          "password": wifiPasswordController.text,
+        };
+
+        var communication = {
+          "mode": _sanitizeInput(protocolSelected),
+          "connection_mode": _sanitizeInput(communcationSelected),
+          "ip_address": _sanitizeInput(ipAddressController.text),
+          "mac_address": _sanitizeInput(macAddressController.text),
+          ...(communcationSelected == 'WIFI' ? wifiConfig : {}),
+        };
+
+        var dataInterval = {
+          "value": intervalTimeController.text,
+          "unit": selectedIntervalType,
+        };
+
+        var mqttConfig = {
+          "enabled": protocolSelected == 'mqtt' ? true : false,
+          "broker_address": _sanitizeInput(serverNameController.text),
+          "broker_port": _tryParseInt(portMqttController.text),
+          "client_id": _sanitizeInput(clientIdController.text),
+          "username": _sanitizeInput(usernameController.text),
+          "password": _sanitizeInput(passwordController.text),
+          "topic_publish": _sanitizeInput(publishTopicController.text),
+          "topic_subscribe": _sanitizeInput(subscribeTopicController.text),
+          "keep_alive": _sanitizeInput(keepAliveController.text),
+          "clean_session": cleanSessionSelected,
+          "use_tls": useTlsSelected,
+        };
+
+        var httpConfig = {
+          "enabled": protocolSelected == 'http' ? true : false,
+          "endpoint_url": _sanitizeInput(urlLinkController.text),
+          "method": _sanitizeInput(methodRequestController.text),
+          "headers": {
+            "Authorization": authorizationController.text,
+            "Content-Type": contentTypeController.text,
+          },
+          "body_format": bodyFormatController.text,
+          "timeout": _tryParseInt(timeoutController.text),
+          "retry": _tryParseInt(retryController.text),
+        };
+
+        var formData = {
+          "communication": communication,
+          "protocol": protocolSelected,
+          "data_interval": dataInterval,
+          "mqtt_config": mqttConfig,
+          "http_config": httpConfig,
+        };
+
         try {
-          final sendDataDelimiter = _buildSendDataDelimiter();
-          bleController.sendCommand(sendDataDelimiter, 'config');
+          controller.sendCommand(formData);
         } catch (e) {
-          debugPrint('Error submitting form: $e');
-          Get.snackbar('Error', 'Failed to submit form: $e');
+          SnackbarCustom.showSnackbar(
+            '',
+            'Failed to submit form',
+            AppColor.redColor,
+            AppColor.whiteColor,
+          );
+          AppHelpers.debugLog('Error submitting form: $e');
         } finally {
           await Future.delayed(const Duration(seconds: 3));
           AppHelpers.backNTimes(1);
@@ -162,50 +233,50 @@ class _FormConfigServerState extends State<FormConfigServer> {
     );
   }
 
-  String _buildSendDataDelimiter() {
-    final intervalTime = _tryParseInt(intervalTimeController.text);
-    final intervalType = selectedIntervalType;
-    final authUsername = usernameController.text;
-    final authPassword = passwordController.text;
+  // String _buildSendDataDelimiter() {
+  //   final intervalTime = _tryParseInt(intervalTimeController.text);
+  //   final intervalType = selectedIntervalType;
+  //   final authUsername = usernameController.text;
+  //   final authPassword = passwordController.text;
 
-    final communicationData = _communcationModeData();
-    final protocolData = _protocolData();
+  //   final communicationData = _communcationModeData();
+  //   final protocolData = _protocolData();
 
-    final intervalData =
-        'interval_time:$intervalTime|interval_type:$intervalType';
-    final authData =
-        'auth_type:BASIC|auth_username:$authUsername|auth_password:$authPassword';
+  //   final intervalData =
+  //       'interval_time:$intervalTime|interval_type:$intervalType';
+  //   final authData =
+  //       'auth_type:BASIC|auth_username:$authUsername|auth_password:$authPassword';
 
-    return 'UPDATE|config|$communicationData|$protocolData|$intervalData|$authData';
-  }
+  //   return 'UPDATE|config|$communicationData|$protocolData|$intervalData|$authData';
+  // }
 
-  String _communcationModeData() {
-    final communicationType = communcationSelected;
-    final communicationMethod = methodEthernet;
-    final communicationIp = _sanitizeInput(ipAddressController.text);
-    final communicationMac = macAddressController.text;
-    final wifiSsid = wifiSsidController.text;
-    final wifiPassword = wifiPasswordController.text;
+  // String _communcationModeData() {
+  //   final communicationType = communcationSelected;
+  //   final communicationMethod = methodEthernet;
+  //   final communicationIp = _sanitizeInput(ipAddressController.text);
+  //   final communicationMac = macAddressController.text;
+  //   final wifiSsid = wifiSsidController.text;
+  //   final wifiPassword = wifiPasswordController.text;
 
-    return 'communication_type:$communicationType|communication_mode:$communicationMethod|communication_ip:$communicationIp|communication_mac:$communicationMac|communication_ssid:$wifiSsid|communication_pass:$wifiPassword';
-  }
+  //   return 'communication_type:$communicationType|communication_mode:$communicationMethod|communication_ip:$communicationIp|communication_mac:$communicationMac|communication_ssid:$wifiSsid|communication_pass:$wifiPassword';
+  // }
 
-  String? _protocolData() {
-    final protocolServer = serverNameController.text;
-    final protocolPort = _tryParseInt(portMqttController.text);
-    final protocolTopic = publishTopicController.text;
-    final protocolClientId = clientIdController.text;
-    final protocolQosLevel = _tryParseInt(qosLevelController.text);
+  // String? _protocolData() {
+  //   final protocolServer = serverNameController.text;
+  //   final protocolPort = _tryParseInt(portMqttController.text);
+  //   final protocolTopic = publishTopicController.text;
+  //   final protocolClientId = clientIdController.text;
+  //   final protocolQosLevel = _tryParseInt(qosLevelController.text);
 
-    if (protocolSelected == 'MQTT') {
-      return 'protocol_type:$protocolSelected|protocol_server:$protocolServer|protocol_port:$protocolPort|protocol_topic:$protocolTopic|protocol_clientid:$protocolClientId|protocol_qos:$protocolQosLevel';
-    } else if (protocolSelected == 'HTTP') {
-      final urlLink = urlLinkController.text;
-      return 'protocol_type:HTTP|url_link:$urlLink';
-    }
+  //   if (protocolSelected == 'mqtt') {
+  //     return 'protocol_type:$protocolSelected|protocol_server:$protocolServer|protocol_port:$protocolPort|protocol_topic:$protocolTopic|protocol_clientid:$protocolClientId|protocol_qos:$protocolQosLevel';
+  //   } else if (protocolSelected == 'http') {
+  //     final urlLink = urlLinkController.text;
+  //     return 'protocol_type:HTTP|url_link:$urlLink';
+  //   }
 
-    return null;
-  }
+  //   return null;
+  // }
 
   String _sanitizeInput(String input) {
     return input.replaceAll('|', '').replaceAll('#', '');
@@ -227,11 +298,18 @@ class _FormConfigServerState extends State<FormConfigServer> {
     serverNameController.dispose();
     portMqttController.dispose();
     publishTopicController.dispose();
+    subscribeTopicController.dispose();
     clientIdController.dispose();
     qosLevelController.dispose();
     urlLinkController.dispose();
+    methodRequestController.dispose();
     usernameController.dispose();
     passwordController.dispose();
+    authorizationController.dispose();
+    xCustomHeaderController.dispose();
+    contentTypeController.dispose();
+    bodyFormatController.dispose();
+
     isInitialized = false;
     super.dispose();
   }
@@ -253,7 +331,7 @@ class _FormConfigServerState extends State<FormConfigServer> {
       ),
     ];
 
-    List<String> typeInterval = ['s', 'm'];
+    List<String> typeInterval = ['s', 'm', 'ms'];
 
     return Stack(
       children: [
@@ -288,15 +366,14 @@ class _FormConfigServerState extends State<FormConfigServer> {
               AppSpacing.md,
               _communicationModeWrapper(context),
               AppSpacing.sm,
-              // Show Ethernet Following fields if selected
               ethernetConfig(),
-              wifiField(),
+              if (communcationSelected == 'WIFI') wifiField(),
               _protocolWrapper(),
               AppSpacing.md,
               _intervalWrapper(context, items, typeInterval),
               AppSpacing.md,
-              if (protocolSelected == "MQTT") mqttField(),
-              if (protocolSelected == "HTTP") httpField(),
+              mqttField(),
+              httpField(),
               Button(
                 width: MediaQuery.of(context).size.width,
                 onPressed: _submit,
@@ -333,63 +410,6 @@ class _FormConfigServerState extends State<FormConfigServer> {
       children: [
         TitleTile(title: 'Data Interval'),
         AppSpacing.sm,
-        // Column(
-        //   crossAxisAlignment: CrossAxisAlignment.start,
-        //   children: [
-        //     Text('Data Interval',
-        //         style: context.h6.copyWith(fontWeight: FontWeightTheme.bold)),
-        //     AppSpacing.sm,
-
-        //     MultiDropdown<LoggingData>(
-        //       items: items,
-        //       enabled: true,
-        //       chipDecoration: ChipDecoration(
-        //           labelStyle: context.buttonTextSmall
-        //               .copyWith(color: AppColor.whiteColor),
-        //           backgroundColor: AppColor.primaryColor,
-        //           padding: AppPadding.small,
-        //           wrap: true,
-        //           runSpacing: 10,
-        //           spacing: 5,
-        //           deleteIcon: const Icon(
-        //             Icons.cancel,
-        //             size: 17,
-        //             color: AppColor.whiteColor,
-        //           )),
-        //       fieldDecoration: FieldDecoration(
-        //         hintText: 'Choose Data Interval',
-        //         hintStyle: context.body,
-        //         showClearIcon: false,
-        //         border: OutlineInputBorder(
-        //           borderRadius: BorderRadius.circular(8),
-        //           borderSide:
-        //               const BorderSide(color: AppColor.primaryColor, width: 1),
-        //         ),
-        //         focusedBorder: OutlineInputBorder(
-        //           borderRadius: BorderRadius.circular(8),
-        //           borderSide:
-        //               const BorderSide(color: AppColor.primaryColor, width: 2),
-        //         ),
-        //       ),
-        //       dropdownItemDecoration: const DropdownItemDecoration(
-        //         textColor: AppColor.grey,
-        //         selectedTextColor: AppColor.primaryColor,
-        //         selectedIcon: Icon(Icons.check_box, color: AppColor.primaryColor),
-        //         disabledIcon: Icon(Icons.lock, color: Colors.grey),
-        //       ),
-        //       validator: (value) {
-        //         if (value == null || value.isEmpty) {
-        //           return 'Please select a data interval';
-        //         }
-        //         return null;
-        //       },
-        //       onSelectionChange: (selectedItems) {
-        //         debugPrint("OnSelectionChange: $selectedItems");
-        //       },
-        //     ),
-        //   ],
-        // ),
-        // AppSpacing.md,
         Text(
           's: seconds, m: minute',
           style: context.bodySmall.copyWith(color: AppColor.grey),
@@ -414,9 +434,9 @@ class _FormConfigServerState extends State<FormConfigServer> {
               },
             ),
             AppSpacing.sm,
-            CustomDropdown(
-              listItem: typeInterval,
-              hintText: 'Choose Interval Type',
+            Dropdown(
+              label: 'Choose Interval Type',
+              items: typeInterval,
               selectedItem: selectedIntervalType,
               onChanged: (value) {
                 setState(() {
@@ -429,6 +449,7 @@ class _FormConfigServerState extends State<FormConfigServer> {
                 }
                 return null;
               },
+              isRequired: true,
             ),
           ],
         ),
@@ -442,20 +463,20 @@ class _FormConfigServerState extends State<FormConfigServer> {
         const TitleTile(title: 'Choose Protocol'),
         AppSpacing.sm,
         CustomRadioTile(
-          value: "MQTT",
+          value: "mqtt",
           grupValue: protocolSelected,
           onChanges: () {
             setState(() {
-              protocolSelected = "MQTT";
+              protocolSelected = "mqtt";
             });
           },
         ),
         CustomRadioTile(
-          value: "HTTP",
+          value: "http",
           grupValue: protocolSelected,
           onChanges: () {
             setState(() {
-              protocolSelected = "HTTP";
+              protocolSelected = "http";
             });
           },
         ),
@@ -479,8 +500,7 @@ class _FormConfigServerState extends State<FormConfigServer> {
           grupValue: communcationSelected, // Use dynamic state variable
           onChanges: () {
             setState(() {
-              communcationSelected =
-                  "ETH"; // Set Ethernet as selected communication
+              communcationSelected = "ETH";
             });
             _chooseEthernetMethod(context);
           },
@@ -491,8 +511,8 @@ class _FormConfigServerState extends State<FormConfigServer> {
           grupValue: communcationSelected, // Use dynamic state variable
           onChanges: () {
             setState(() {
-              communcationSelected =
-                  "WIFI"; // Set WiFi as selected communication
+              communcationSelected = "WIFI";
+              methodEthernet = "Automatic";
             });
           },
         ),
@@ -516,11 +536,11 @@ class _FormConfigServerState extends State<FormConfigServer> {
             AppSpacing.sm,
             // Automatic Ethernet method
             CustomRadioTile(
-              value: "A",
+              value: "Automatic",
               grupValue: methodEthernet, // Reference dynamic variable
               onChanges: () {
                 setState(() {
-                  methodEthernet = "A"; // Set to Automatic
+                  methodEthernet = "Automatic"; // Set to Automatic
                 });
 
                 Navigator.pop(context); // Close the dialog
@@ -528,11 +548,11 @@ class _FormConfigServerState extends State<FormConfigServer> {
             ),
             // Following Ethernet method
             CustomRadioTile(
-              value: "F",
+              value: "Following",
               grupValue: methodEthernet, // Reference dynamic variable
               onChanges: () {
                 setState(() {
-                  methodEthernet = "F"; // Set to Following
+                  methodEthernet = "Following"; // Set to Following
                 });
 
                 Navigator.pop(context); // Close the dialog
@@ -565,6 +585,7 @@ class _FormConfigServerState extends State<FormConfigServer> {
 
             return null;
           },
+          isRequired: true,
         ),
         AppSpacing.md,
         CustomTextFormField(
@@ -577,6 +598,7 @@ class _FormConfigServerState extends State<FormConfigServer> {
             }
             return null;
           },
+          isRequired: true,
         ),
         AppSpacing.md,
       ],
@@ -596,6 +618,7 @@ class _FormConfigServerState extends State<FormConfigServer> {
             }
             return null;
           },
+          isRequired: true,
         ),
         AppSpacing.md,
         CustomTextFormField(
@@ -608,6 +631,7 @@ class _FormConfigServerState extends State<FormConfigServer> {
             }
             return null;
           },
+          isRequired: true,
         ),
         AppSpacing.md,
       ],
@@ -615,8 +639,6 @@ class _FormConfigServerState extends State<FormConfigServer> {
   }
 
   Widget mqttField() {
-    confirmAuthentication == "Yes";
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -624,14 +646,15 @@ class _FormConfigServerState extends State<FormConfigServer> {
         AppSpacing.md,
         CustomTextFormField(
           controller: serverNameController,
-          labelTxt: "Server Name",
+          labelTxt: "Address",
           hintTxt: "server.demo.com",
           validator: (value) {
             if (value == null || value.isEmpty) {
-              return 'Server Name is required';
+              return 'Address is required';
             }
             return null;
           },
+          isRequired: true,
         ),
         AppSpacing.md,
         CustomTextFormField(
@@ -645,7 +668,23 @@ class _FormConfigServerState extends State<FormConfigServer> {
             }
             return null;
           },
+          isRequired: true,
         ),
+        AppSpacing.md,
+        CustomTextFormField(
+          controller: clientIdController,
+          labelTxt: "Client ID",
+          hintTxt: "Client ID",
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Client ID is required';
+            }
+            return null;
+          },
+          isRequired: true,
+        ),
+        AppSpacing.md,
+        authentication(),
         AppSpacing.md,
         CustomTextFormField(
           controller: publishTopicController,
@@ -660,60 +699,64 @@ class _FormConfigServerState extends State<FormConfigServer> {
         ),
         AppSpacing.md,
         CustomTextFormField(
-          controller: clientIdController,
-          labelTxt: "Client ID",
-          hintTxt: "Client ID",
+          controller: subscribeTopicController,
+          labelTxt: "Subscribe Topic",
+          hintTxt: "Subscribe",
           validator: (value) {
             if (value == null || value.isEmpty) {
-              return 'Client ID is required';
+              return 'Subscribe Topic is required';
             }
             return null;
           },
         ),
         AppSpacing.md,
         CustomTextFormField(
-          controller: qosLevelController,
-          labelTxt: "QoS Level",
-          hintTxt: "ex. 1",
-          keyboardType: TextInputType.number,
+          controller: keepAliveController,
+          labelTxt: "Keep Alive",
+          hintTxt: "ex. 60",
           validator: (value) {
             if (value == null || value.isEmpty) {
-              return 'QoS Level is required';
+              return 'Keep Alive is required';
             }
             return null;
           },
         ),
         AppSpacing.md,
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Does the broker need an authentication?', style: context.h6),
-            AppSpacing.sm,
-            CustomRadioTile(
-              value: "Yes",
-              grupValue: confirmAuthentication,
-              onChanges: () {
-                setState(() {
-                  confirmAuthentication = "Yes";
-                });
-              },
-            ),
-            CustomRadioTile(
-              value: "No",
-              grupValue: confirmAuthentication,
-              onChanges: () {
-                setState(() {
-                  confirmAuthentication = "No";
-
-                  usernameController.clear();
-                  passwordController.clear();
-                });
-              },
-            ),
-          ],
+        Dropdown(
+          label: 'Clean Session',
+          items: ['true', 'false'],
+          selectedItem: cleanSessionSelected,
+          onChanged: (value) {
+            setState(() {
+              cleanSessionSelected = value!;
+            });
+          },
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Please select clean session';
+            }
+            return null;
+          },
+          isRequired: true,
         ),
-        AppSpacing.sm,
-        if (confirmAuthentication == "Yes") authentication(),
+        AppSpacing.md,
+        Dropdown(
+          label: 'Use TLS',
+          items: ['true', 'false'],
+          selectedItem: useTlsSelected,
+          onChanged: (value) {
+            setState(() {
+              useTlsSelected = value!;
+            });
+          },
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Please select use tls';
+            }
+            return null;
+          },
+          isRequired: true,
+        ),
         AppSpacing.lg,
       ],
     );
@@ -727,36 +770,53 @@ class _FormConfigServerState extends State<FormConfigServer> {
         AppSpacing.md,
         CustomTextFormField(
           controller: urlLinkController,
-          labelTxt: "URL Link",
+          labelTxt: "Endpoint URL",
           hintTxt: "www.demo.com",
         ),
         AppSpacing.md,
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Does the server need an authentication?', style: context.h6),
-            AppSpacing.sm,
-            CustomRadioTile(
-              value: "Yes",
-              grupValue: confirmAuthentication,
-              onChanges: () {
-                setState(() {
-                  confirmAuthentication = "Yes";
-                });
-              },
-            ),
-            CustomRadioTile(
-              value: "No",
-              grupValue: confirmAuthentication,
-              onChanges: () {
-                setState(() {
-                  confirmAuthentication = "No";
-                });
-              },
-            ),
-          ],
+        CustomTextFormField(
+          controller: methodRequestController,
+          labelTxt: "Method Request",
+          readOnly: true,
         ),
-        if (confirmAuthentication == "Yes") authentication(),
+        AppSpacing.md,
+        CustomTextFormField(
+          controller: authorizationController,
+          labelTxt: "Authorization",
+          hintTxt: "Ex. Bearer token",
+        ),
+        AppSpacing.md,
+        CustomTextFormField(
+          controller: xCustomHeaderController,
+          labelTxt: "X-Custom-Header",
+          hintTxt: "X-Custom-Header",
+        ),
+        AppSpacing.md,
+        CustomTextFormField(
+          controller: contentTypeController,
+          labelTxt: "Content-Type",
+          readOnly: true,
+        ),
+        AppSpacing.md,
+        CustomTextFormField(
+          controller: bodyFormatController,
+          labelTxt: "Body Format",
+          readOnly: true,
+        ),
+        AppSpacing.md,
+        CustomTextFormField(
+          controller: timeoutController,
+          labelTxt: "Timeout",
+          keyboardType: TextInputType.number,
+          hintTxt: "ex. 3000",
+        ),
+        AppSpacing.md,
+        CustomTextFormField(
+          controller: retryController,
+          labelTxt: "Retry",
+          keyboardType: TextInputType.number,
+          hintTxt: "ex. 3",
+        ),
         AppSpacing.lg,
       ],
     );
