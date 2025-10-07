@@ -9,6 +9,7 @@ import 'package:gateway_config/core/controllers/ble_controller.dart';
 import 'package:gateway_config/core/utils/app_helpers.dart';
 import 'package:gateway_config/core/utils/extensions.dart';
 import 'package:gateway_config/core/utils/snackbar_custom.dart';
+import 'package:gateway_config/models/dropdown_items.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_alert_dialog.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_button.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_radiotile.dart';
@@ -331,7 +332,11 @@ class _FormConfigServerState extends State<FormConfigServer> {
       ),
     ];
 
-    List<String> typeInterval = ['s', 'm', 'ms'];
+    List<DropdownItems> typeInterval = [
+      DropdownItems(text: 's', value: 's'),
+      DropdownItems(text: 'm', value: 'm'),
+      DropdownItems(text: 'ms', value: 'ms'),
+    ];
 
     return Stack(
       children: [
@@ -353,7 +358,7 @@ class _FormConfigServerState extends State<FormConfigServer> {
   SafeArea _body(
     BuildContext context,
     List<DropdownItem<LoggingData>> items,
-    List<String> typeInterval,
+    List<DropdownItems> typeInterval,
   ) {
     return SafeArea(
       child: SingleChildScrollView(
@@ -403,7 +408,7 @@ class _FormConfigServerState extends State<FormConfigServer> {
   Column _intervalWrapper(
     BuildContext context,
     List<DropdownItem<LoggingData>> items,
-    List<String> typeInterval,
+    List<DropdownItems> typeInterval,
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -437,7 +442,7 @@ class _FormConfigServerState extends State<FormConfigServer> {
             Dropdown(
               label: 'Choose Interval Type',
               items: typeInterval,
-              selectedItem: selectedIntervalType,
+              selectedValue: selectedIntervalType,
               onChanged: (value) {
                 setState(() {
                   selectedIntervalType = value!;
@@ -724,8 +729,11 @@ class _FormConfigServerState extends State<FormConfigServer> {
         AppSpacing.md,
         Dropdown(
           label: 'Clean Session',
-          items: ['true', 'false'],
-          selectedItem: cleanSessionSelected,
+          items: [
+            DropdownItems(text: 'true', value: 'true'),
+            DropdownItems(text: 'false', value: 'false'),
+          ],
+          selectedValue: cleanSessionSelected,
           onChanged: (value) {
             setState(() {
               cleanSessionSelected = value!;
@@ -742,8 +750,11 @@ class _FormConfigServerState extends State<FormConfigServer> {
         AppSpacing.md,
         Dropdown(
           label: 'Use TLS',
-          items: ['true', 'false'],
-          selectedItem: useTlsSelected,
+          items: [
+            DropdownItems(text: 'true', value: 'true'),
+            DropdownItems(text: 'false', value: 'false'),
+          ],
+          selectedValue: useTlsSelected,
           onChanged: (value) {
             setState(() {
               useTlsSelected = value!;
