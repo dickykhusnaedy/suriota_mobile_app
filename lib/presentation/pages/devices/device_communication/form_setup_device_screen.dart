@@ -9,6 +9,7 @@ import 'package:gateway_config/core/utils/app_helpers.dart';
 import 'package:gateway_config/core/utils/extensions.dart';
 import 'package:gateway_config/core/utils/snackbar_custom.dart';
 import 'package:gateway_config/models/device_model.dart';
+import 'package:gateway_config/models/dropdown_items.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_alert_dialog.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_button.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_radiotile.dart';
@@ -52,11 +53,30 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
   final serverPortController = TextEditingController();
   final connectionTimeoutController = TextEditingController();
 
-  final serialData = ['1', '2'];
-  final baudrates = ['9600', '19200', '38400', '57600', '115200'];
-  final bitData = ['7', '8'];
-  final parity = ['None', 'Even', 'Odd'];
-  final stopBits = ['1', '2'];
+  final serialData = [
+    DropdownItems(text: '1', value: '1'),
+    DropdownItems(text: '2', value: '2'),
+  ];
+  final baudrates = [
+    DropdownItems(text: '9600', value: '9600'),
+    DropdownItems(text: '19200', value: '19200'),
+    DropdownItems(text: '38400', value: '38400'),
+    DropdownItems(text: '57600', value: '57600'),
+    DropdownItems(text: '115200', value: '115200'),
+  ];
+  final bitData = [
+    DropdownItems(text: '7', value: '7'),
+    DropdownItems(text: '8', value: '8'),
+  ];
+  final parity = [
+    DropdownItems(text: 'None', value: 'None'),
+    DropdownItems(text: 'Even', value: 'Even'),
+    DropdownItems(text: 'Odd', value: 'Odd'),
+  ];
+  final stopBits = [
+    DropdownItems(text: '1', value: '1'),
+    DropdownItems(text: '2', value: '2'),
+  ];
 
   @override
   void initState() {
@@ -93,36 +113,11 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
         ipAddressController.text = device['ip'] ?? '';
         serverPortController.text = device['port']?.toString() ?? '';
       } else {
-        final serialPort = device['serial_port']?.toString();
-        selectedSerialPort = serialData.contains(serialPort)
-            ? serialPort
-            : serialData.isNotEmpty
-            ? serialData.first
-            : null;
-        final baudRate = device['baud_rate']?.toString();
-        selectedBaudRate = baudrates.contains(baudRate)
-            ? baudRate
-            : baudrates.isNotEmpty
-            ? baudrates.first
-            : null;
-        final dataBits = device['data_bits']?.toString();
-        selectedBitData = bitData.contains(dataBits)
-            ? dataBits
-            : bitData.isNotEmpty
-            ? bitData.first
-            : null;
-        final parityValue = device['parity']?.toString();
-        selectedParity = parity.contains(parityValue)
-            ? parityValue
-            : parity.isNotEmpty
-            ? parity.first
-            : null;
-        final stopBitsValue = device['stop_bits']?.toString();
-        selectedStopBit = stopBits.contains(stopBitsValue)
-            ? stopBitsValue
-            : stopBits.isNotEmpty
-            ? stopBits.first
-            : null;
+        selectedSerialPort = device['serial_port']?.toString();
+        selectedBaudRate = device['baud_rate']?.toString();
+        selectedBitData = device['data_bits']?.toString();
+        selectedParity = device['parity']?.toString();
+        selectedStopBit = device['stop_bits']?.toString();
 
         AppHelpers.debugLog('selectedSerialPort: $selectedSerialPort');
       }
@@ -466,8 +461,7 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
         Dropdown(
           label: 'Choose Serial Port',
           items: serialData,
-          hint: 'Choose the serial port',
-          selectedItem: selectedSerialPort,
+          selectedValue: selectedSerialPort,
           onChanged: (value) {
             setState(() {
               selectedSerialPort = value;
@@ -486,8 +480,7 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
         Dropdown(
           label: 'Choose Baudrate',
           items: baudrates,
-          hint: 'Choose the baudrate',
-          selectedItem: selectedBaudRate,
+          selectedValue: selectedBaudRate,
           onChanged: (value) {
             setState(() {
               selectedBaudRate = value;
@@ -506,8 +499,7 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
         Dropdown(
           label: 'Choose Bit Data',
           items: bitData,
-          hint: 'Choose bit data',
-          selectedItem: selectedBitData,
+          selectedValue: selectedBitData,
           onChanged: (value) {
             setState(() {
               selectedBitData = value;
@@ -526,8 +518,7 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
         Dropdown(
           label: 'Choose Parity',
           items: parity,
-          hint: 'Choose the parity',
-          selectedItem: selectedParity,
+          selectedValue: selectedParity,
           onChanged: (value) {
             setState(() {
               selectedParity = value;
@@ -546,8 +537,7 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
         Dropdown(
           label: 'Choose Stop Bit',
           items: stopBits,
-          hint: 'Choose the stop bit',
-          selectedItem: selectedStopBit,
+          selectedValue: selectedStopBit,
           onChanged: (value) {
             setState(() {
               selectedStopBit = value;
