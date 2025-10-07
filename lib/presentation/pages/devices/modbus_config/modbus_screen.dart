@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:gateway_config/core/constants/app_color.dart';
 import 'package:gateway_config/core/constants/app_gap.dart';
 import 'package:gateway_config/core/controllers/ble/ble_controller.dart';
 import 'package:gateway_config/core/controllers/modbus/modbus_pagination_controller.dart';
 import 'package:gateway_config/core/utils/extensions.dart';
-import 'package:gateway_config/core/utils/loading_progress.dart';
+import 'package:gateway_config/models/device_model.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_alert_dialog.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_button.dart';
-import 'package:gateway_config/presentation/pages/devices/modbus_config/form_modbus_config_screen.dart';
+import 'package:get/get.dart';
+import 'package:go_router/go_router.dart';
 
 class ModbusScreen extends StatefulWidget {
-  const ModbusScreen({super.key});
+  const ModbusScreen({super.key, required this.model});
+  final DeviceModel model;
 
   @override
   State<ModbusScreen> createState() => _ModbusScreenState();
@@ -218,7 +219,9 @@ class _ModbusScreenState extends State<ModbusScreen> {
       actions: [
         IconButton(
           onPressed: () {
-            Get.to(() => const FormModbusConfigScreen());
+            context.push(
+              '/devices/modbus-config/add?d=${widget.model.device.remoteId}',
+            );
           },
           icon: const Icon(Icons.add_circle, size: 22),
         ),
@@ -272,7 +275,7 @@ class _ModbusScreenState extends State<ModbusScreen> {
                       size: 18,
                       color: AppColor.whiteColor,
                     ),
-                    btnColor: AppColor.redColor,
+                    btnColor: const Color.fromARGB(255, 254, 179, 188),
                   ),
                 ),
                 AppSpacing.md,
@@ -282,7 +285,9 @@ class _ModbusScreenState extends State<ModbusScreen> {
                     width: double.infinity,
                     height: 32,
                     onPressed: () {
-                      Get.to(() => FormModbusConfigScreen(id: modbus['id']));
+                      context.push(
+                        '/devices/modbus-config/add/edit?d=${widget.model.device.remoteId}&id=${modbus['id']}',
+                      );
                     },
                     icons: const Icon(
                       Icons.edit,
