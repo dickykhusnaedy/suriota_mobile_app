@@ -62,7 +62,7 @@ class CustomTextFormField extends StatelessWidget {
                   AppSpacing.xs,
                   if (isRequired)
                     Text(
-                      '*required',
+                      '*',
                       style: context.buttonTextSmallest.copyWith(
                         color: Colors.red,
                       ),
