@@ -129,27 +129,10 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
   }
 
   void _submit() async {
-    // if (widget.id == null) {
-    //   final Map<String, dynamic> devicesName = controller.devices.firstWhere(
-    //     (item) => item['name'] == deviceNameController.text,
-    //     orElse: () => {},
-    //   );
-
-    //   if (devicesName.isNotEmpty) {
-    //     SnackbarCustom.showSnackbar(
-    //       '',
-    //       'Sorry, the device name you entered is already registered.',
-    //       AppColor.redColor,
-    //       AppColor.whiteColor,
-    //     );
-    //     return;
-    //   }
-    // }
-
     // Validasi form
     if (!_formKey.currentState!.validate()) return;
 
-    // Periksa koneksi BLE
+    // Check BLE Connection
     if (!widget.model.isConnected.value) {
       SnackbarCustom.showSnackbar(
         '',
@@ -162,7 +145,7 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
 
     CustomAlertDialog.show(
       title: "Are you sure?",
-      message: "Are you sure you want to save} this device?",
+      message: "Are you sure you want to save this device?",
       primaryButtonText: 'Yes',
       secondaryButtonText: 'No',
       onPrimaryPressed: () async {
@@ -462,9 +445,9 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
           label: 'Choose Serial Port',
           items: serialData,
           selectedValue: selectedSerialPort,
-          onChanged: (value) {
+          onChanged: (item) {
             setState(() {
-              selectedSerialPort = value;
+              selectedSerialPort = item!.value;
             });
           },
           validator: (value) {
@@ -481,9 +464,9 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
           label: 'Choose Baudrate',
           items: baudrates,
           selectedValue: selectedBaudRate,
-          onChanged: (value) {
+          onChanged: (item) {
             setState(() {
-              selectedBaudRate = value;
+              selectedBaudRate = item!.value;
             });
           },
           validator: (value) {
@@ -500,9 +483,9 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
           label: 'Choose Bit Data',
           items: bitData,
           selectedValue: selectedBitData,
-          onChanged: (value) {
+          onChanged: (item) {
             setState(() {
-              selectedBitData = value;
+              selectedBitData = item!.value;
             });
           },
           validator: (value) {
@@ -519,9 +502,9 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
           label: 'Choose Parity',
           items: parity,
           selectedValue: selectedParity,
-          onChanged: (value) {
+          onChanged: (item) {
             setState(() {
-              selectedParity = value;
+              selectedParity = item!.value;
             });
           },
           validator: (value) {
@@ -538,9 +521,9 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
           label: 'Choose Stop Bit',
           items: stopBits,
           selectedValue: selectedStopBit,
-          onChanged: (value) {
+          onChanged: (item) {
             setState(() {
-              selectedStopBit = value;
+              selectedStopBit = item!.value;
             });
           },
           validator: (value) {
