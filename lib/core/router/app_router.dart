@@ -190,7 +190,7 @@ class AppRouter {
               final model = bleController.findDeviceByRemoteId(deviceId);
 
               return model != null
-                  ? FormConfigServer()
+                  ? FormConfigServer(model: model)
                   : _deviceNotFound(context);
             },
           ),
