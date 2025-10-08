@@ -3,9 +3,12 @@ import 'package:gateway_config/core/constants/app_color.dart';
 import 'package:gateway_config/core/constants/app_gap.dart';
 import 'package:gateway_config/core/controllers/ble_controller.dart';
 import 'package:gateway_config/core/controllers/devices_controller.dart';
+import 'package:gateway_config/core/utils/app_helpers.dart';
 import 'package:gateway_config/core/utils/extensions.dart';
+import 'package:gateway_config/core/utils/snackbar_custom.dart';
 import 'package:gateway_config/models/device_model.dart';
 import 'package:gateway_config/models/dropdown_items.dart';
+import 'package:gateway_config/presentation/widgets/common/custom_alert_dialog.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_button.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_textfield.dart';
 import 'package:gateway_config/presentation/widgets/common/dropdown.dart';
@@ -32,10 +35,10 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
   String errorMessage = '';
 
   final deviceNameController = TextEditingController();
-  final idSlaveController = TextEditingController();
   final addressController = TextEditingController();
   final serverPortController = TextEditingController();
   final connectionTimeoutController = TextEditingController();
+  final descriptionController = TextEditingController();
   final refreshRateController = TextEditingController();
 
   static final List<DropdownItems> modbusReadFunctions = [
@@ -46,23 +49,24 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
   ];
 
   static const List<Map<String, dynamic>> dataModbusType = [
-    {'name': 'INT16', 'text': 'INT16'},
-    {'name': 'UINT16', 'text': 'UINT16'},
-    {'name': 'INT32', 'text': 'INT32'},
-    {'name': 'UINT32', 'text': 'UINT32'},
-    {'name': 'FLOAT32', 'text': 'FLOAT32'},
-    {'name': 'INT64', 'text': 'INT64'},
-    {'name': 'FLOAT64', 'text': 'FLOAT64'},
+    {'text': 'INT16', 'value': 'int16'},
+    {'text': 'UINT16', 'value': 'uint16'},
+    {'text': 'INT32', 'value': 'int32'},
+    {'text': 'UINT32', 'value': 'uint32'},
+    {'text': 'FLOAT32', 'value': 'float32'},
+    {'text': 'INT64', 'value': 'int64'},
+    {'text': 'FLOAT64', 'value': 'float64'},
   ];
   List<DropdownItems> modbusDataTypes = dataModbusType
       .map(
         (data) =>
-            DropdownItems(text: data['name'], value: data['id'].toString()),
+            DropdownItems(text: data['text'], value: data['value'].toString()),
       )
       .toList();
 
   String? selectedDevice;
   String? selectedFunction;
+  String? selectedFunctionText;
   String? selectedTypeData;
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
@@ -78,15 +82,6 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
   @override
   void initState() {
     super.initState();
-
-    // if (widget.id != null) {
-    //   dataModbus = controllerModbus.modbus.firstWhere(
-    //     (item) => item['id'] == widget.id,
-    //     orElse: () => {},
-    //   );
-
-    //   // _fillFormFromDevice(dataModbus);
-    // }
   }
 
   @override
@@ -100,119 +95,77 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
     }
   }
 
-  // Future<void> fetchDataDevices() async {
-  //   setState(() {
-  //     isLoading = true;
-  //     errorMessage = '';
-  //   });
-
-  //   try {
-  //     final data = await bleController.fetchData(
-  //       "READ|devices|names",
-  //       'devices',
-  //     );
-
-  //     print('data devices aa: $data');
-
-  //     setState(() {
-  //       if (data['data'] is List) {
-  //         deviceNames = (data['data'] as List).map((device) {
-  //           if (device is Map<String, dynamic>) {
-  //             return device['name'] as String? ?? 'Unknown';
-  //           } else if (device is String) {
-  //             return device; // Langsung gunakan string dari array
-  //           }
-  //           return 'Unknown';
-  //         }).toList();
-  //       } else {
-  //         deviceNames = [];
-  //         errorMessage = 'No devices found';
-  //       }
-  //     });
-  //   } catch (e) {
-  //     setState(() {
-  //       deviceNames = [];
-  //       errorMessage = e is TimeoutException
-  //           ? 'Timeout: Could not load devices. Please try again.'
-  //           : 'Failed to load devices: $e';
-  //       isLoading = false;
-  //     });
-  //   }
-  // }
-
   int? _tryParseInt(String? value, {int? defaultValue}) {
     if (value == null || value.isEmpty) return defaultValue;
     return int.tryParse(value) ?? defaultValue;
   }
 
-  // void _fillFormFromDevice(Map<String, dynamic> modbus) {
-  //   deviceNameController.text = modbus['name'];
-  //   addressController.text = modbus['address'];
-  //   idSlaveController.text = modbus['id'].toString();
-
-  //   setState(() {
-  //     selectedDevice = modbus['device_choose'];
-  //     selectedFunction = modbus['function_code'];
-  //     selectedTypeData = modbus['data_type'];
-  //   });
-  // }
-
-  // String _formData() {
-  //   final device = selectedDevice;
-  //   final type = selectedTypeData;
-  //   final name = deviceNameController.text;
-  //   final address = _tryParseInt(addressController.text);
-  //   final function = _tryParseInt(selectedFunction, defaultValue: 1);
-
-  //   if (widget.id != null) {
-  //     final id = widget.id;
-  //     return 'UPDATE|modbus|id:$id|name:$name|device_choose:$device|data_type:$type|address:$address|function_code:$function';
-  //   }
-  //   return 'CREATE|modbus|name:$name|device_choose:$device|data_type:$type|address:$address|function_code:$function';
-  // }
+  String _sanitizeInput(String input) {
+    return input.replaceAll('|', '').replaceAll('#', '');
+  }
 
   void _submit() async {
     // Validasi form
     if (!_formKey.currentState!.validate()) return;
 
-    // // Periksa koneksi BLE
-    // if (bleController.isConnected.isEmpty ||
-    //     !bleController.isConnected.values.any((connected) => connected)) {
-    //   Get.snackbar('Error', 'No BLE device connected');
-    //   return;
-    // }
+    if (!widget.model.isConnected.value) {
+      SnackbarCustom.showSnackbar(
+        '',
+        'Device not connected',
+        AppColor.redColor,
+        AppColor.whiteColor,
+      );
+      return;
+    }
 
-    // // Konfirmasi sebelum submit
-    // CustomAlertDialog.show(
-    //   title: "Are you sure?",
-    //   message:
-    //       "Are you sure you want to ${widget.id != null ? 'update' : 'save'} this modbus config?",
-    //   primaryButtonText: 'Yes',
-    //   secondaryButtonText: 'No',
-    //   onPrimaryPressed: () async {
-    //     Get.back();
-    //     await Future.delayed(const Duration(seconds: 1));
+    CustomAlertDialog.show(
+      title: 'Are you sure?',
+      message: 'Are you sure you want to save this modbus configuration?',
+      primaryButtonText: 'Yes',
+      secondaryButtonText: 'No',
+      onPrimaryPressed: () async {
+        Get.back();
+        await Future.delayed(const Duration(seconds: 1));
 
-    //     try {
-    //       final sendDataDelimiter = _formData();
-    //       bleController.sendCommand(sendDataDelimiter, 'modbus');
-    //     } catch (e) {
-    //       debugPrint('Error submitting form: $e');
-    //       Get.snackbar('Error', 'Failed to submit form: $e');
-    //     } finally {
-    //       await Future.delayed(const Duration(seconds: 3));
-    //       AppHelpers.backNTimes(1);
-    //     }
-    //   },
-    //   barrierDismissible: false,
-    // );
+        try {
+          var formData = {
+            "op": "create",
+            "type": "register",
+            "device_id": selectedDevice,
+            "config": {
+              "address": _sanitizeInput(addressController.text),
+              "register_name": _sanitizeInput(deviceNameController.text),
+              "type": selectedFunctionText,
+              "function_code": _tryParseInt(selectedFunction),
+              "data_type": selectedTypeData,
+              "description": "Main Temperature Sensor (°C)",
+              "refresh_rate_ms": _tryParseInt(refreshRateController.text),
+            },
+          };
+
+          bleController.sendCommand(formData);
+        } catch (e) {
+          SnackbarCustom.showSnackbar(
+            '',
+            'Failed to submit form',
+            AppColor.redColor,
+            AppColor.whiteColor,
+          );
+          AppHelpers.debugLog('Error submitting form: $e');
+        } finally {
+          await Future.delayed(const Duration(seconds: 3));
+          AppHelpers.backNTimes(1);
+        }
+      },
+      barrierDismissible: false,
+    );
   }
 
   @override
   void dispose() {
     deviceNameController.dispose();
-    idSlaveController.dispose();
     addressController.dispose();
+    descriptionController.dispose();
     refreshRateController.dispose();
     isInitialized = false;
     super.dispose();
@@ -224,7 +177,8 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
       children: [
         Scaffold(appBar: _appBar(context), body: _body(context)),
         Obx(() {
-          final isAnyDeviceLoading = controller.isFetching.value;
+          final isAnyDeviceLoading =
+              controller.isFetching.value || bleController.commandLoading.value;
           return LoadingOverlay(
             isLoading: isAnyDeviceLoading,
             message: 'Processing request...',
@@ -277,27 +231,13 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
                 isRequired: true,
               ),
               AppSpacing.md,
-              CustomTextFormField(
-                controller: idSlaveController,
-                labelTxt: "ID Slave",
-                hintTxt: "1",
-                keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'ID Slave is required';
-                  }
-                  return null;
-                },
-                isRequired: true,
-              ),
-              AppSpacing.md,
               Dropdown(
                 items: deviceItem,
                 selectedValue: selectedDevice,
                 label: 'Choose Device',
-                onChanged: (value) {
+                onChanged: (item) {
                   setState(() {
-                    selectedDevice = value;
+                    selectedDevice = item!.value;
                   });
                 },
                 validator: (value) {
@@ -313,9 +253,10 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
                 items: modbusReadFunctions,
                 selectedValue: selectedFunction,
                 label: 'Choose Function',
-                onChanged: (value) {
+                onChanged: (item) {
                   setState(() {
-                    selectedFunction = value;
+                    selectedFunctionText = item!.text;
+                    selectedFunction = item.value;
                   });
                 },
                 validator: (value) {
@@ -330,7 +271,7 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
               CustomTextFormField(
                 controller: addressController,
                 labelTxt: "Address Modbus",
-                hintTxt: "1",
+                hintTxt: "ex. 1",
                 keyboardType: TextInputType.number,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
@@ -348,14 +289,27 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
                 items: modbusDataTypes,
                 selectedValue: selectedTypeData,
                 label: 'Choose Data Type',
-                onChanged: (value) {
+                onChanged: (item) {
                   setState(() {
-                    selectedTypeData = value;
+                    selectedTypeData = item!.value;
                   });
                 },
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Please select data type';
+                  }
+                  return null;
+                },
+                isRequired: true,
+              ),
+              AppSpacing.md,
+              CustomTextFormField(
+                controller: descriptionController,
+                labelTxt: "Description",
+                hintTxt: "ex. Main Temperature",
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Address Modbus is required';
                   }
                   return null;
                 },
