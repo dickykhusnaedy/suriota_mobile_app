@@ -10,7 +10,7 @@ import 'package:gateway_config/models/dropdown_items.dart';
 class Dropdown extends StatefulWidget {
   final String? label;
   final List<DropdownItems> items;
-  final void Function(String?)? onChanged;
+  final void Function(DropdownItems?)? onChanged;
   final void Function(DropdownItems)? disabledItemFn;
   final String? Function(String?)? validator;
   final String? hint;
@@ -94,9 +94,7 @@ class _DropdownState extends State<Dropdown> {
             decoratorProps: _dropdownDecoratorProps(context),
             onChanged: (item) {
               if (widget.onChanged != null) {
-                widget.onChanged!(
-                  item?.value,
-                ); // Kirim VALUE ke onChanged, bukan text
+                widget.onChanged!(item); // send text and value
               }
             },
             selectedItem: initialSelect,
