@@ -4,11 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:gateway_config/core/constants/app_color.dart';
 import 'package:gateway_config/core/constants/app_font.dart';
 import 'package:gateway_config/core/constants/app_gap.dart';
-import 'package:gateway_config/core/controllers/ble/ble_controller.dart';
 import 'package:gateway_config/core/controllers/ble_controller.dart';
+import 'package:gateway_config/core/controllers/server_config_controller.dart';
 import 'package:gateway_config/core/utils/app_helpers.dart';
 import 'package:gateway_config/core/utils/extensions.dart';
 import 'package:gateway_config/core/utils/snackbar_custom.dart';
+import 'package:gateway_config/models/device_model.dart';
 import 'package:gateway_config/models/dropdown_items.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_alert_dialog.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_button.dart';
@@ -21,7 +22,8 @@ import 'package:get/get.dart';
 import 'package:multi_dropdown/multi_dropdown.dart';
 
 class FormConfigServer extends StatefulWidget {
-  const FormConfigServer({super.key});
+  const FormConfigServer({super.key, required this.model});
+  final DeviceModel model;
 
   @override
   State<FormConfigServer> createState() => _FormConfigServerState();
@@ -40,8 +42,8 @@ class LoggingData {
 }
 
 class _FormConfigServerState extends State<FormConfigServer> {
-  final BLEController bleController = Get.put(BLEController(), permanent: true);
-  final BleController controller = Get.put(BleController());
+  final BleController bleController;
+  final ServerConfigController controller;
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
@@ -81,6 +83,14 @@ class _FormConfigServerState extends State<FormConfigServer> {
   final contentTypeController = TextEditingController(text: 'application/json');
   final bodyFormatController = TextEditingController(text: 'json');
 
+  _FormConfigServerState()
+    : bleController = Get.put(BleController(), permanent: true),
+      controller = Get.put(ServerConfigController(), permanent: true) {
+    debugPrint(
+      'Initialized BLEController and DevicePaginationController with Get.put',
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -92,7 +102,7 @@ class _FormConfigServerState extends State<FormConfigServer> {
     super.didChangeDependencies();
     if (!isInitialized) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        // fetchData();
+        controller.fetchDevices(widget.model);
         isInitialized = true;
       });
     }
@@ -216,7 +226,7 @@ class _FormConfigServerState extends State<FormConfigServer> {
         };
 
         try {
-          controller.sendCommand(formData);
+          bleController.sendCommand(formData);
         } catch (e) {
           SnackbarCustom.showSnackbar(
             '',
@@ -345,7 +355,7 @@ class _FormConfigServerState extends State<FormConfigServer> {
           body: _body(context, items, typeInterval),
         ),
         Obx(() {
-          final isAnyDeviceLoading = bleController.isLoading.value;
+          final isAnyDeviceLoading = controller.isFetching.value;
           return LoadingOverlay(
             isLoading: isAnyDeviceLoading,
             message: 'Processing request...',
@@ -443,9 +453,9 @@ class _FormConfigServerState extends State<FormConfigServer> {
               label: 'Choose Interval Type',
               items: typeInterval,
               selectedValue: selectedIntervalType,
-              onChanged: (value) {
+              onChanged: (item) {
                 setState(() {
-                  selectedIntervalType = value!;
+                  selectedIntervalType = item!.value;
                 });
               },
               validator: (value) {
@@ -734,9 +744,9 @@ class _FormConfigServerState extends State<FormConfigServer> {
             DropdownItems(text: 'false', value: 'false'),
           ],
           selectedValue: cleanSessionSelected,
-          onChanged: (value) {
+          onChanged: (item) {
             setState(() {
-              cleanSessionSelected = value!;
+              cleanSessionSelected = item!.value;
             });
           },
           validator: (value) {
@@ -755,9 +765,9 @@ class _FormConfigServerState extends State<FormConfigServer> {
             DropdownItems(text: 'false', value: 'false'),
           ],
           selectedValue: useTlsSelected,
-          onChanged: (value) {
+          onChanged: (item) {
             setState(() {
-              useTlsSelected = value!;
+              useTlsSelected = item!.value;
             });
           },
           validator: (value) {
