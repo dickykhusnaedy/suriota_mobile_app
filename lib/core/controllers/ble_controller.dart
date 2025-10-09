@@ -592,12 +592,20 @@ class BleController extends GetxController {
                 throw Exception('Missing status field in response');
               }
 
-              // Map field lain ke config jika config tidak ada
-              responseJson['config'] =
+              dynamic configData =
                   responseJson['config'] ??
                   responseJson[type] ??
                   responseJson['data'] ??
                   {};
+
+              if (configData is Map) {
+                configData = [configData]; // Wrap Map jadi List<Map>
+              } else if (configData is! List) {
+                configData = []; // Fallback jika bukan List/Map
+              }
+
+              // Map field lain ke config jika config tidak ada
+              responseJson['config'] = configData;
               responseJson['message'] = "Get data successfully";
               responseJson['type'] = responseJson['type'] ?? type;
 
