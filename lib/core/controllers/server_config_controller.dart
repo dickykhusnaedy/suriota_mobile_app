@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:gateway_config/core/constants/app_color.dart';
 import 'package:gateway_config/core/controllers/ble_controller.dart';
 import 'package:gateway_config/core/utils/app_helpers.dart';
@@ -68,5 +69,66 @@ class ServerConfigController extends GetxController {
     } finally {
       isFetching.value = false;
     }
+  }
+
+  Future<void> updateData(
+    DeviceModel model,
+    Map<String, dynamic> config,
+  ) async {
+    isFetching.value = true;
+    try {
+      if (!model.isConnected.value) {
+        SnackbarCustom.showSnackbar(
+          '',
+          'Device not connected',
+          AppColor.redColor,
+          AppColor.whiteColor,
+        );
+        return;
+      }
+
+      // Buat command sesuai format
+      final command = {
+        "op": "update",
+        "type": "server_config",
+        "config": config,
+      };
+
+      AppHelpers.debugLog('Sending update command: $command');
+
+      final response = await bleController.sendCommand(command);
+
+      if (response.status == 'ok' || response.status == 'success') {
+        // Update dataServer dengan config baru
+        dataServer.assignAll([config]);
+        SnackbarCustom.showSnackbar(
+          '',
+          'Configuration updated successfully',
+          Colors.green,
+          AppColor.whiteColor,
+        );
+      } else {
+        SnackbarCustom.showSnackbar(
+          '',
+          response.message ?? 'Failed to update configuration',
+          AppColor.redColor,
+          AppColor.whiteColor,
+        );
+      }
+    } catch (e) {
+      AppHelpers.debugLog('Error updating server config: $e');
+      SnackbarCustom.showSnackbar(
+        'Error',
+        'Failed to update configuration: $e',
+        AppColor.redColor,
+        AppColor.whiteColor,
+      );
+    } finally {
+      isFetching.value = false;
+    }
+  }
+
+  Map<String, dynamic> getServerConfig() {
+    return dataServer.isNotEmpty ? dataServer[0] : <String, dynamic>{};
   }
 }
