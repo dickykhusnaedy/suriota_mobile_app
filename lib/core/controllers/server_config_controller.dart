@@ -11,7 +11,7 @@ class ServerConfigController extends GetxController {
 
   final BleController bleController = Get.put(BleController());
 
-  Future<void> fetchDevices(DeviceModel model) async {
+  Future<void> fetchData(DeviceModel model) async {
     isFetching.value = true;
 
     try {
@@ -31,10 +31,21 @@ class ServerConfigController extends GetxController {
       );
 
       if (response.status == 'ok' || response.status == 'success') {
-        dataServer.assignAll(
-          (response.config as List<dynamic>?)?.cast<Map<String, dynamic>>() ??
-              [],
-        );
+        dynamic config = response.config;
+
+        if (config is List) {
+          dataServer.assignAll(config.cast<Map<String, dynamic>>());
+        } else if (config is Map) {
+          dataServer.assignAll([config.cast<String, dynamic>()]);
+        } else {
+          dataServer.clear();
+          SnackbarCustom.showSnackbar(
+            '',
+            'Invalid config format',
+            AppColor.redColor,
+            AppColor.whiteColor,
+          );
+        }
       } else {
         SnackbarCustom.showSnackbar(
           '',
