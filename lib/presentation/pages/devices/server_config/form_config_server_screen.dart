@@ -102,7 +102,7 @@ class _FormConfigServerState extends State<FormConfigServer> {
     super.didChangeDependencies();
     if (!isInitialized) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        controller.fetchDevices(widget.model);
+        controller.fetchData(widget.model);
         isInitialized = true;
       });
     }
@@ -137,28 +137,6 @@ class _FormConfigServerState extends State<FormConfigServer> {
   //   usernameController.text = data['auth']?['username'] ?? '';
   //   passwordController.text = data['auth']?['password'] ?? '';
   // }
-
-  Future<void> fetchData() async {
-    setState(() {
-      isLoading = true;
-      errorMessage = '';
-    });
-
-    try {
-      // final data = await bleController.fetchData("READ|config", 'config');
-
-      setState(() {
-        // _updateFormWithConfigData(data);
-
-        isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        errorMessage = 'Failed to load config: $e';
-        isLoading = false;
-      });
-    }
-  }
 
   void _submit() async {
     if (!_formKey.currentState!.validate()) return;
