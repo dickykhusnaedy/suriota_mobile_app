@@ -10,9 +10,12 @@ class ServerConfigController extends GetxController {
   final RxList<Map<String, dynamic>> dataServer = <Map<String, dynamic>>[].obs;
   final RxBool isFetching = false.obs;
 
+  bool _isMounted = true;
+
   final BleController bleController = Get.put(BleController());
 
   Future<void> fetchData(DeviceModel model) async {
+    if (!_isMounted) return;
     isFetching.value = true;
 
     try {
@@ -31,6 +34,7 @@ class ServerConfigController extends GetxController {
         type: 'server_config',
       );
 
+      if (!_isMounted) return;
       if (response.status == 'ok' || response.status == 'success') {
         dynamic config = response.config;
 
@@ -58,6 +62,7 @@ class ServerConfigController extends GetxController {
         dataServer.clear();
       }
     } catch (e) {
+      if (!_isMounted) return;
       AppHelpers.debugLog('Error fetching server: $e');
       SnackbarCustom.showSnackbar(
         'Error',
@@ -67,8 +72,12 @@ class ServerConfigController extends GetxController {
       );
       dataServer.clear();
     } finally {
-      isFetching.value = false;
+      if (_isMounted) isFetching.value = false;
     }
+  }
+
+  void setMounted(bool value) {
+    _isMounted = value;
   }
 
   Future<void> updateData(
@@ -130,5 +139,11 @@ class ServerConfigController extends GetxController {
 
   Map<String, dynamic> getServerConfig() {
     return dataServer.isNotEmpty ? dataServer[0] : <String, dynamic>{};
+  }
+
+  @override
+  void onClose() {
+    _isMounted = false;
+    super.onClose();
   }
 }
