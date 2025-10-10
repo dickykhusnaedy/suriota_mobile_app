@@ -176,6 +176,22 @@ class AppRouter {
                       : _deviceNotFound(context);
                 },
               ),
+              GoRoute(
+                path: '/edit',
+                name: 'modbus-config-edit',
+                builder: (context, state) {
+                  final deviceId = state.uri.queryParameters['d'];
+                  if (deviceId == null) {
+                    return _deviceNotFound(context);
+                  }
+                  final bleController = Get.find<BleController>();
+                  final model = bleController.findDeviceByRemoteId(deviceId);
+
+                  return model != null
+                      ? FormModbusConfigScreen(model: model)
+                      : _deviceNotFound(context);
+                },
+              ),
             ],
           ),
           GoRoute(
