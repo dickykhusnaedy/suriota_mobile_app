@@ -11,7 +11,6 @@ class Dropdown extends StatefulWidget {
   final String? label;
   final List<DropdownItems> items;
   final void Function(DropdownItems?)? onChanged;
-  final void Function(DropdownItems)? disabledItemFn;
   final String? Function(String?)? validator;
   final String? hint;
   final String? selectedValue;
@@ -24,7 +23,6 @@ class Dropdown extends StatefulWidget {
     this.label,
     required this.items,
     this.onChanged,
-    this.disabledItemFn,
     this.validator,
     this.hint,
     this.selectedValue,
@@ -44,16 +42,27 @@ class _DropdownState extends State<Dropdown> {
   @override
   void initState() {
     super.initState();
+    _updateSelectedItem();
+  }
 
+  @override
+  void didUpdateWidget(Dropdown oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Update kalo selectedValue atau items berubah
+    if (oldWidget.selectedValue != widget.selectedValue ||
+        oldWidget.items != widget.items) {
+      _updateSelectedItem();
+    }
+  }
+
+  void _updateSelectedItem() {
     if (widget.selectedValue != null) {
       initialSelect = widget.items.firstWhere(
         (item) => item.value == widget.selectedValue,
-        orElse: () => DropdownItems(text: '', value: ''),
+        orElse: () => DropdownItems(text: '', value: ''), // fallback kosong
       );
-    }
-
-    if (widget.validator != null && widget.selectedValue != null) {
-      errorText = widget.validator!(widget.selectedValue);
+    } else {
+      initialSelect = null;
     }
   }
 
@@ -65,45 +74,32 @@ class _DropdownState extends State<Dropdown> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (widget.label != null && widget.label!.isNotEmpty)
-            Column(
+          if (widget.label?.isNotEmpty == true) ...[
+            Row(
               children: [
-                Row(
-                  children: [
-                    Text(
-                      widget.label!,
-                      style: context.h6.copyWith(
-                        fontWeight: FontWeightTheme.bold,
-                      ),
-                    ),
-                    AppSpacing.xs,
-                    if (widget.isRequired)
-                      Text(
-                        '*',
-                        style: context.buttonTextSmallest.copyWith(
-                          color: Colors.red,
-                        ),
-                      ),
-                  ],
+                Text(
+                  widget.label!,
+                  style: context.h6.copyWith(fontWeight: FontWeightTheme.bold),
                 ),
-                AppSpacing.sm,
+                AppSpacing.xs,
+                if (widget.isRequired)
+                  Text(
+                    '*',
+                    style: context.buttonTextSmallest.copyWith(
+                      color: Colors.red,
+                    ),
+                  ),
               ],
             ),
+            AppSpacing.sm,
+          ],
           DropdownSearch<DropdownItems>(
-            items: (filter, infiniteScrollProps) => widget.items,
+            items: (filter, _) => widget.items,
             decoratorProps: _dropdownDecoratorProps(context),
-            onChanged: (item) {
-              if (widget.onChanged != null) {
-                widget.onChanged!(item); // send text and value
-              }
-            },
+            onChanged: widget.onChanged,
             selectedItem: initialSelect,
             popupProps: _popupProps(context),
-            validator: (item) {
-              return widget.validator?.call(
-                item?.value,
-              ); // Validate berdasarkan value
-            },
+            validator: (item) => widget.validator?.call(item?.value),
             dropdownBuilder: (context, selectedItem) {
               return Text(
                 selectedItem?.text ?? 'Please select...',
@@ -114,21 +110,18 @@ class _DropdownState extends State<Dropdown> {
                 ),
               );
             },
-            compareFn: (item1, item2) => item1.value == item2.value,
+            compareFn: (a, b) => a.value == b.value,
           ),
-          if (widget.hint != null && widget.hint!.isNotEmpty)
-            Column(
-              children: [
-                AppSpacing.sm,
-                Text(
-                  widget.hint!,
-                  style: context.buttonTextSmall.copyWith(
-                    color: AppColor.lightGrey,
-                  ),
-                ),
-                AppSpacing.sm,
-              ],
+          if (widget.hint?.isNotEmpty == true) ...[
+            AppSpacing.sm,
+            Text(
+              widget.hint!,
+              style: context.buttonTextSmall.copyWith(
+                color: AppColor.lightGrey,
+              ),
             ),
+            AppSpacing.sm,
+          ],
         ],
       ),
     );
@@ -139,12 +132,12 @@ class _DropdownState extends State<Dropdown> {
       fit: FlexFit.loose,
       showSelectedItems: true,
       showSearchBox: widget.showSearchBox,
-      constraints: BoxConstraints(maxHeight: 300),
+      constraints: const BoxConstraints(maxHeight: 300),
       searchFieldProps: _searchFieldProps(context),
       menuProps: MenuProps(
         backgroundColor: AppColor.whiteColor,
         elevation: 0,
-        margin: EdgeInsets.only(top: 5),
+        margin: const EdgeInsets.only(top: 5),
         borderRadius: BorderRadius.circular(14),
       ),
       containerBuilder: (context, menuWidget) {
@@ -155,7 +148,7 @@ class _DropdownState extends State<Dropdown> {
             borderRadius: BorderRadius.circular(14),
           ),
           padding: AppPadding.smallest,
-          child: menuWidget, // wajib! ini isi menu aslinya
+          child: menuWidget,
         );
       },
       itemBuilder: (context, item, isDisabled, isSelected) => Container(
@@ -164,10 +157,7 @@ class _DropdownState extends State<Dropdown> {
           vertical: 12.w.clamp(12, 14),
         ),
         decoration: BoxDecoration(
-          color: isSelected
-              ? AppColor
-                    .lightPrimaryColor // background kalau terpilih
-              : Colors.transparent,
+          color: isSelected ? AppColor.lightPrimaryColor : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Text(
@@ -198,7 +188,7 @@ class _DropdownState extends State<Dropdown> {
         fillColor: widget.isDisabled ? Colors.grey[200] : Colors.white,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColor.lightGrey, width: 1),
+          borderSide: const BorderSide(color: AppColor.lightGrey, width: 1),
         ),
         focusedBorder: OutlineInputBorder(
           borderSide: BorderSide(
@@ -208,11 +198,11 @@ class _DropdownState extends State<Dropdown> {
           borderRadius: BorderRadius.circular(12),
         ),
         enabledBorder: OutlineInputBorder(
-          borderSide: BorderSide(color: AppColor.lightGrey, width: 1),
+          borderSide: const BorderSide(color: AppColor.lightGrey, width: 1),
           borderRadius: BorderRadius.circular(12),
         ),
         errorBorder: OutlineInputBorder(
-          borderSide: BorderSide(color: Colors.red, width: 1),
+          borderSide: const BorderSide(color: Colors.red, width: 1),
           borderRadius: BorderRadius.circular(12),
         ),
         errorText: errorText,
@@ -224,18 +214,18 @@ class _DropdownState extends State<Dropdown> {
     return TextFieldProps(
       decoration: InputDecoration(
         contentPadding: AppPadding.small,
-        hintText: 'Search here...',
+        hintText: 'Search here.',
         hintStyle: context.body.copyWith(color: AppColor.lightGrey),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColor.lightGrey, width: 1),
+          borderSide: const BorderSide(color: AppColor.lightGrey, width: 1),
         ),
         focusedBorder: OutlineInputBorder(
-          borderSide: BorderSide(color: AppColor.primaryColor, width: 1),
+          borderSide: const BorderSide(color: AppColor.primaryColor, width: 1),
           borderRadius: BorderRadius.circular(12),
         ),
         enabledBorder: OutlineInputBorder(
-          borderSide: BorderSide(color: AppColor.lightGrey, width: 1),
+          borderSide: const BorderSide(color: AppColor.lightGrey, width: 1),
           borderRadius: BorderRadius.circular(12),
         ),
       ),
