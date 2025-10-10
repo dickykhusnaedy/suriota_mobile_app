@@ -28,11 +28,12 @@ class FormConfigServer extends StatefulWidget {
 }
 
 class _FormConfigServerState extends State<FormConfigServer> {
-  final BleController bleController =
-      Get.find<BleController>(); // Gunakan find jika sudah put permanent
+  final BleController bleController = Get.find<BleController>();
   final ServerConfigController controller = Get.put(ServerConfigController());
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+
+  late Worker _worker;
 
   // State variables
   String protocolSelected = 'mqtt';
@@ -55,7 +56,6 @@ class _FormConfigServerState extends State<FormConfigServer> {
   final subscribeTopicController = TextEditingController();
   final keepAliveController = TextEditingController();
   final clientIdController = TextEditingController();
-  // final qosLevelController = TextEditingController(); // Unused di sample, comment out
   final urlLinkController = TextEditingController();
   final methodRequestController = TextEditingController(text: 'POST');
   final timeoutController = TextEditingController();
@@ -70,15 +70,16 @@ class _FormConfigServerState extends State<FormConfigServer> {
   @override
   void initState() {
     super.initState();
-    // Listen ke dataServer GetX observable, update form saat fetch selesai
-    controller.dataServer.listen((dataList) {
+    // Listen to dataDevice GetX observable, update form when fetch finished
+    _worker = ever(controller.dataServer, (dataList) {
+      if (!mounted) return;
       if (dataList.isNotEmpty) {
-        updateFormFields(dataList[0]); // dataList[0] adalah config Map
+        updateFormFields(dataList[0]);
       }
     });
-    // Fetch data setelah widget build
+
+    // Fetch data after widget build
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      controller.setMounted(true);
       controller.fetchData(widget.model);
     });
   }
@@ -148,7 +149,7 @@ class _FormConfigServerState extends State<FormConfigServer> {
       secondaryButtonText: 'No',
       onPrimaryPressed: () async {
         Get.back();
-        await Future.delayed(const Duration(seconds: 3));
+        await Future.delayed(const Duration(seconds: 1));
 
         // Build communication sub-map
         var communication = {
@@ -213,14 +214,8 @@ class _FormConfigServerState extends State<FormConfigServer> {
           "http_config": httpConfig,
         };
 
-        var command = {
-          "op": "update", // Sesuai sample
-          "type": "server_config",
-          "config": fullConfig,
-        };
-
         try {
-          controller.updateData(widget.model, command);
+          controller.updateData(widget.model, fullConfig);
         } catch (e) {
           SnackbarCustom.showSnackbar(
             '',
@@ -248,8 +243,8 @@ class _FormConfigServerState extends State<FormConfigServer> {
 
   @override
   void dispose() {
-    // Dispose all controllers
-    controller.setMounted(false);
+    _worker.dispose();
+
     ipAddressController.dispose();
     macAddressController.dispose();
     wifiSsidController.dispose();
@@ -271,6 +266,7 @@ class _FormConfigServerState extends State<FormConfigServer> {
     timeoutController.dispose();
     retryController.dispose();
     keepAliveController.dispose();
+
     super.dispose();
   }
 

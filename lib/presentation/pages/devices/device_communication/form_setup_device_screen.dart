@@ -31,9 +31,9 @@ class FormSetupDeviceScreen extends StatefulWidget {
 
 class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
   final controller = Get.put(BleController());
-  final DevicesController devicesController = Get.put(DevicesController());
+  final devicesController = Get.put(DevicesController());
 
-  bool isLoading = true;
+  late Worker _worker;
 
   Map<String, dynamic> dataDevice = {};
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
@@ -81,51 +81,45 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
   @override
   void initState() {
     super.initState();
+    // Listen to dataDevice GetX observable, update form when fetch finished
+    _worker = ever(devicesController.selectedDevice, (dataList) {
+      if (!mounted) return;
+      if (dataList.isNotEmpty) {
+        _fillFormFromDevice(dataList[0]);
+      } else {
+        modBusSelected = 'RTU';
+      }
+    });
 
+    // Fetch data after widget build
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (widget.deviceId != null) {
         await devicesController.getDeviceById(widget.model, widget.deviceId!);
-
-        if (mounted) {
-          setState(() {
-            isLoading = false;
-            dataDevice = devicesController.selectedDevice.value ?? {};
-          });
-        }
-
-        _fillFormFromDevice(dataDevice);
-      } else {
-        setState(() {
-          isLoading = false;
-          modBusSelected = 'RTU';
-        });
       }
     });
   }
 
   void _fillFormFromDevice(Map<String, dynamic> device) {
-    setState(() {
-      deviceNameController.text = device['device_name'] ?? '';
-      slaveIdController.text = device['slave_id']?.toString() ?? '';
-      modBusSelected = device['protocol'] ?? 'RTU';
+    deviceNameController.text = device['device_name'] ?? '';
+    slaveIdController.text = device['slave_id']?.toString() ?? '';
+    modBusSelected = device['protocol'] ?? 'RTU';
 
-      if (device['protocol'] == 'TCP') {
-        ipAddressController.text = device['ip'] ?? '';
-        serverPortController.text = device['port']?.toString() ?? '';
-      } else {
-        selectedSerialPort = device['serial_port']?.toString();
-        selectedBaudRate = device['baud_rate']?.toString();
-        selectedBitData = device['data_bits']?.toString();
-        selectedParity = device['parity']?.toString();
-        selectedStopBit = device['stop_bits']?.toString();
+    if (device['protocol'] == 'RTU') {
+      selectedSerialPort = device['serial_port']?.toString();
+      selectedBaudRate = device['baud_rate']?.toString();
+      selectedBitData = device['data_bits']?.toString();
+      selectedParity = device['parity'] ?? 'None';
+      selectedStopBit = device['stop_bits']?.toString();
+    } else {
+      ipAddressController.text = device['ip'] ?? '';
+      serverPortController.text = device['port']?.toString() ?? '';
+    }
 
-        AppHelpers.debugLog('selectedSerialPort: $selectedSerialPort');
-      }
+    retryCountController.text = device['retry_count']?.toString() ?? '';
+    connectionTimeoutController.text = device['timeout']?.toString() ?? '';
+    refreshRateController.text = device['refresh_rate_ms']?.toString() ?? '';
 
-      retryCountController.text = device['retry_count']?.toString() ?? '';
-      connectionTimeoutController.text = device['timeout']?.toString() ?? '';
-      refreshRateController.text = device['refresh_rate_ms']?.toString() ?? '';
-    });
+    setState(() {});
   }
 
   void _submit() async {
@@ -169,6 +163,7 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
           var formData = {
             "op": widget.deviceId != null ? "update" : "create",
             "type": "device",
+            if (widget.deviceId != '') "device_id": widget.deviceId,
             "config": {
               "device_name": _sanitizeInput(deviceNameController.text),
               "protocol": modBusSelected,
@@ -218,6 +213,8 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
 
   @override
   void dispose() {
+    _worker.dispose();
+
     deviceNameController.dispose();
     slaveIdController.dispose();
     retryCountController.dispose();
@@ -437,6 +434,9 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
   }
 
   Widget _formRS485Wrapper() {
+    AppHelpers.debugLog(
+      'selected value: selectedSerialPort: ${selectedSerialPort}',
+    );
     return Column(
       mainAxisAlignment: MainAxisAlignment.start,
       crossAxisAlignment: CrossAxisAlignment.start,

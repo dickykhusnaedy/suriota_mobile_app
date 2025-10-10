@@ -3,6 +3,7 @@ import 'package:gateway_config/core/constants/app_color.dart';
 import 'package:gateway_config/core/constants/app_gap.dart';
 import 'package:gateway_config/core/controllers/ble_controller.dart';
 import 'package:gateway_config/core/controllers/devices_controller.dart';
+import 'package:gateway_config/core/controllers/modbus_controller.dart';
 import 'package:gateway_config/core/utils/app_helpers.dart';
 import 'package:gateway_config/core/utils/extensions.dart';
 import 'package:gateway_config/core/utils/snackbar_custom.dart';
@@ -16,9 +17,16 @@ import 'package:gateway_config/presentation/widgets/common/loading_overlay.dart'
 import 'package:get/get.dart';
 
 class FormModbusConfigScreen extends StatefulWidget {
-  const FormModbusConfigScreen({super.key, required this.model});
+  const FormModbusConfigScreen({
+    super.key,
+    required this.model,
+    this.deviceId,
+    this.registerId,
+  });
 
   final DeviceModel model;
+  final String? deviceId;
+  final String? registerId;
 
   @override
   State<FormModbusConfigScreen> createState() => _FormModbusConfigScreenState();
@@ -27,6 +35,9 @@ class FormModbusConfigScreen extends StatefulWidget {
 class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
   final BleController bleController;
   final DevicesController controller;
+  final ModbusController modbusController = Get.put(ModbusController());
+
+  late Worker _worker;
 
   Map<String, dynamic> dataModbus = {};
   bool isLoading = false;
@@ -82,17 +93,37 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
   @override
   void initState() {
     super.initState();
+
+    _worker = ever(modbusController.selectedModbus, (dataList) {
+      if (!mounted) return;
+      if (dataList.isNotEmpty) {
+        _fillFormFromDevice(dataList[0]);
+      }
+    });
+
+    // Fetch data after widget build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      controller.fetchDevices(widget.model);
+
+      if (widget.deviceId != null && widget.registerId != null) {
+        modbusController.getDeviceById(
+          widget.model,
+          widget.deviceId!,
+          widget.registerId!,
+        );
+      }
+    });
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (!isInitialized) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        controller.fetchDevices(widget.model);
-        isInitialized = true;
-      });
-    }
+  void _fillFormFromDevice(Map<String, dynamic> modbus) {
+    deviceNameController.text = modbus['register_name'] ?? '';
+    addressController.text = modbus['address']?.toString() ?? '';
+    selectedFunction = modbus['function_code']?.toString();
+    selectedTypeData = modbus['data_type']?.toString() ?? '';
+    descriptionController.text = modbus['description'] ?? '';
+    refreshRateController.text = modbus['refresh_rate_ms'] ?? '';
+
+    setState(() {});
   }
 
   int? _tryParseInt(String? value, {int? defaultValue}) {
@@ -138,7 +169,7 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
               "type": selectedFunctionText,
               "function_code": _tryParseInt(selectedFunction),
               "data_type": selectedTypeData,
-              "description": "Main Temperature Sensor (°C)",
+              "description": descriptionController.text,
               "refresh_rate_ms": _tryParseInt(refreshRateController.text),
             },
           };
@@ -163,6 +194,8 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
 
   @override
   void dispose() {
+    _worker.dispose();
+
     deviceNameController.dispose();
     addressController.dispose();
     descriptionController.dispose();
