@@ -8,9 +8,9 @@ import 'package:get/get.dart';
 
 class DevicesController extends GetxController {
   final RxList<Map<String, dynamic>> dataDevices = <Map<String, dynamic>>[].obs;
-  final Rx<Map<String, dynamic>?> selectedDevice = Rx<Map<String, dynamic>?>(
-    null,
-  );
+  final RxList<Map<String, dynamic>> selectedDevice =
+      <Map<String, dynamic>>[].obs;
+
   final RxBool isFetching = false.obs;
 
   final BleController bleController = Get.put(BleController());
@@ -77,19 +77,28 @@ class DevicesController extends GetxController {
         return;
       }
 
-      final command = {'device_id': deviceId};
       final response = await bleController.readCommandResponse(
         model,
         type: 'device',
-        additionalParams: command,
+        additionalParams: {'device_id': deviceId},
       );
 
       if (response.status == 'ok' || response.status == 'success') {
-        selectedDevice.value = response.config is Map<String, dynamic>
-            ? response.config
-            : null;
+        dynamic config = response.config;
 
-        AppHelpers.debugLog('Device by ID ($deviceId): ${response.toJson()}');
+        if (config is List) {
+          selectedDevice.assignAll(config.cast<Map<String, dynamic>>());
+        } else if (config is Map) {
+          selectedDevice.assignAll([config.cast<String, dynamic>()]);
+        } else {
+          selectedDevice.clear();
+          SnackbarCustom.showSnackbar(
+            '',
+            'Invalid config format',
+            AppColor.redColor,
+            AppColor.whiteColor,
+          );
+        }
       } else {
         SnackbarCustom.showSnackbar(
           '',
@@ -98,7 +107,7 @@ class DevicesController extends GetxController {
           AppColor.whiteColor,
         );
 
-        selectedDevice.value = null;
+        selectedDevice.clear();
       }
     } catch (e) {
       AppHelpers.debugLog('Error getting device by ID: $e');
@@ -109,7 +118,7 @@ class DevicesController extends GetxController {
         AppColor.whiteColor,
       );
 
-      selectedDevice.value = null;
+      selectedDevice.clear();
     } finally {
       isFetching.value = false;
     }

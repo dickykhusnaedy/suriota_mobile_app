@@ -8,8 +8,8 @@ import 'package:get/get.dart';
 
 class ModbusController extends GetxController {
   final RxList<Map<String, dynamic>> dataModbus = <Map<String, dynamic>>[].obs;
-  final Rx<Map<String, dynamic>?> selectedModbusData =
-      Rx<Map<String, dynamic>?>(null);
+  final RxList<Map<String, dynamic>> selectedModbus =
+      <Map<String, dynamic>>[].obs;
   final RxBool isFetching = false.obs;
 
   final BleController bleController = Get.put(BleController());
@@ -58,6 +58,71 @@ class ModbusController extends GetxController {
         AppColor.whiteColor,
       );
       dataModbus.clear();
+    } finally {
+      isFetching.value = false;
+    }
+  }
+
+  Future<void> getDeviceById(
+    DeviceModel model,
+    String deviceId,
+    String registerId,
+  ) async {
+    isFetching.value = true;
+
+    try {
+      if (!model.isConnected.value) {
+        SnackbarCustom.showSnackbar(
+          '',
+          'Device not connected',
+          AppColor.redColor,
+          AppColor.whiteColor,
+        );
+        return;
+      }
+
+      final response = await bleController.readCommandResponse(
+        model,
+        type: 'registers',
+        additionalParams: {'register_id': registerId, 'device_id': deviceId},
+      );
+
+      if (response.status == 'ok' || response.status == 'success') {
+        dynamic config = response.config;
+
+        if (config is List) {
+          selectedModbus.assignAll(config.cast<Map<String, dynamic>>());
+        } else if (config is Map) {
+          selectedModbus.assignAll([config.cast<String, dynamic>()]);
+        } else {
+          selectedModbus.clear();
+          SnackbarCustom.showSnackbar(
+            '',
+            'Invalid config format',
+            AppColor.redColor,
+            AppColor.whiteColor,
+          );
+        }
+      } else {
+        SnackbarCustom.showSnackbar(
+          '',
+          response.message ?? 'Failed to fetch register with ID: $registerId',
+          AppColor.redColor,
+          AppColor.whiteColor,
+        );
+
+        selectedModbus.clear();
+      }
+    } catch (e) {
+      AppHelpers.debugLog('Error getting device by ID: $e');
+      SnackbarCustom.showSnackbar(
+        'Error',
+        'Failed to fetch modbus with ID: $registerId',
+        AppColor.redColor,
+        AppColor.whiteColor,
+      );
+
+      selectedModbus.clear();
     } finally {
       isFetching.value = false;
     }
