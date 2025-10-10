@@ -78,6 +78,7 @@ class _FormConfigServerState extends State<FormConfigServer> {
     });
     // Fetch data setelah widget build
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      controller.setMounted(true);
       controller.fetchData(widget.model);
     });
   }
@@ -114,9 +115,9 @@ class _FormConfigServerState extends State<FormConfigServer> {
         config['mqtt_config']?['topic_subscribe'] ?? '';
     keepAliveController.text =
         config['mqtt_config']?['keep_alive']?.toString() ?? '';
-    cleanSessionSelected = (config['mqtt_config']?['clean_session'] ?? true)
+    cleanSessionSelected = (config['mqtt_config']?['clean_session'] ?? '')
         .toString();
-    useTlsSelected = (config['mqtt_config']?['use_tls'] ?? true).toString();
+    useTlsSelected = (config['mqtt_config']?['use_tls'] ?? '').toString();
 
     // HTTP
     urlLinkController.text = config['http_config']?['endpoint_url'] ?? '';
@@ -147,7 +148,7 @@ class _FormConfigServerState extends State<FormConfigServer> {
       secondaryButtonText: 'No',
       onPrimaryPressed: () async {
         Get.back();
-        await Future.delayed(const Duration(seconds: 1));
+        await Future.delayed(const Duration(seconds: 3));
 
         // Build communication sub-map
         var communication = {
@@ -248,6 +249,7 @@ class _FormConfigServerState extends State<FormConfigServer> {
   @override
   void dispose() {
     // Dispose all controllers
+    controller.setMounted(false);
     ipAddressController.dispose();
     macAddressController.dispose();
     wifiSsidController.dispose();
@@ -311,8 +313,8 @@ class _FormConfigServerState extends State<FormConfigServer> {
               AppSpacing.md,
               _intervalWrapper(context, typeInterval),
               AppSpacing.md,
-              if (protocolSelected == 'mqtt') _mqttField(),
-              if (protocolSelected == 'http') _httpField(),
+              _mqttField(),
+              _httpField(),
               AppSpacing.md,
               Button(
                 width: MediaQuery.of(context).size.width,
