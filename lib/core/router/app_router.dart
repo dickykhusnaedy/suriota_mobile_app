@@ -180,15 +180,22 @@ class AppRouter {
                 path: '/edit',
                 name: 'modbus-config-edit',
                 builder: (context, state) {
-                  final deviceId = state.uri.queryParameters['d'];
-                  if (deviceId == null) {
+                  final d = state.uri.queryParameters['d'];
+                  final deviceId = state.uri.queryParameters['device_id'];
+                  final registerId = state.uri.queryParameters['register_id'];
+
+                  if (d == null) {
                     return _deviceNotFound(context);
                   }
                   final bleController = Get.find<BleController>();
-                  final model = bleController.findDeviceByRemoteId(deviceId);
+                  final model = bleController.findDeviceByRemoteId(d);
 
                   return model != null
-                      ? FormModbusConfigScreen(model: model)
+                      ? FormModbusConfigScreen(
+                          model: model,
+                          deviceId: deviceId,
+                          registerId: registerId,
+                        )
                       : _deviceNotFound(context);
                 },
               ),
