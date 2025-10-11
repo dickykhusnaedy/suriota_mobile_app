@@ -313,11 +313,12 @@ class _ModbusScreenState extends State<ModbusScreen> {
                   child: Button(
                     width: double.infinity,
                     height: 32,
-                    onPressed: () {
-                      context.push(
-                        '/devices/modbus-config/edit?d=${widget.model.device.remoteId}&device_id=${selectedDevice!.value}&register_id=${modbus['register_id']}',
-                      );
-                    },
+                    onPressed: () => {},
+                    // onPressed: () {
+                    //   context.push(
+                    //     '/devices/modbus-config/edit?d=${widget.model.device.remoteId}&device_id=${selectedDevice!.value}&register_id=${modbus['register_id']}',
+                    //   );
+                    // },
                     icons: const Icon(
                       Icons.edit,
                       size: 18,

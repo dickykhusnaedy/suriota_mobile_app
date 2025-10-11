@@ -225,7 +225,7 @@ class _FormConfigServerState extends State<FormConfigServer> {
           );
           AppHelpers.debugLog('Error submitting form: $e');
         } finally {
-          await Future.delayed(const Duration(seconds: 3));
+          await Future.delayed(const Duration(seconds: 8));
           AppHelpers.backNTimes(1);
         }
       },
@@ -632,7 +632,7 @@ class _FormConfigServerState extends State<FormConfigServer> {
         CustomTextFormField(
           controller: xCustomHeaderController,
           labelTxt: "X-Custom-Header",
-          hintTxt: "Custom value",
+          hintTxt: "X-Custom-Header",
         ),
         AppSpacing.md,
         CustomTextFormField(

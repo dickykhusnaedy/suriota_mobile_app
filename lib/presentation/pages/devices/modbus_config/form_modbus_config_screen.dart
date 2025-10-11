@@ -379,7 +379,9 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
               Button(
                 width: MediaQuery.of(context).size.width,
                 onPressed: _submit,
-                text: 'Save',
+                text: widget.deviceId != null && widget.registerId != null
+                    ? 'Update Data'
+                    : 'Save Data',
                 height: 50,
               ),
               AppSpacing.lg,

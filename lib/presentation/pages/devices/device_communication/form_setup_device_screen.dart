@@ -422,7 +422,7 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
               Button(
                 width: MediaQuery.of(context).size.width,
                 onPressed: _submit,
-                text: 'Save',
+                text: widget.deviceId != null ? 'Update Data' : 'Save Data',
                 height: 50,
               ),
               AppSpacing.lg,
@@ -434,9 +434,6 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
   }
 
   Widget _formRS485Wrapper() {
-    AppHelpers.debugLog(
-      'selected value: selectedSerialPort: ${selectedSerialPort}',
-    );
     return Column(
       mainAxisAlignment: MainAxisAlignment.start,
       crossAxisAlignment: CrossAxisAlignment.start,
