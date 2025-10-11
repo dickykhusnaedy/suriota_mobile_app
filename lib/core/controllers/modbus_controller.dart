@@ -83,7 +83,7 @@ class ModbusController extends GetxController {
 
       final response = await bleController.readCommandResponse(
         model,
-        type: 'registers',
+        type: 'register',
         additionalParams: {'register_id': registerId, 'device_id': deviceId},
       );
 
