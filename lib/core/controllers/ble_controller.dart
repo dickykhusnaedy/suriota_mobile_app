@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:gateway_config/core/constants/app_color.dart';
 import 'package:gateway_config/core/utils/app_helpers.dart';
-import 'package:gateway_config/core/utils/ble/ble_utils.dart';
+import 'package:gateway_config/core/utils/ble_utils.dart';
 import 'package:gateway_config/core/utils/snackbar_custom.dart';
 import 'package:gateway_config/models/command_response.dart';
 import 'package:gateway_config/models/device_model.dart';
