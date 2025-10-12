@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:gateway_config/core/constants/app_color.dart';
 import 'package:gateway_config/core/constants/app_gap.dart';
-import 'package:gateway_config/core/controllers/ble/ble_controller.dart';
+import 'package:gateway_config/core/controllers/logging_controller.dart';
 import 'package:gateway_config/core/utils/app_helpers.dart';
 import 'package:gateway_config/core/utils/extensions.dart';
+import 'package:gateway_config/core/utils/snackbar_custom.dart';
+import 'package:gateway_config/models/device_model.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_alert_dialog.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_button.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_radiotile.dart';
 import 'package:gateway_config/presentation/widgets/common/loading_overlay.dart';
 import 'package:gateway_config/presentation/widgets/spesific/title_tile.dart';
+import 'package:get/get.dart';
 
 class FormLoggingConfigScreen extends StatefulWidget {
-  const FormLoggingConfigScreen({super.key});
+  const FormLoggingConfigScreen({super.key, required this.model});
+  final DeviceModel model;
 
   @override
   State<FormLoggingConfigScreen> createState() =>
@@ -32,7 +35,7 @@ class LoggingData {
 }
 
 class _FormLoggingConfigScreenState extends State<FormLoggingConfigScreen> {
-  final BLEController bleController = Get.put(BLEController(), permanent: true);
+  final LoggingController controller = Get.put(LoggingController());
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
@@ -40,73 +43,44 @@ class _FormLoggingConfigScreenState extends State<FormLoggingConfigScreen> {
   bool isInitialized = false;
   String errorMessage = '';
 
+  late Worker _worker;
+
   String loggingRetentionSelected = "";
   String loggingIntervalSelected = "";
 
   @override
   void initState() {
     super.initState();
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (!isInitialized) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        fetchData();
-        isInitialized = true;
-      });
-    }
-  }
-
-  Future<void> fetchData() async {
-    setState(() {
-      isLoading = true;
-      errorMessage = '';
+    // Listen to dataDevice GetX observable, update form when fetch finished
+    _worker = ever(controller.dataServer, (dataList) {
+      if (!mounted) return;
+      if (dataList.isNotEmpty) {
+        updateFormFields(dataList[0]);
+      }
     });
 
-    try {
-      final data = await bleController.fetchData(
-        "READ|logging_config",
-        'logging_config',
-      );
+    // Fetch data after widget build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      controller.fetchData(widget.model);
+    });
+  }
 
-      AppHelpers.debugLog('data logging: $data');
+  void updateFormFields(Map<String, dynamic> config) {
+    loggingRetentionSelected = config['logging_ret'] ?? '';
+    loggingIntervalSelected = config['logging_interval'] ?? '';
 
-      setState(() {
-        loggingRetentionSelected = data['retention'] ?? '';
-        loggingIntervalSelected = data['interval'] ?? '';
-
-        isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        errorMessage = 'Failed to load config: $e';
-        isLoading = false;
-      });
-    }
+    // Refresh UI
+    setState(() {});
   }
 
   void _submit() {
     if (loggingIntervalSelected.isEmpty || loggingRetentionSelected.isEmpty) {
-      Get.snackbar(
+      SnackbarCustom.showSnackbar(
         '',
         'Please select both logging retention and interval',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: AppColor.redColor,
-        colorText: AppColor.whiteColor,
-        duration: const Duration(seconds: 3),
-        margin: const EdgeInsets.all(16),
-        titleText: const SizedBox(),
-        padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 16.0),
+        AppColor.redColor,
+        AppColor.whiteColor,
       );
-      return;
-    }
-
-    // Periksa koneksi BLE
-    if (bleController.isConnected.isEmpty ||
-        !bleController.isConnected.values.any((connected) => connected)) {
-      Get.snackbar('Error', 'No BLE device connected');
       return;
     }
 
@@ -119,13 +93,21 @@ class _FormLoggingConfigScreenState extends State<FormLoggingConfigScreen> {
         Get.back();
         await Future.delayed(const Duration(seconds: 1));
 
+        var formData = {
+          "logging_ret": loggingRetentionSelected,
+          "logging_interval": loggingIntervalSelected,
+        };
+
         try {
-          final sendDataDelimiter =
-              'UPDATE|logging_config|retention:$loggingRetentionSelected|interval:$loggingIntervalSelected';
-          bleController.sendCommand(sendDataDelimiter, 'logging_config');
+          controller.updateData(widget.model, formData);
         } catch (e) {
-          debugPrint('Error submitting form: $e');
-          Get.snackbar('Error', 'Failed to submit form: $e');
+          SnackbarCustom.showSnackbar(
+            '',
+            'Failed to submit form',
+            AppColor.redColor,
+            AppColor.whiteColor,
+          );
+          AppHelpers.debugLog('Error submitting form: $e');
         } finally {
           await Future.delayed(const Duration(seconds: 3));
           AppHelpers.backNTimes(1);
@@ -137,7 +119,9 @@ class _FormLoggingConfigScreenState extends State<FormLoggingConfigScreen> {
 
   @override
   void dispose() {
+    _worker.dispose();
     isInitialized = false;
+
     super.dispose();
   }
 
@@ -147,7 +131,7 @@ class _FormLoggingConfigScreenState extends State<FormLoggingConfigScreen> {
       children: [
         Scaffold(appBar: _appBar(context), body: _body(context)),
         Obx(() {
-          final isAnyDeviceLoading = bleController.isLoading.value;
+          final isAnyDeviceLoading = controller.isFetching.value;
           return LoadingOverlay(
             isLoading: isAnyDeviceLoading,
             message: 'Processing request...',
@@ -183,60 +167,6 @@ class _FormLoggingConfigScreenState extends State<FormLoggingConfigScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.max,
                 children: [
-                  // Text(
-                  //   'Data Interval',
-                  //   style: context.h6,
-                  // ),
-                  // AppSpacing.sm,
-                  // MultiDropdown<LoggingData>(
-                  //   items: items,
-                  //   enabled: true,
-                  //   // searchEnabled: true,
-                  //   chipDecoration: ChipDecoration(
-                  //       labelStyle: context.buttonTextSmall
-                  //           .copyWith(color: AppColor.whiteColor),
-                  //       backgroundColor: AppColor.primaryColor,
-                  //       padding: AppPadding.small,
-                  //       wrap: true,
-                  //       runSpacing: 10,
-                  //       spacing: 5,
-                  //       deleteIcon: const Icon(
-                  //         Icons.cancel,
-                  //         size: 17,
-                  //         color: AppColor.whiteColor,
-                  //       )),
-                  //   fieldDecoration: FieldDecoration(
-                  //     hintText: 'Choose Data Interval',
-                  //     hintStyle: FontFamily.labelText,
-                  //     showClearIcon: false,
-                  //     border: OutlineInputBorder(
-                  //       borderRadius: BorderRadius.circular(12),
-                  //       borderSide: const BorderSide(
-                  //           color: AppColor.primaryColor, width: 2),
-                  //     ),
-                  //     focusedBorder: OutlineInputBorder(
-                  //       borderRadius: BorderRadius.circular(12),
-                  //       borderSide: const BorderSide(
-                  //           color: AppColor.primaryColor, width: 2),
-                  //     ),
-                  //   ),
-                  //   dropdownItemDecoration: const DropdownItemDecoration(
-                  //     textColor: AppColor.grey,
-                  //     selectedTextColor: AppColor.primaryColor,
-                  //     selectedIcon:
-                  //         Icon(Icons.check_box, color: AppColor.primaryColor),
-                  //     disabledIcon: Icon(Icons.lock, color: Colors.grey),
-                  //   ),
-                  //   validator: (value) {
-                  //     if (value == null || value.isEmpty) {
-                  //       return 'Please select a daata interval';
-                  //     }
-                  //     return null;
-                  //   },
-                  //   onSelectionChange: (selectedItems) {
-                  //     debugPrint("OnSelectionChange: $selectedItems");
-                  //   },
-                  // ),
                   // AppSpacing.md,
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -315,7 +245,7 @@ class _FormLoggingConfigScreenState extends State<FormLoggingConfigScreen> {
                   Button(
                     width: MediaQuery.of(context).size.width,
                     onPressed: _submit,
-                    text: 'Save',
+                    text: 'Update Data',
                     height: 50,
                   ),
                   AppSpacing.lg,
