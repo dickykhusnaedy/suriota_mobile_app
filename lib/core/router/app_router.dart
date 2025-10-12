@@ -7,6 +7,7 @@ import 'package:gateway_config/presentation/pages/devices/detail_device_info_scr
 import 'package:gateway_config/presentation/pages/devices/detail_device_screen.dart';
 import 'package:gateway_config/presentation/pages/devices/device_communication/device_communications_screen.dart';
 import 'package:gateway_config/presentation/pages/devices/device_communication/form_setup_device_screen.dart';
+import 'package:gateway_config/presentation/pages/devices/logging_config/form_logging_config_screen.dart';
 import 'package:gateway_config/presentation/pages/devices/modbus_config/form_modbus_config_screen.dart';
 import 'package:gateway_config/presentation/pages/devices/modbus_config/modbus_screen.dart';
 import 'package:gateway_config/presentation/pages/devices/server_config/form_config_server_screen.dart';
@@ -104,6 +105,7 @@ class AppRouter {
               }
               final bleController = Get.find<BleController>();
               final model = bleController.findDeviceByRemoteId(deviceId);
+
               return model != null
                   ? DeviceCommunicationsScreen(model: model)
                   : _deviceNotFound(context);
@@ -119,6 +121,7 @@ class AppRouter {
                   }
                   final bleController = Get.find<BleController>();
                   final model = bleController.findDeviceByRemoteId(deviceId);
+
                   return model != null
                       ? FormSetupDeviceScreen(model: model)
                       : _deviceNotFound(context);
@@ -227,13 +230,13 @@ class AppRouter {
               }
               final bleController = Get.find<BleController>();
               final model = bleController.findDeviceByRemoteId(deviceId);
+
               return model != null
-                  ? DeviceCommunicationsScreen(model: model)
+                  ? FormLoggingConfigScreen(model: model)
                   : _deviceNotFound(context);
             },
           ),
         ],
-        // builder: (context, state) => const AddDeviceScreen(),
       ),
 
       // GoRoute(path: '/device', name: 'device', builder: (context, state) => const Dei)
