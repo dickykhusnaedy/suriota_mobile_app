@@ -85,9 +85,7 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
   _FormModbusConfigScreenState()
     : bleController = Get.put(BleController(), permanent: true),
       controller = Get.put(DevicesController(), permanent: true) {
-    debugPrint(
-      'Initialized BLEController and DevicePaginationController with Get.put',
-    );
+    debugPrint('Initialized BleController and DeviceController with Get.put');
   }
 
   @override
