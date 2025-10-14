@@ -7,7 +7,7 @@ import 'package:gateway_config/models/device_model.dart';
 import 'package:get/get.dart';
 
 class LoggingController extends GetxController {
-  final RxList<Map<String, dynamic>> dataServer = <Map<String, dynamic>>[].obs;
+  final RxList<Map<String, dynamic>> dataLogging = <Map<String, dynamic>>[].obs;
   final RxBool isFetching = false.obs;
 
   bool _isMounted = true;
@@ -39,11 +39,11 @@ class LoggingController extends GetxController {
         dynamic config = response.config;
 
         if (config is List) {
-          dataServer.assignAll(config.cast<Map<String, dynamic>>());
+          dataLogging.assignAll(config.cast<Map<String, dynamic>>());
         } else if (config is Map) {
-          dataServer.assignAll([config.cast<String, dynamic>()]);
+          dataLogging.assignAll([config.cast<String, dynamic>()]);
         } else {
-          dataServer.clear();
+          dataLogging.clear();
           SnackbarCustom.showSnackbar(
             '',
             'Invalid config format',
@@ -59,7 +59,7 @@ class LoggingController extends GetxController {
           AppColor.whiteColor,
         );
 
-        dataServer.clear();
+        dataLogging.clear();
       }
     } catch (e) {
       if (!_isMounted) return;
@@ -70,7 +70,7 @@ class LoggingController extends GetxController {
         AppColor.redColor,
         AppColor.whiteColor,
       );
-      dataServer.clear();
+      dataLogging.clear();
     } finally {
       if (_isMounted) isFetching.value = false;
     }
@@ -104,8 +104,8 @@ class LoggingController extends GetxController {
       final response = await bleController.sendCommand(command);
 
       if (response.status == 'ok' || response.status == 'success') {
-        // Update dataServer dengan config baru
-        dataServer.assignAll([config]);
+        // Update dataLogging dengan config baru
+        dataLogging.assignAll([config]);
         SnackbarCustom.showSnackbar(
           '',
           'Logging data updated successfully',

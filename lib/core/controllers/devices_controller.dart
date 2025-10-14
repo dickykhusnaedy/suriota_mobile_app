@@ -139,9 +139,6 @@ class DevicesController extends GetxController {
           Colors.green,
           AppColor.whiteColor,
         );
-
-        await Future.delayed(const Duration(seconds: 3));
-        await fetchDevices(model);
       } else {
         SnackbarCustom.showSnackbar(
           '',
