@@ -18,6 +18,7 @@ import 'package:gateway_config/presentation/widgets/common/dropdown.dart';
 import 'package:gateway_config/presentation/widgets/common/loading_overlay.dart';
 import 'package:gateway_config/presentation/widgets/spesific/title_tile.dart';
 import 'package:get/get.dart';
+import 'package:go_router/go_router.dart';
 
 class FormConfigServer extends StatefulWidget {
   const FormConfigServer({super.key, required this.model});
@@ -149,7 +150,7 @@ class _FormConfigServerState extends State<FormConfigServer> {
       secondaryButtonText: 'No',
       onPrimaryPressed: () async {
         Get.back();
-        await Future.delayed(const Duration(seconds: 1));
+        controller.isFetching.value = true;
 
         // Build communication sub-map
         var communication = {
@@ -215,7 +216,38 @@ class _FormConfigServerState extends State<FormConfigServer> {
         };
 
         try {
-          controller.updateData(widget.model, fullConfig);
+          await controller.updateData(widget.model, fullConfig);
+
+          SnackbarCustom.showSnackbar(
+            '',
+            'Configuration updated, disconnecting in 3 seconds...',
+            Colors.green,
+            AppColor.whiteColor,
+          );
+
+          await Future.delayed(const Duration(seconds: 3));
+
+          try {
+            await bleController.disconnectFromDevice(widget.model);
+
+            controller.dataServer.clear();
+          } catch (e) {
+            AppHelpers.debugLog('Error disconnecting: $e');
+            SnackbarCustom.showSnackbar(
+              '',
+              'Failed to disconnect',
+              AppColor.redColor,
+              AppColor.whiteColor,
+            );
+          }
+
+          if (Get.context != null) {
+            GoRouter.of(Get.context!).go('/');
+          } else {
+            AppHelpers.debugLog(
+              'Warning: Get.context is null, cannot navigate',
+            );
+          }
         } catch (e) {
           SnackbarCustom.showSnackbar(
             '',
@@ -225,8 +257,7 @@ class _FormConfigServerState extends State<FormConfigServer> {
           );
           AppHelpers.debugLog('Error submitting form: $e');
         } finally {
-          await Future.delayed(const Duration(seconds: 8));
-          AppHelpers.backNTimes(1);
+          controller.isFetching.value = false;
         }
       },
       barrierDismissible: false,

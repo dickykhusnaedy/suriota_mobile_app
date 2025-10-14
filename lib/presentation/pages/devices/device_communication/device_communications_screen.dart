@@ -79,9 +79,31 @@ class _DeviceCommunicationsScreenState
       secondaryButtonText: 'No',
       onPrimaryPressed: () async {
         Get.back();
-        await Future.delayed(const Duration(seconds: 1));
+        controller.isFetching.value = true;
 
-        await controller.deleteDevice(widget.model, deviceId);
+        try {
+          await controller.deleteDevice(widget.model, deviceId);
+
+          if (Get.context != null) {
+            SnackbarCustom.showSnackbar(
+              '',
+              'Device deleted successfully, refreshing data...',
+              Colors.green,
+              AppColor.whiteColor,
+            );
+          }
+
+          await controller.fetchDevices(widget.model);
+        } catch (e) {
+          SnackbarCustom.showSnackbar(
+            '',
+            'Failed to delete device',
+            AppColor.redColor,
+            AppColor.whiteColor,
+          );
+        } finally {
+          controller.isFetching.value = false;
+        }
       },
       barrierDismissible: false,
     );
@@ -218,9 +240,15 @@ class _DeviceCommunicationsScreenState
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'You don`t have any devices yet.\n Please add a new device.',
+              'Oops!... \nYou don`t have any devices yet.',
               textAlign: TextAlign.center,
-              style: context.body.copyWith(color: AppColor.grey),
+              style: context.buttonText.copyWith(color: AppColor.blackColor),
+            ),
+            AppSpacing.xs,
+            Text(
+              'Please add a new device.',
+              textAlign: TextAlign.center,
+              style: context.bodySmall.copyWith(color: AppColor.grey),
             ),
           ],
         ),

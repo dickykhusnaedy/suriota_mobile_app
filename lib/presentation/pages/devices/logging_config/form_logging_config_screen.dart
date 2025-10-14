@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:gateway_config/core/constants/app_color.dart';
 import 'package:gateway_config/core/constants/app_gap.dart';
+import 'package:gateway_config/core/controllers/ble_controller.dart';
 import 'package:gateway_config/core/controllers/logging_controller.dart';
 import 'package:gateway_config/core/utils/app_helpers.dart';
 import 'package:gateway_config/core/utils/extensions.dart';
@@ -12,6 +13,7 @@ import 'package:gateway_config/presentation/widgets/common/custom_radiotile.dart
 import 'package:gateway_config/presentation/widgets/common/loading_overlay.dart';
 import 'package:gateway_config/presentation/widgets/spesific/title_tile.dart';
 import 'package:get/get.dart';
+import 'package:go_router/go_router.dart';
 
 class FormLoggingConfigScreen extends StatefulWidget {
   const FormLoggingConfigScreen({super.key, required this.model});
@@ -35,6 +37,7 @@ class LoggingData {
 }
 
 class _FormLoggingConfigScreenState extends State<FormLoggingConfigScreen> {
+  final BleController bleController = Get.find<BleController>();
   final LoggingController controller = Get.put(LoggingController());
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
@@ -52,7 +55,7 @@ class _FormLoggingConfigScreenState extends State<FormLoggingConfigScreen> {
   void initState() {
     super.initState();
     // Listen to dataDevice GetX observable, update form when fetch finished
-    _worker = ever(controller.dataServer, (dataList) {
+    _worker = ever(controller.dataLogging, (dataList) {
       if (!mounted) return;
       if (dataList.isNotEmpty) {
         updateFormFields(dataList[0]);
@@ -91,7 +94,7 @@ class _FormLoggingConfigScreenState extends State<FormLoggingConfigScreen> {
       secondaryButtonText: 'No',
       onPrimaryPressed: () async {
         Get.back();
-        await Future.delayed(const Duration(seconds: 1));
+        controller.isFetching.value = true;
 
         var formData = {
           "logging_ret": loggingRetentionSelected,
@@ -99,7 +102,38 @@ class _FormLoggingConfigScreenState extends State<FormLoggingConfigScreen> {
         };
 
         try {
-          controller.updateData(widget.model, formData);
+          await controller.updateData(widget.model, formData);
+
+          SnackbarCustom.showSnackbar(
+            '',
+            'Configuration updated, disconnecting in 3 seconds...',
+            Colors.green,
+            AppColor.whiteColor,
+          );
+          
+          await Future.delayed(const Duration(seconds: 3));
+
+          try {
+            await bleController.disconnectFromDevice(widget.model);
+
+            controller.dataLogging.clear();
+          } catch (e) {
+            AppHelpers.debugLog('Error disconnecting: $e');
+            SnackbarCustom.showSnackbar(
+              '',
+              'Failed to disconnect',
+              AppColor.redColor,
+              AppColor.whiteColor,
+            );
+          }
+
+          if (Get.context != null) {
+            GoRouter.of(Get.context!).go('/');
+          } else {
+            AppHelpers.debugLog(
+              'Warning: Get.context is null, cannot navigate',
+            );
+          }
         } catch (e) {
           SnackbarCustom.showSnackbar(
             '',
@@ -109,8 +143,7 @@ class _FormLoggingConfigScreenState extends State<FormLoggingConfigScreen> {
           );
           AppHelpers.debugLog('Error submitting form: $e');
         } finally {
-          await Future.delayed(const Duration(seconds: 3));
-          AppHelpers.backNTimes(1);
+          controller.isFetching.value = false;
         }
       },
       barrierDismissible: false,

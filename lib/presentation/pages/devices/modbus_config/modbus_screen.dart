@@ -54,6 +54,8 @@ class _ModbusScreenState extends State<ModbusScreen> {
     super.didChangeDependencies();
     if (!isInitialized) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        modbusController.dataModbus.clear();
+
         controller.fetchDevices(widget.model);
         isInitialized = true;
       });
@@ -87,9 +89,35 @@ class _ModbusScreenState extends State<ModbusScreen> {
       secondaryButtonText: 'No',
       onPrimaryPressed: () async {
         Get.back();
-        await Future.delayed(const Duration(seconds: 1));
+        modbusController.isFetching.value = true;
 
-        await modbusController.deleteDevice(widget.model, deviceId, registerId);
+        try {
+          await modbusController.deleteDevice(
+            widget.model,
+            deviceId,
+            registerId,
+          );
+
+          if (Get.context != null) {
+            SnackbarCustom.showSnackbar(
+              '',
+              'Modbus config deleted successfully, refreshing data...',
+              Colors.green,
+              AppColor.whiteColor,
+            );
+          }
+
+          await modbusController.fetchDevices(widget.model, deviceId);
+        } catch (e) {
+          SnackbarCustom.showSnackbar(
+            '',
+            'Failed to delete modbus config',
+            AppColor.redColor,
+            AppColor.whiteColor,
+          );
+        } finally {
+          modbusController.isFetching.value = false;
+        }
       },
       barrierDismissible: false,
     );
@@ -104,9 +132,15 @@ class _ModbusScreenState extends State<ModbusScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'No modbus found.',
+              'Oops!... \nNo Modbus configuration found.',
               textAlign: TextAlign.center,
-              style: context.body.copyWith(color: AppColor.grey),
+              style: context.buttonText.copyWith(color: AppColor.blackColor),
+            ),
+            AppSpacing.xs,
+            Text(
+              'Please create or select one of device to continue.',
+              textAlign: TextAlign.center,
+              style: context.bodySmall.copyWith(color: AppColor.grey),
             ),
           ],
         ),
@@ -167,7 +201,6 @@ class _ModbusScreenState extends State<ModbusScreen> {
                 return Dropdown(
                   items: deviceItem,
                   selectedValue: selectedDevice?.value,
-                  hint: 'Choose device for details modbus data',
                   onChanged: (item) {
                     modbusController.fetchDevices(widget.model, item!.value);
                     setState(() {
@@ -311,7 +344,12 @@ class _ModbusScreenState extends State<ModbusScreen> {
                   child: Button(
                     width: double.infinity,
                     height: 32,
-                    onPressed: () => {},
+                    onPressed: () => {
+                      CustomAlertDialog.show(
+                        title: 'Coming soon',
+                        message: "This feature is on progress...",
+                      ),
+                    },
                     // onPressed: () {
                     //   context.push(
                     //     '/devices/modbus-config/edit?d=${widget.model.device.remoteId}&device_id=${selectedDevice!.value}&register_id=${modbus['register_id']}',

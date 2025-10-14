@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:gateway_config/core/constants/app_color.dart';
 import 'package:gateway_config/core/constants/app_gap.dart';
@@ -144,7 +142,7 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
       secondaryButtonText: 'No',
       onPrimaryPressed: () async {
         Get.back();
-        await Future.delayed(const Duration(seconds: 1));
+        controller.isLoading.value = true;
 
         try {
           var modbusRtu = {
@@ -184,7 +182,11 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
             },
           };
 
-          controller.sendCommand(formData);
+          await controller.sendCommand(formData);
+
+          await Future.delayed(const Duration(seconds: 1));
+
+          AppHelpers.backNTimes(1);
         } catch (e) {
           SnackbarCustom.showSnackbar(
             '',
@@ -194,8 +196,7 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
           );
           AppHelpers.debugLog('Error submitting form: $e');
         } finally {
-          await Future.delayed(const Duration(seconds: 3));
-          AppHelpers.backNTimes(1);
+          controller.isLoading.value = false;
         }
       },
       barrierDismissible: false,

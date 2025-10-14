@@ -154,7 +154,7 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
       secondaryButtonText: 'No',
       onPrimaryPressed: () async {
         Get.back();
-        await Future.delayed(const Duration(seconds: 1));
+        controller.isFetching.value = true;
 
         try {
           var formData = {
@@ -172,7 +172,11 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
             },
           };
 
-          bleController.sendCommand(formData);
+          await bleController.sendCommand(formData);
+          
+          await Future.delayed(const Duration(seconds: 1));
+
+          AppHelpers.backNTimes(1);
         } catch (e) {
           SnackbarCustom.showSnackbar(
             '',
@@ -182,8 +186,7 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
           );
           AppHelpers.debugLog('Error submitting form: $e');
         } finally {
-          await Future.delayed(const Duration(seconds: 3));
-          AppHelpers.backNTimes(1);
+          controller.isFetching.value = false;
         }
       },
       barrierDismissible: false,
