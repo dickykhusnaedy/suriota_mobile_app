@@ -49,8 +49,6 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
       secondaryButtonText: 'No',
       onPrimaryPressed: () async {
         Get.back();
-        await Future.delayed(Duration.zero);
-
         setState(() {
           isLoading = true;
         });
@@ -62,9 +60,16 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
             'Successfully disconnected from ${widget.model.device.platformName}',
           );
 
-          AppHelpers.backNTimes(2);
+          if (Get.context != null) {
+            GoRouter.of(Get.context!).go('/');
+          } else {
+            AppHelpers.debugLog(
+              'Warning: Get.context is null, cannot navigate',
+            );
+          }
         } catch (e) {
           AppHelpers.debugLog('Error disconnecting from device: $e');
+
           Get.snackbar(
             'Error',
             'Failed to disconnect from device',
@@ -120,19 +125,16 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
         "text": "Modbus Configurations",
         "imagePath": ImageAsset.iconConfig,
         "page": '/devices/modbus-config?id=${widget.model.device.remoteId}',
-        // "page": const ModbusScreen(),
       },
       {
         "text": "Server Configurations",
         "imagePath": ImageAsset.iconServer,
-        // "page": const FormConfigServer(),
         "page": '/devices/server-config?id=${widget.model.device.remoteId}',
       },
       {
         "text": "Logging Configurations",
         "imagePath": ImageAsset.iconLogging,
         "page": '/devices/logging?id=${widget.model.device.remoteId}',
-        // "page": const FormLoggingConfigScreen(),
       },
     ];
 

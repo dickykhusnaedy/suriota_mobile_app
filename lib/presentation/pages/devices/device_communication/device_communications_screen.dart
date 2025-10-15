@@ -8,7 +8,6 @@ import 'package:gateway_config/core/utils/extensions.dart';
 import 'package:gateway_config/core/utils/loading_progress.dart';
 import 'package:gateway_config/core/utils/snackbar_custom.dart';
 import 'package:gateway_config/models/device_model.dart';
-import 'package:gateway_config/presentation/pages/devices/device_communication/data_display_screen.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_alert_dialog.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_button.dart';
 import 'package:get/get.dart';
@@ -194,13 +193,11 @@ class _DeviceCommunicationsScreenState
             separatorBuilder: (context, index) => AppSpacing.sm,
             itemBuilder: (context, index) {
               final device = controller.dataDevices[index];
-              final name = device['device_name'] as String? ?? 'Unknown';
-              final modbusType = device['protocol'] as String? ?? 'Unknown';
 
               return InkWell(
                 onTap: () {
-                  Get.to(
-                    () => DisplayDataPage(title: name, modbusType: modbusType),
+                  context.push(
+                    '/devices/device-communication/stream-data?d=${widget.model.device.remoteId}&stream=${device['device_id']}',
                   );
                 },
                 child: _cardDeviceConnection(
