@@ -14,7 +14,10 @@ class BLEUtils {
           'Do you want to open device (${model.device.platformName.isNotEmpty ? model.device.platformName : model.device.remoteId}) page detail?',
       primaryButtonText: 'Yes',
       secondaryButtonText: 'No',
-      onPrimaryPressed: () => Get.to(() => DetailDeviceScreen(model: model)),
+      onPrimaryPressed: () {
+        Get.back();
+        Get.to(() => DetailDeviceScreen(model: model));
+      },
       barrierDismissible: false,
     );
   }
