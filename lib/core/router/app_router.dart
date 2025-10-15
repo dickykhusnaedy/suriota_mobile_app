@@ -5,6 +5,7 @@ import 'package:gateway_config/core/utils/extensions.dart';
 import 'package:gateway_config/presentation/pages/devices/add_device_screen.dart';
 import 'package:gateway_config/presentation/pages/devices/detail_device_info_screen.dart';
 import 'package:gateway_config/presentation/pages/devices/detail_device_screen.dart';
+import 'package:gateway_config/presentation/pages/devices/device_communication/data_display_screen.dart';
 import 'package:gateway_config/presentation/pages/devices/device_communication/device_communications_screen.dart';
 import 'package:gateway_config/presentation/pages/devices/device_communication/form_setup_device_screen.dart';
 import 'package:gateway_config/presentation/pages/devices/logging_config/form_logging_config_screen.dart';
@@ -143,6 +144,24 @@ class AppRouter {
                   final model = bleController.findDeviceByRemoteId(deviceId);
 
                   return FormSetupDeviceScreen(model: model!, deviceId: getId);
+                },
+              ),
+              GoRoute(
+                path: '/stream-data',
+                name: 'device-communication-stream',
+                builder: (context, state) {
+                  final bleController = Get.find<BleController>();
+
+                  final deviceId = state.uri.queryParameters['d'];
+                  final getId = state.uri.queryParameters['stream'];
+
+                  if (deviceId == null || getId == null) {
+                    return _deviceNotFound(context);
+                  }
+
+                  final model = bleController.findDeviceByRemoteId(deviceId);
+
+                  return DisplayDataPage(model: model!, deviceId: getId);
                 },
               ),
             ],
