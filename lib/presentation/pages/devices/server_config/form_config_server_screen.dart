@@ -481,6 +481,7 @@ class _FormConfigServerState extends State<FormConfigServer> {
             hintTxt: "Enter Password",
             validator: (value) =>
                 value == null || value.isEmpty ? 'Password is required' : null,
+            obscureText: true,
             isRequired: true,
           ),
         ],
