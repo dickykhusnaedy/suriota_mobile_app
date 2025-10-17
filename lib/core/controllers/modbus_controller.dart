@@ -83,15 +83,20 @@ class ModbusController extends GetxController {
 
       final response = await bleController.readCommandResponse(
         model,
-        type: 'register',
-        additionalParams: {'register_id': registerId, 'device_id': deviceId},
+        type: 'registers',
+        additionalParams: {'device_id': deviceId},
       );
 
       if (response.status == 'ok' || response.status == 'success') {
         dynamic config = response.config;
 
         if (config is List) {
-          selectedModbus.assignAll(config.cast<Map<String, dynamic>>());
+          final dataModbus = config.firstWhere((item) {
+            final id = item['register_id'];
+            return id?.toString() == registerId.toString();
+          }, orElse: () => {});
+
+          selectedModbus.assignAll([Map<String, dynamic>.from(dataModbus)]);
         } else if (config is Map) {
           selectedModbus.assignAll([config.cast<String, dynamic>()]);
         } else {
