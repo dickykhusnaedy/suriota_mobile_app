@@ -215,17 +215,6 @@ class _ModbusScreenState extends State<ModbusScreen> {
                   },
                   isRequired: true,
                 );
-                // return ListView.separated(
-                //   shrinkWrap: true,
-                //   physics: const NeverScrollableScrollPhysics(),
-                //   itemCount: controller.dataDevices.length,
-                //   separatorBuilder: (context, index) => AppSpacing.md,
-                //   itemBuilder: (context, int index) {
-                //     final item = controller.dataDevices[index];
-
-                //     return cardDataConfig(item, index);
-                //   },
-                // );
               }),
               AppSpacing.md,
               Obx(() {
@@ -344,17 +333,11 @@ class _ModbusScreenState extends State<ModbusScreen> {
                   child: Button(
                     width: double.infinity,
                     height: 32,
-                    onPressed: () => {
-                      CustomAlertDialog.show(
-                        title: 'Coming soon',
-                        message: "This feature is on progress...",
-                      ),
+                    onPressed: () {
+                      context.push(
+                        '/devices/modbus-config/edit?d=${widget.model.device.remoteId}&device_id=${selectedDevice!.value}&register_id=${modbus['register_id']}',
+                      );
                     },
-                    // onPressed: () {
-                    //   context.push(
-                    //     '/devices/modbus-config/edit?d=${widget.model.device.remoteId}&device_id=${selectedDevice!.value}&register_id=${modbus['register_id']}',
-                    //   );
-                    // },
                     icons: const Icon(
                       Icons.edit,
                       size: 18,

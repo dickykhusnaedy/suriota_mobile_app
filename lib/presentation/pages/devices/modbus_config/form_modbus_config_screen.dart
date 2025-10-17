@@ -100,11 +100,11 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
     });
 
     // Fetch data after widget build
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      controller.fetchDevices(widget.model);
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await controller.fetchDevices(widget.model);
 
       if (widget.deviceId != null && widget.registerId != null) {
-        modbusController.getDeviceById(
+        await modbusController.getDeviceById(
           widget.model,
           widget.deviceId!,
           widget.registerId!,
@@ -114,12 +114,13 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
   }
 
   void _fillFormFromDevice(Map<String, dynamic> modbus) {
+    selectedDevice = widget.deviceId;
+    selectedFunction = modbus['function_code']?.toString() ?? '';
+    selectedTypeData = modbus['data_type']?.toString() ?? '';
     deviceNameController.text = modbus['register_name'] ?? '';
     addressController.text = modbus['address']?.toString() ?? '';
-    selectedFunction = modbus['function_code']?.toString();
-    selectedTypeData = modbus['data_type']?.toString() ?? '';
     descriptionController.text = modbus['description'] ?? '';
-    refreshRateController.text = modbus['refresh_rate_ms'] ?? '';
+    refreshRateController.text = modbus['refresh_rate_ms']?.toString() ?? '';
 
     setState(() {});
   }
@@ -149,7 +150,8 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
 
     CustomAlertDialog.show(
       title: 'Are you sure?',
-      message: 'Are you sure you want to save this modbus configuration?',
+      message:
+          'Are you sure you want to ${widget.registerId == null ? 'save' : 'update'} this modbus configuration?',
       primaryButtonText: 'Yes',
       secondaryButtonText: 'No',
       onPrimaryPressed: () async {
@@ -158,9 +160,10 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
 
         try {
           var formData = {
-            "op": "create",
+            "op": widget.registerId != null ? "update" : "create",
             "type": "register",
             "device_id": selectedDevice,
+            if (widget.registerId != '') "register_id": widget.registerId,
             "config": {
               "address": _sanitizeInput(addressController.text),
               "register_name": _sanitizeInput(deviceNameController.text),
@@ -173,10 +176,10 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
           };
 
           await bleController.sendCommand(formData);
-          
+
           await Future.delayed(const Duration(seconds: 1));
 
-          AppHelpers.backNTimes(1);
+          AppHelpers.backNTimes(2);
         } catch (e) {
           SnackbarCustom.showSnackbar(
             '',
@@ -281,6 +284,7 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
                   return null;
                 },
                 isRequired: true,
+                isDisabled: widget.registerId != null,
               ),
               AppSpacing.md,
               Dropdown(

@@ -137,7 +137,8 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
 
     CustomAlertDialog.show(
       title: "Are you sure?",
-      message: "Are you sure you want to save this device?",
+      message:
+          "Are you sure you want to ${widget.deviceId == null ? 'save' : 'update'} this device?",
       primaryButtonText: 'Yes',
       secondaryButtonText: 'No',
       onPrimaryPressed: () async {
@@ -186,7 +187,7 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
 
           await Future.delayed(const Duration(seconds: 1));
 
-          AppHelpers.backNTimes(1);
+          AppHelpers.backNTimes(2);
         } catch (e) {
           SnackbarCustom.showSnackbar(
             '',
@@ -309,9 +310,11 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
                     onChanges: () {
                       setState(() {
                         modBusSelected = 'RTU';
-                        ipAddressController.clear();
-                        serverPortController.clear();
-                        connectionTimeoutController.clear();
+
+                        if (widget.deviceId == null) {
+                          ipAddressController.clear();
+                          serverPortController.clear();
+                        }
                       });
                     },
                   ),

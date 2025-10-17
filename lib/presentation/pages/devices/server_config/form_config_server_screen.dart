@@ -36,6 +36,8 @@ class _FormConfigServerState extends State<FormConfigServer> {
 
   late Worker _worker;
 
+  bool _passwordVisible = true;
+
   // State variables
   String protocolSelected = 'mqtt';
   String communicationSelected = 'ETH'; // ETH or WIFI
@@ -481,8 +483,19 @@ class _FormConfigServerState extends State<FormConfigServer> {
             hintTxt: "Enter Password",
             validator: (value) =>
                 value == null || value.isEmpty ? 'Password is required' : null,
-            obscureText: true,
+            obscureText: _passwordVisible,
             isRequired: true,
+            suffixIcon: IconButton(
+              icon: Icon(
+                _passwordVisible ? Icons.visibility : Icons.visibility_off,
+                size: 18,
+              ),
+              onPressed: () {
+                setState(() {
+                  _passwordVisible = !_passwordVisible;
+                });
+              },
+            ),
           ),
         ],
         AppSpacing.md,
@@ -583,8 +596,19 @@ class _FormConfigServerState extends State<FormConfigServer> {
           controller: passwordController,
           labelTxt: "Password",
           hintTxt: "password",
-          obscureText: true,
+          obscureText: _passwordVisible,
           isRequired: true,
+          suffixIcon: IconButton(
+            icon: Icon(
+              _passwordVisible ? Icons.visibility : Icons.visibility_off,
+              size: 18,
+            ),
+            onPressed: () {
+              setState(() {
+                _passwordVisible = !_passwordVisible;
+              });
+            },
+          ),
         ),
         AppSpacing.md,
         CustomTextFormField(
