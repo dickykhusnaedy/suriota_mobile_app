@@ -165,7 +165,7 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
             "device_id": selectedDevice,
             if (widget.registerId != '') "register_id": widget.registerId,
             "config": {
-              "address": _sanitizeInput(addressController.text),
+              "address": _tryParseInt(addressController.text),
               "register_name": _sanitizeInput(deviceNameController.text),
               "type": selectedFunctionText,
               "function_code": _tryParseInt(selectedFunction),

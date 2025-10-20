@@ -166,7 +166,7 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
             "config": {
               "device_name": _sanitizeInput(deviceNameController.text),
               "protocol": modBusSelected,
-              "slave_id": _sanitizeInput(slaveIdController.text),
+              "slave_id": _tryParseInt(slaveIdController.text),
               "timeout": _tryParseInt(
                 connectionTimeoutController.text,
                 defaultValue: 3000,
