@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:gateway_config/core/constants/app_color.dart';
 import 'package:gateway_config/core/constants/app_gap.dart';
+import 'package:gateway_config/core/constants/static_data.dart';
 import 'package:gateway_config/core/controllers/ble_controller.dart';
 import 'package:gateway_config/core/controllers/devices_controller.dart';
 import 'package:gateway_config/core/controllers/modbus_controller.dart';
@@ -52,23 +53,7 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
   final descriptionController = TextEditingController();
   final refreshRateController = TextEditingController();
 
-  static final List<DropdownItems> modbusReadFunctions = [
-    DropdownItems(text: 'Coil Status', value: '1'),
-    DropdownItems(text: 'Input Status', value: '2'),
-    DropdownItems(text: 'Holding Register', value: '3'),
-    DropdownItems(text: 'Input Registers', value: '4'),
-  ];
-
-  static const List<Map<String, dynamic>> dataModbusType = [
-    {'text': 'INT16', 'value': 'int16'},
-    {'text': 'UINT16', 'value': 'uint16'},
-    {'text': 'INT32', 'value': 'int32'},
-    {'text': 'UINT32', 'value': 'uint32'},
-    {'text': 'FLOAT32', 'value': 'float32'},
-    {'text': 'INT64', 'value': 'int64'},
-    {'text': 'FLOAT64', 'value': 'float64'},
-  ];
-  List<DropdownItems> modbusDataTypes = dataModbusType
+  List<DropdownItems> modbusDataTypes = StaticData.dataModbusType
       .map(
         (data) =>
             DropdownItems(text: data['text'], value: data['value'].toString()),
@@ -288,7 +273,7 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
               ),
               AppSpacing.md,
               Dropdown(
-                items: modbusReadFunctions,
+                items: StaticData.modbusReadFunctions,
                 selectedValue: selectedFunction,
                 label: 'Choose Function',
                 onChanged: (item) {
