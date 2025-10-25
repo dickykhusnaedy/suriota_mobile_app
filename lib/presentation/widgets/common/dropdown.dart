@@ -6,6 +6,7 @@ import 'package:gateway_config/core/constants/app_font.dart';
 import 'package:gateway_config/core/constants/app_gap.dart';
 import 'package:gateway_config/core/utils/extensions.dart';
 import 'package:gateway_config/models/dropdown_items.dart';
+import 'package:gateway_config/presentation/widgets/spesific/title_tile.dart';
 
 class Dropdown extends StatefulWidget {
   final String? label;
@@ -151,30 +152,51 @@ class _DropdownState extends State<Dropdown> {
           child: menuWidget,
         );
       },
-      itemBuilder: (context, item, isDisabled, isSelected) => Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: 16.w.clamp(16, 18),
-          vertical: 12.w.clamp(12, 14),
-        ),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColor.lightPrimaryColor : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Text(
-          item.text,
-          style: isDisabled
-              ? context.body.copyWith(
-                  color: AppColor.lightGrey,
-                  fontStyle: FontStyle.italic,
-                )
-              : isSelected
-              ? context.body.copyWith(
-                  color: AppColor.primaryColor,
-                  fontWeight: FontWeightTheme.bold,
-                )
-              : context.body,
-        ),
-      ),
+      itemBuilder: (context, item, isDisabled, isSelected) {
+        final index = widget.items.indexOf(item);
+        final previousGroup = index > 0 ? widget.items[index - 1].group : null;
+        final showHeader = previousGroup != item.group;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (showHeader && (item.group?.isNotEmpty ?? false))
+              Column(
+                children: [
+                  AppSpacing.sm,
+                  TitleTile(title: item.group!),
+                  AppSpacing.sm,
+                ],
+              ),
+            Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: 16.w.clamp(16, 18),
+                vertical: 12.w.clamp(12, 14),
+              ),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? AppColor.lightPrimaryColor
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                item.text,
+                style: isDisabled
+                    ? context.body.copyWith(
+                        color: AppColor.lightGrey,
+                        fontStyle: FontStyle.italic,
+                      )
+                    : isSelected
+                    ? context.body.copyWith(
+                        color: AppColor.primaryColor,
+                        fontWeight: FontWeightTheme.bold,
+                      )
+                    : context.body,
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
