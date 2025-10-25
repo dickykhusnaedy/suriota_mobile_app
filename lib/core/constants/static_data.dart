@@ -2,32 +2,166 @@ import 'package:gateway_config/models/dropdown_items.dart';
 
 class StaticData {
   static const List<Map<String, dynamic>> dataModbusType = [
-    {'text': 'INT16', 'value': 'int16'},
-    {'text': 'UINT16', 'value': 'uint16'},
-    {'text': 'INT32-BE', 'value': 'int32-be'},
-    {'text': 'INT32-LE', 'value': 'int32-le'},
-    {'text': 'INT32-WS1', 'value': 'int32-ws1'},
-    {'text': 'INT32-WS2', 'value': 'int32-ws2'},
-    {'text': 'UINT32-BE', 'value': 'uint32-be'},
-    {'text': 'UINT32-LE', 'value': 'uint32-le'},
-    {'text': 'UINT32-WS1', 'value': 'uint32-ws1'},
-    {'text': 'UINT32-WS2', 'value': 'uint32-ws2'},
-    {'text': 'FLOAT32-BE', 'value': 'float32-be'},
-    {'text': 'FLOAT32-LE', 'value': 'float32-le'},
-    {'text': 'FLOAT32-WS1', 'value': 'float32-ws1'},
-    {'text': 'FLOAT32-WS2', 'value': 'float32-ws2'},
-    {'text': 'INT64-BE', 'value': 'int64-be'},
-    {'text': 'INT64-LE', 'value': 'int64-le'},
-    {'text': 'INT64-WS1', 'value': 'int64-ws1'},
-    {'text': 'INT64-WS2', 'value': 'int64-ws2'},
-    {'text': 'UINT64-BE', 'value': 'uint64-be'},
-    {'text': 'UINT64-LE', 'value': 'uint64-le'},
-    {'text': 'UINT64-WS1', 'value': 'uint64-ws1'},
-    {'text': 'UINT64-WS2', 'value': 'uint64-ws2'},
-    {'text': 'FLOAT64-BE', 'value': 'float64-be'},
-    {'text': 'FLOAT64-LE', 'value': 'float64-le'},
-    {'text': 'FLOAT64-WS1', 'value': 'float64-ws1'},
-    {'text': 'FLOAT64-WS2', 'value': 'float64-ws2'},
+    // 🔹 16-bit Signed Integer
+    {
+      'group': '16-bit Signed Integer',
+      'text': 'Single Register',
+      'value': 'INT16',
+    },
+
+    // 🔹 16-bit Unsigned Integer
+    {
+      'group': '16-bit Unsigned Integer',
+      'text': 'Single Register',
+      'value': 'UINT16',
+    },
+
+    // 🔹 Boolean Value
+    {'group': 'Boolean Value', 'text': 'Single Register', 'value': 'BOOL'},
+
+    // 🔹 Binary Data
+    {'group': 'Binary Data', 'text': 'Raw 16-bit Value', 'value': 'BINARY'},
+
+    // 🔹 32-bit Signed Integer
+    {
+      'group': '32-bit Signed Integer',
+      'text': 'Big Endian',
+      'value': 'INT32_BE',
+    },
+    {
+      'group': '32-bit Signed Integer',
+      'text': 'Little Endian',
+      'value': 'INT32_LE',
+    },
+    {
+      'group': '32-bit Signed Integer',
+      'text': 'Big Endian + Byte Swap',
+      'value': 'INT32_BE_BS',
+    },
+    {
+      'group': '32-bit Signed Integer',
+      'text': 'Little Endian + Byte Swap',
+      'value': 'INT32_LE_BS',
+    },
+
+    // 🔹 32-bit Unsigned Integer
+    {
+      'group': '32-bit Unsigned Integer',
+      'text': 'Big Endian',
+      'value': 'UINT32_BE',
+    },
+    {
+      'group': '32-bit Unsigned Integer',
+      'text': 'Little Endian',
+      'value': 'UINT32_LE',
+    },
+    {
+      'group': '32-bit Unsigned Integer',
+      'text': 'Big Endian + Byte Swap',
+      'value': 'UINT32_BE_BS',
+    },
+    {
+      'group': '32-bit Unsigned Integer',
+      'text': 'Little Endian + Byte Swap',
+      'value': 'UINT32_LE_BS',
+    },
+
+    // 🔹 32-bit IEEE 754 Float
+    {
+      'group': '32-bit IEEE 754 Float',
+      'text': 'Big Endian',
+      'value': 'FLOAT32_BE',
+    },
+    {
+      'group': '32-bit IEEE 754 Float',
+      'text': 'Little Endian',
+      'value': 'FLOAT32_LE',
+    },
+    {
+      'group': '32-bit IEEE 754 Float',
+      'text': 'Big Endian + Byte Swap',
+      'value': 'FLOAT32_BE_BS',
+    },
+    {
+      'group': '32-bit IEEE 754 Float',
+      'text': 'Little Endian + Byte Swap',
+      'value': 'FLOAT32_LE_BS',
+    },
+
+    // 🔹 64-bit Signed Integer
+    {
+      'group': '64-bit Signed Integer',
+      'text': 'Big Endian',
+      'value': 'INT64_BE',
+    },
+    {
+      'group': '64-bit Signed Integer',
+      'text': 'Little Endian',
+      'value': 'INT64_LE',
+    },
+    {
+      'group': '64-bit Signed Integer',
+      'text': 'Big Endian + Byte Swap',
+      'value': 'INT64_BE_BS',
+    },
+    {
+      'group': '64-bit Signed Integer',
+      'text': 'Little Endian + Byte Swap',
+      'value': 'INT64_LE_BS',
+    },
+
+    // 🔹 64-bit Unsigned Integer
+    {
+      'group': '64-bit Unsigned Integer',
+      'text': 'Big Endian',
+      'value': 'UINT64_BE',
+    },
+    {
+      'group': '64-bit Unsigned Integer',
+      'text': 'Little Endian',
+      'value': 'UINT64_LE',
+    },
+    {
+      'group': '64-bit Unsigned Integer',
+      'text': 'Big Endian + Byte Swap',
+      'value': 'UINT64_BE_BS',
+    },
+    {
+      'group': '64-bit Unsigned Integer',
+      'text': 'Little Endian + Byte Swap',
+      'value': 'UINT64_LE_BS',
+    },
+
+    // 🔹 64-bit IEEE 754 Double
+    {
+      'group': '64-bit IEEE 754 Double',
+      'text': 'Big Endian',
+      'value': 'DOUBLE64_BE',
+    },
+    {
+      'group': '64-bit IEEE 754 Double',
+      'text': 'Little Endian',
+      'value': 'DOUBLE64_LE',
+    },
+    {
+      'group': '64-bit IEEE 754 Double',
+      'text': 'Big Endian + Byte Swap',
+      'value': 'DOUBLE64_BE_BS',
+    },
+    {
+      'group': '64-bit IEEE 754 Double',
+      'text': 'Little Endian + Byte Swap',
+      'value': 'DOUBLE64_LE_BS',
+    },
+
+    // 🔹 Legacy Types
+    {'group': '32-bit Signed (BE)', 'text': 'Legacy Format', 'value': 'INT32'},
+    {'group': '32-bit Float (BE)', 'text': 'Legacy Format', 'value': 'FLOAT32'},
+    {
+      'group': 'Text String (UTF-8 Encoded)',
+      'text': 'Variable Length',
+      'value': 'STRING',
+    },
   ];
 
   static final List<DropdownItems> modbusReadFunctions = [
