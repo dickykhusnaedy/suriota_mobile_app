@@ -55,8 +55,11 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
 
   List<DropdownItems> modbusDataTypes = StaticData.dataModbusType
       .map(
-        (data) =>
-            DropdownItems(text: data['text'], value: data['value'].toString()),
+        (data) => DropdownItems(
+          text: data['text'],
+          value: data['value'].toString(),
+          group: data['group'],
+        ),
       )
       .toList();
 
@@ -148,7 +151,7 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
             "op": widget.registerId != null ? "update" : "create",
             "type": "register",
             "device_id": selectedDevice,
-            if (widget.registerId != '') "register_id": widget.registerId,
+            if (widget.registerId != null) "register_id": widget.registerId,
             "config": {
               "address": _tryParseInt(addressController.text),
               "register_name": _sanitizeInput(deviceNameController.text),
