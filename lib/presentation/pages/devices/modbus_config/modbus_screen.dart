@@ -275,6 +275,21 @@ class _ModbusScreenState extends State<ModbusScreen> {
       actions: [
         IconButton(
           onPressed: () {
+            if (controller.dataDevices.isEmpty) {
+              CustomAlertDialog.show(
+                title: "No Devices Available",
+                message:
+                    "Please add a device or scan device first before adding Modbus configuration.",
+                primaryButtonText: 'OK',
+                onPrimaryPressed: () {
+                  Get.back();
+                },
+                barrierDismissible: false,
+              );
+
+              return;
+            }
+
             context.push(
               '/devices/modbus-config/add?d=${widget.model.device.remoteId}',
             );
