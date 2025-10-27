@@ -5,9 +5,15 @@ import 'package:gateway_config/core/utils/extensions.dart';
 
 class TitleTile extends StatelessWidget {
   final String title;
+  final String? subTitle;
   final Color? bgColor;
 
-  const TitleTile({super.key, required this.title, this.bgColor});
+  const TitleTile({
+    super.key,
+    required this.title,
+    this.subTitle,
+    this.bgColor,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -18,7 +24,22 @@ class TitleTile extends StatelessWidget {
         color: bgColor ?? AppColor.primaryColor.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Text(title, style: context.h6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: context.h5),
+          if (subTitle != null) ...[
+            AppSpacing.xs,
+            Text(
+              subTitle!,
+              style: context.buttonTextSmall.copyWith(
+                color: AppColor.grey,
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
