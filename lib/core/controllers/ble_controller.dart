@@ -584,12 +584,20 @@ class BleController extends GetxController {
                 throw Exception('Incomplete JSON structure');
               }
 
-              final responseJson =
-                  jsonDecode(cleanedBuffer) as Map<String, dynamic>;
+              final decoded = jsonDecode(cleanedBuffer);
+              Map<String, dynamic> responseJson;
 
-              // Validasi dan mapping manual untuk config
-              if (!responseJson.containsKey('status')) {
-                throw Exception('Missing status field in response');
+              if (decoded is Map) {
+                responseJson = Map<String, dynamic>.from(decoded);
+                responseJson = _sanitizeMap(responseJson);
+              } else if (decoded is List &&
+                  decoded.isNotEmpty &&
+                  decoded.first is Map) {
+                // fallback jika JSON root array (misal BLE kirim list langsung)
+                responseJson = Map<String, dynamic>.from(decoded.first);
+                responseJson = _sanitizeMap(responseJson);
+              } else {
+                throw Exception('Invalid JSON root: ${decoded.runtimeType}');
               }
 
               dynamic configData =
@@ -745,6 +753,23 @@ class BleController extends GetxController {
   // Function to get responses by type
   List<CommandResponse> getResponsesByType(String type) {
     return gatewayDeviceResponses.where((resp) => resp.type == type).toList();
+  }
+
+  Map<String, dynamic> _sanitizeMap(Map input) {
+    final Map<String, dynamic> result = {};
+    input.forEach((key, value) {
+      final safeKey = key?.toString() ?? 'null';
+      if (value is Map) {
+        result[safeKey] = _sanitizeMap(value);
+      } else if (value is List) {
+        result[safeKey] = value
+            .map((v) => v is Map ? _sanitizeMap(v) : v)
+            .toList();
+      } else {
+        result[safeKey] = value;
+      }
+    });
+    return result;
   }
 
   @override
