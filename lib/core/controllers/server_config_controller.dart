@@ -35,18 +35,60 @@ class ServerConfigController extends GetxController {
       );
 
       if (!_isMounted) return;
-      if (response.status == 'ok' || response.status == 'success') {
-        dynamic config = response.config;
 
-        if (config is List) {
-          dataServer.assignAll(config.cast<Map<String, dynamic>>());
-        } else if (config is Map) {
-          dataServer.assignAll([config.cast<String, dynamic>()]);
-        } else {
+      if (response.status == 'ok' || response.status == 'success') {
+        final config = response.config;
+
+        /// 🔥 Recursive sanitizer tanpa .map() / .cast()
+        dynamic sanitize(dynamic data) {
+          if (data is Map) {
+            final result = <String, dynamic>{};
+            for (final entry in data.entries) {
+              final key = entry.key?.toString() ?? 'null';
+              result[key] = sanitize(entry.value);
+            }
+            return result;
+          } else if (data is List) {
+            return data.map((item) => sanitize(item)).toList();
+          }
+          return data;
+        }
+
+        try {
+          if (config is List) {
+            // Jangan pakai .map().toList(), kita loop manual
+            final safeList = <Map<String, dynamic>>[];
+            for (final item in config) {
+              if (item is Map) {
+                safeList.add(sanitize(item));
+              }
+            }
+            dataServer.assignAll(safeList);
+            AppHelpers.debugLog(
+              '✅ Config parsed safely (list) ${safeList.length}',
+            );
+          } else if (config is Map) {
+            final safeMap = sanitize(config);
+            dataServer.assignAll([safeMap]);
+            AppHelpers.debugLog('✅ Config parsed safely (map)');
+          } else {
+            dataServer.clear();
+            SnackbarCustom.showSnackbar(
+              '',
+              'Invalid config type: ${config.runtimeType}',
+              AppColor.redColor,
+              AppColor.whiteColor,
+            );
+            AppHelpers.debugLog(
+              '⚠️ Invalid config type: ${config.runtimeType}',
+            );
+          }
+        } catch (err) {
+          AppHelpers.debugLog('❌ Error parsing config: $err');
           dataServer.clear();
           SnackbarCustom.showSnackbar(
             '',
-            'Invalid config format',
+            'Invalid config format: $err',
             AppColor.redColor,
             AppColor.whiteColor,
           );
@@ -54,19 +96,18 @@ class ServerConfigController extends GetxController {
       } else {
         SnackbarCustom.showSnackbar(
           '',
-          response.message ?? 'Failed to fecth devices',
+          response.message ?? 'Failed to fetch devices',
           AppColor.redColor,
           AppColor.whiteColor,
         );
-
         dataServer.clear();
       }
     } catch (e) {
       if (!_isMounted) return;
-      AppHelpers.debugLog('Error fetching server: $e');
+      AppHelpers.debugLog('❌ Error fetching server: $e');
       SnackbarCustom.showSnackbar(
         'Error',
-        'Failed to fetch devices',
+        'Failed to fetch devices: $e',
         AppColor.redColor,
         AppColor.whiteColor,
       );
