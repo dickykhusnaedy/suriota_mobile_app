@@ -141,9 +141,18 @@ class _FormConfigServerState extends State<FormConfigServer> {
     timeoutController.text =
         config['http_config']?['timeout']?.toString() ?? '';
     retryController.text = config['http_config']?['retry']?.toString() ?? '';
-    headerControllers = config['http_config']?['headers']
-        .map((h) => AppHelpers.debugLog('Data header controller: key: $h'))
-        .toList();
+    headerControllers =
+        (config['http_config']?['headers'] as Map<String, dynamic>? ?? {})
+            .entries
+            .map(
+              (entry) => HeaderFieldController(
+                key: entry
+                    .key, // atau keyController: TextEditingController(text: entry.key)
+                value: entry.value
+                    .toString(), // sesuaikan dengan class HeaderFieldController lo
+              ),
+            )
+            .toList();
 
     // Refresh UI
     setState(() {});
@@ -751,14 +760,14 @@ class _FormConfigServerState extends State<FormConfigServer> {
             keyboardType: TextInputType.number,
             hintTxt: "5",
           ),
-          AppSpacing.md,
-          MultiHeaderForm(
-            controllers: headerControllers,
-            onChanged: () {
-              setState(() {});
-            },
-          ),
         ],
+        AppSpacing.md,
+        MultiHeaderForm(
+          controllers: headerControllers,
+          onChanged: () {
+            setState(() {});
+          },
+        ),
       ],
     );
   }
