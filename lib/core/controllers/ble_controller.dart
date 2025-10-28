@@ -28,6 +28,8 @@ class BleController extends GetxController {
   var commandCache = <String, CommandResponse>{}.obs;
   var gatewayDeviceResponses = <CommandResponse>[].obs;
 
+  final RxMap<String, String> streamedData = <String, String>{}.obs;
+
   final _deviceCache = <String, DeviceModel>{}.obs;
 
   // List for scanned devices as DeviceModel
@@ -755,6 +757,89 @@ class BleController extends GetxController {
     return gatewayDeviceResponses.where((resp) => resp.type == type).toList();
   }
 
+  Future<void> startDataStream(String type, String deviceId) async {
+    if (commandChar == null || responseChar == null) {
+      errorMessage.value = 'Not connected';
+      return;
+    }
+
+    final startCommand = {"op": "read", "type": type, "device_id": deviceId};
+    commandLoading.value = true;
+
+    try {
+      // Kirim command start (reuse sendCommand logic, tapi tanpa tunggu full response di sini)
+      await sendCommand(startCommand); // Ini akan setup subscription internally
+
+      // Setup continuous listener (extend dari existing subscription)
+      responseSubscription?.cancel(); // Cancel jika ada sebelumnya
+      StringBuffer streamBuffer = StringBuffer();
+
+      responseSubscription = responseChar!.lastValueStream.listen((data) {
+        final chunk = utf8.decode(data, allowMalformed: true);
+        AppHelpers.debugLog('Realtime chunk received: $chunk');
+        streamBuffer.write(chunk);
+
+        if (chunk.contains('<END>')) {
+          try {
+            final cleanedBuffer = streamBuffer
+                .toString()
+                .replaceAll('<END>', '')
+                .replaceAll(RegExp(r'[\x00-\x1F\x7F]'), '')
+                .trim();
+
+            if (cleanedBuffer.isNotEmpty) {
+              final decoded = jsonDecode(cleanedBuffer);
+              // Asumsi format: Map {"address": "0x3042", "value": "142"} atau List<Map>
+              if (decoded is Map<String, dynamic>) {
+                final address = decoded['address']?.toString();
+                final value = decoded['value']?.toString();
+                if (address != null && value != null) {
+                  streamedData[address] = value; // Update atau tambah
+                  AppHelpers.debugLog(
+                    'Updated streamedData: $address -> $value',
+                  );
+                }
+              } else if (decoded is List) {
+                for (var item in decoded) {
+                  if (item is Map<String, dynamic>) {
+                    final address = item['address']?.toString();
+                    final value = item['value']?.toString();
+                    if (address != null && value != null) {
+                      streamedData[address] = value;
+                    }
+                  }
+                }
+              }
+            }
+          } catch (e) {
+            AppHelpers.debugLog('Realtime parsing error: $e');
+          }
+          streamBuffer.clear(); // Reset buffer untuk next data
+        }
+      });
+
+      await responseChar!.setNotifyValue(true);
+    } catch (e) {
+      errorMessage.value = 'Error starting stream: $e';
+      SnackbarCustom.showSnackbar(
+        '',
+        errorMessage.value,
+        Colors.red,
+        AppColor.whiteColor,
+      );
+    } finally {
+      commandLoading.value = false;
+    }
+  }
+
+  Future<void> stopDataStream(String type) async {
+    final stopCommand = {"op": "read", "type": type, "device_id": "stop"};
+    await sendCommand(stopCommand);
+    responseSubscription?.cancel();
+    streamedData.clear(); // Optional: clear data setelah stop
+    AppHelpers.debugLog('Stream stopped');
+  }
+
   Map<String, dynamic> _sanitizeMap(Map input) {
     final Map<String, dynamic> result = {};
     input.forEach((key, value) {
@@ -775,8 +860,10 @@ class BleController extends GetxController {
   @override
   void onClose() {
     _deviceCache.clear();
-    adapterStateSubscription?.cancel();
+    streamedData.clear();
     gatewayDeviceResponses.clear();
+
+    adapterStateSubscription?.cancel();
     clearCommandCache();
     responseSubscription?.cancel();
 
