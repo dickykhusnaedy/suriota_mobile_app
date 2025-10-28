@@ -3,6 +3,7 @@ import 'package:gateway_config/core/constants/app_color.dart';
 import 'package:gateway_config/core/constants/app_gap.dart';
 import 'package:gateway_config/core/controllers/ble_controller.dart';
 import 'package:gateway_config/core/controllers/devices_controller.dart';
+import 'package:gateway_config/core/utils/app_helpers.dart';
 import 'package:gateway_config/core/utils/extensions.dart';
 import 'package:gateway_config/core/utils/loading_progress.dart';
 import 'package:gateway_config/core/utils/snackbar_custom.dart';
@@ -31,10 +32,28 @@ class _DisplayDataPageState extends State<DisplayDataPage> {
 
   late Worker _worker;
 
+  // Ganti valueData jadi RxList
+  final RxList<String> valueData = [
+    "142",
+    "920",
+    "821",
+    "710",
+    "180",
+    "170",
+  ].obs;
+  final List<String> addressData = [
+    "0x3042",
+    "0x2042",
+    "0x8219",
+    "0x8163",
+    "0x6661",
+    "0x6763",
+  ];
+
   @override
   void initState() {
     super.initState();
-    // Listen to dataDevice GetX observable, update form when fetch finished
+    // Listener untuk selectedDevice
     _worker = ever(devicesController.selectedDevice, (dataList) {
       if (!mounted) return;
       if (dataList.isNotEmpty) {
@@ -44,14 +63,28 @@ class _DisplayDataPageState extends State<DisplayDataPage> {
       }
     });
 
-    // Fetch data after widget build
+    // Listener untuk streamedData dari BLE
+    ever(controller.streamedData, (dataMap) {
+      if (!mounted) return;
+      for (int i = 0; i < addressData.length; i++) {
+        final address = addressData[i];
+        if (dataMap.containsKey(address)) {
+          valueData[i] = dataMap[address]!; // Update value jika address match
+          AppHelpers.debugLog(
+            'Updated valueData[$i]: ${valueData[i]} for address $address',
+          );
+        }
+      }
+      valueData.refresh(); // Pastikan RxList memicu update
+    });
+
+    // Fetch data setelah widget build
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await devicesController.getDeviceById(widget.model, widget.deviceId);
     });
   }
 
   void _streamData({bool isStopStream = false}) async {
-    // Check BLE Connection
     if (!widget.model.isConnected.value) {
       SnackbarCustom.showSnackbar(
         '',
@@ -63,17 +96,18 @@ class _DisplayDataPageState extends State<DisplayDataPage> {
     }
 
     try {
-      var formData = {
-        "op": "read",
-        "type": "data",
-        "device_id": !isStopStream ? 'stop' : widget.deviceId,
-      };
-
-      await controller.sendCommand(formData);
+      if (isStopStream) {
+        await controller.startDataStream(
+          "data",
+          widget.deviceId,
+        ); // Start stream
+      } else {
+        await controller.stopDataStream("data"); // Stop stream
+      }
     } catch (e) {
       SnackbarCustom.showSnackbar(
         '',
-        'Failed to submit form',
+        'Failed to manage stream',
         AppColor.redColor,
         AppColor.whiteColor,
       );
@@ -83,22 +117,11 @@ class _DisplayDataPageState extends State<DisplayDataPage> {
   @override
   void dispose() {
     _worker.dispose();
-
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    List<String> addressData = [
-      "0x3042",
-      "0x2042",
-      "0x8219",
-      "0x8163",
-      "0x6661",
-      "0x6763",
-    ];
-    List<String> valueData = ["142", "920", "821", "710", "180", "170"];
-
     return Scaffold(
       appBar: _appBar(context),
       body: SafeArea(
@@ -122,19 +145,19 @@ class _DisplayDataPageState extends State<DisplayDataPage> {
     );
   }
 
-  Column _bodyContent(
+  Widget _bodyContent(
     BuildContext context,
     List<String> addressData,
-    List<String> valueData,
+    RxList<String> valueData,
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Obx untuk isFetching
         Obx(() {
           if (devicesController.isFetching.value) {
-            return LoadingProgress();
+            return const LoadingProgress();
           }
-
           return Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -157,7 +180,7 @@ class _DisplayDataPageState extends State<DisplayDataPage> {
                       ),
                     ),
                     textColor: AppColor.primaryColor,
-                    padding: EdgeInsets.only(
+                    padding: const EdgeInsets.only(
                       top: 3,
                       left: 6,
                       right: 6,
@@ -174,7 +197,7 @@ class _DisplayDataPageState extends State<DisplayDataPage> {
                       ),
                     ),
                     textColor: AppColor.primaryColor,
-                    padding: EdgeInsets.only(
+                    padding: const EdgeInsets.only(
                       top: 3,
                       left: 6,
                       right: 6,
@@ -190,7 +213,7 @@ class _DisplayDataPageState extends State<DisplayDataPage> {
                   Flexible(
                     flex: 1,
                     child: Button(
-                      onPressed: () => {_streamData(isStopStream: true)},
+                      onPressed: () => _streamData(isStopStream: true),
                       width: double.infinity,
                       text: 'Stream Data',
                       height: 40,
@@ -200,7 +223,7 @@ class _DisplayDataPageState extends State<DisplayDataPage> {
                   Flexible(
                     flex: 1,
                     child: Button(
-                      onPressed: () => {_streamData(isStopStream: false)},
+                      onPressed: () => _streamData(isStopStream: false),
                       text: 'Stop Stream',
                       width: double.infinity,
                       height: 40,
@@ -210,10 +233,11 @@ class _DisplayDataPageState extends State<DisplayDataPage> {
                 ],
               ),
               AppSpacing.md,
+              // ListView tanpa Obx di sini, pindah ke _card
               ListView.separated(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                itemCount: 5,
+                itemCount: addressData.length,
                 separatorBuilder: (context, index) => AppSpacing.sm,
                 itemBuilder: (BuildContext context, int index) {
                   return _card(context, addressData, index, valueData);
@@ -227,11 +251,11 @@ class _DisplayDataPageState extends State<DisplayDataPage> {
     );
   }
 
-  Stack _card(
+  Widget _card(
     BuildContext context,
     List<String> addressData,
     int index,
-    List<String> valueData,
+    RxList<String> valueData,
   ) {
     return Stack(
       alignment: AlignmentDirectional.topEnd,
@@ -256,9 +280,12 @@ class _DisplayDataPageState extends State<DisplayDataPage> {
                     ),
                   ),
                   AppSpacing.xs,
-                  Text(
-                    'Value : ${valueData[index]}', // Tampilkan tipe Modbus
-                    style: context.bodySmall,
+                  // Obx hanya untuk Text yang menampilkan valueData
+                  Obx(
+                    () => Text(
+                      'Value: ${valueData[index]}',
+                      style: context.bodySmall,
+                    ),
                   ),
                 ],
               ),
