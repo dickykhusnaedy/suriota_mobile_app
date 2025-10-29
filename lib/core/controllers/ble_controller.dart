@@ -27,6 +27,7 @@ class BleController extends GetxController {
   var lastCommand = <String, dynamic>{}.obs;
   var commandCache = <String, CommandResponse>{}.obs;
   var gatewayDeviceResponses = <CommandResponse>[].obs;
+  var isNavigatingHome = false.obs;
 
   final RxMap<String, String> streamedData = <String, String>{}.obs;
 
@@ -49,10 +50,38 @@ class BleController extends GetxController {
   void onInit() {
     super.onInit();
 
+    // Listen perubahan koneksi global
+    ever(connectedDevice, (device) {
+      if (device == null && !isNavigatingHome.value) {
+        isNavigatingHome.value = true;
+        AppHelpers.debugLog('connectedDevice null → redirect home');
+
+        SnackbarCustom.showSnackbar(
+          '',
+          'Device disconnect, will be redirect to home in 3 seconds.',
+          AppColor.labelColor,
+          AppColor.whiteColor,
+        );
+
+        Future.delayed(const Duration(seconds: 3), () {
+          AppHelpers.debugLog('connectedDevice null → redirect home duration');
+          if (Get.context != null) {
+            GoRouter.of(Get.context!).go('/');
+          } else {
+            Get.offAllNamed('/');
+          }
+
+          // reset flag setelah navigasi selesai
+          Future.delayed(const Duration(seconds: 1), () {
+            isNavigatingHome.value = false;
+          });
+        });
+      }
+    });
+
     adapterStateSubscription = FlutterBluePlus.adapterState.listen(
       _handleAdapterStateChange,
     );
-    AppHelpers.debugLog('Bluetooth adapter state listener initialized');
   }
 
   // Function to scan devices
@@ -115,8 +144,11 @@ class BleController extends GetxController {
       deviceModel.isConnected.value =
           (state == BluetoothConnectionState.connected);
       update();
-      if (!deviceModel.isConnected.value) {
-        // Reset characteristics if disconnected
+
+      if (state == BluetoothConnectionState.disconnected) {
+        AppHelpers.debugLog('Device auto disconnected');
+
+        // Reset state BLE hanya untuk device yang sedang terhubung
         if (connectedDevice.value?.remoteId == device.remoteId) {
           commandChar = null;
           responseChar = null;
@@ -146,6 +178,8 @@ class BleController extends GetxController {
 
   // Function to connect to device
   Future<void> connectToDevice(DeviceModel deviceModel) async {
+    isNavigatingHome.value = false;
+
     deviceModel.isLoadingConnection.value = true;
     isLoadingConnectionGlobal.value = true;
     errorMessage.value = '';
