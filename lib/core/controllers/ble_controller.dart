@@ -874,6 +874,109 @@ class BleController extends GetxController {
     AppHelpers.debugLog('Stream stopped');
   }
 
+  // Function baru untuk enhanced streaming dengan device tracking
+  Future<void> startStreamDevice(String type, String deviceId) async {
+    if (commandChar == null || responseChar == null) {
+      errorMessage.value = 'Not connected';
+      return;
+    }
+
+    final startCommand = {"op": "read", "type": type, "device_id": deviceId};
+    commandLoading.value = true;
+
+    try {
+      // Setup streaming listener yang lebih advanced
+      responseSubscription?.cancel();
+      StringBuffer streamBuffer = StringBuffer();
+
+      responseSubscription = responseChar!.lastValueStream.listen((data) {
+        final chunk = utf8.decode(data, allowMalformed: true);
+        AppHelpers.debugLog(
+          'Stream chunk received for device $deviceId: $chunk',
+        );
+        streamBuffer.write(chunk);
+
+        if (chunk.contains('<END>')) {
+          try {
+            final cleanedBuffer = streamBuffer
+                .toString()
+                .replaceAll('<END>', '')
+                .replaceAll(RegExp(r'[\x00-\x1F\x7F]'), '')
+                .trim();
+
+            if (cleanedBuffer.isNotEmpty) {
+              final decoded = jsonDecode(cleanedBuffer);
+
+              // Handle format data streaming yang berbeda
+              if (decoded is Map<String, dynamic>) {
+                final address = decoded['address']?.toString();
+                final value = decoded['value']?.toString();
+                final sourceDeviceId =
+                    decoded['device_id']?.toString() ?? deviceId;
+
+                if (address != null && value != null) {
+                  // Update dengan device_id prefix untuk tracking
+                  final key = '$sourceDeviceId:$address';
+                  streamedData[address] = value;
+                  AppHelpers.debugLog('Enhanced stream update: $key -> $value');
+                }
+              } else if (decoded is List) {
+                for (var item in decoded) {
+                  if (item is Map<String, dynamic>) {
+                    final address = item['address']?.toString();
+                    final value = item['value']?.toString();
+                    final sourceDeviceId =
+                        item['device_id']?.toString() ?? deviceId;
+
+                    if (address != null && value != null) {
+                      streamedData[address] = value;
+                      AppHelpers.debugLog(
+                        'Enhanced stream batch update: $sourceDeviceId:$address -> $value',
+                      );
+                    }
+                  }
+                }
+              }
+            }
+          } catch (e) {
+            AppHelpers.debugLog('Enhanced stream parsing error: $e');
+          }
+          streamBuffer.clear();
+        }
+      });
+
+      await responseChar!.setNotifyValue(true);
+
+      // Send stream start command
+      await sendCommand(startCommand);
+
+      AppHelpers.debugLog('Enhanced streaming started for device: $deviceId');
+    } catch (e) {
+      errorMessage.value = 'Error starting enhanced stream: $e';
+      SnackbarCustom.showSnackbar(
+        '',
+        errorMessage.value,
+        Colors.red,
+        AppColor.whiteColor,
+      );
+    } finally {
+      commandLoading.value = false;
+    }
+  }
+
+  Future<void> stopStreamDevice(String type) async {
+    final stopCommand = {"op": "read", "type": type, "device_id": "stop"};
+
+    try {
+      await sendCommand(stopCommand);
+      responseSubscription?.cancel();
+      streamedData.clear();
+      AppHelpers.debugLog('Enhanced streaming stopped');
+    } catch (e) {
+      AppHelpers.debugLog('Error stopping enhanced stream: $e');
+    }
+  }
+
   Map<String, dynamic> _sanitizeMap(Map input) {
     final Map<String, dynamic> result = {};
     input.forEach((key, value) {
