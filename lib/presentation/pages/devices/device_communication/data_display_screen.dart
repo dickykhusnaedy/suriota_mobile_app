@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:gateway_config/core/constants/app_color.dart';
 import 'package:gateway_config/core/constants/app_gap.dart';
@@ -68,7 +70,7 @@ class _DisplayDataPageState extends State<DisplayDataPage> {
     });
   }
 
-  void _streamData({bool isStopStream = false}) async {
+  void _streamData({bool shouldStart = false}) async {
     if (!widget.model.isConnected.value) {
       SnackbarCustom.showSnackbar(
         '',
@@ -80,7 +82,7 @@ class _DisplayDataPageState extends State<DisplayDataPage> {
     }
 
     try {
-      if (isStopStream) {
+      if (shouldStart) {
         await controller.startStreamDevice("data", widget.deviceId);
         isStreaming.value = true;
         currentStreamingDeviceId = widget.deviceId;
@@ -91,7 +93,8 @@ class _DisplayDataPageState extends State<DisplayDataPage> {
         await controller.stopStreamDevice("data");
         isStreaming.value = false;
         currentStreamingDeviceId = null;
-        AppHelpers.debugLog('Stopped enhanced streaming');
+        streamingDevicesData.clear(); // Clear data saat stop stream
+        AppHelpers.debugLog('Stopped enhanced streaming and cleared data');
       }
     } catch (e) {
       SnackbarCustom.showSnackbar(
@@ -126,15 +129,24 @@ class _DisplayDataPageState extends State<DisplayDataPage> {
       // Update tanggal
       existingDevice['last_update'] = timeString;
 
-      // Update values dari dataMap
-      final Map<String, String> updatedValues = Map.from(
+      // Update values dari dataMap (parse JSON string to get name and value)
+      final Map<String, Map<String, String>> updatedValues = Map.from(
         existingDevice['values'] ?? {},
       );
-      dataMap.forEach((address, value) {
-        updatedValues[address] = value;
-        AppHelpers.debugLog(
-          'Updated device ${widget.deviceId} - $address: $value',
-        );
+      dataMap.forEach((address, jsonString) {
+        try {
+          final parsed = jsonDecode(jsonString) as Map<String, dynamic>;
+          updatedValues[address] = {
+            'name': parsed['name']?.toString() ?? 'Unknown Sensor',
+            'value': parsed['value']?.toString() ?? '0',
+            'address': parsed['address']?.toString() ?? address,
+          };
+          AppHelpers.debugLog(
+            'Updated device ${widget.deviceId} - ${parsed['name']}: ${parsed['value']}',
+          );
+        } catch (e) {
+          AppHelpers.debugLog('Error parsing stream data: $e');
+        }
       });
       existingDevice['values'] = updatedValues;
 
@@ -142,13 +154,27 @@ class _DisplayDataPageState extends State<DisplayDataPage> {
       streamingDevicesData[existingDeviceIndex] = existingDevice;
       streamingDevicesData.refresh();
     } else {
-      // Tambah device baru
+      // Tambah device baru (parse JSON string to get name and value)
+      final Map<String, Map<String, String>> parsedValues = {};
+      dataMap.forEach((address, jsonString) {
+        try {
+          final parsed = jsonDecode(jsonString) as Map<String, dynamic>;
+          parsedValues[address] = {
+            'name': parsed['name']?.toString() ?? 'Unknown Sensor',
+            'value': parsed['value']?.toString() ?? '0',
+            'address': parsed['address']?.toString() ?? address,
+          };
+        } catch (e) {
+          AppHelpers.debugLog('Error parsing stream data: $e');
+        }
+      });
+
       final newDeviceData = {
         'device_id': widget.deviceId,
         'device_name': dataDevice['device_name'] ?? 'Unknown Device',
         'protocol': dataDevice['protocol'] ?? 'Unknown',
         'serial_port': dataDevice['serial_port']?.toString() ?? 'Unknown',
-        'values': Map<String, String>.from(dataMap),
+        'values': parsedValues,
         'last_update': timeString,
       };
 
@@ -198,7 +224,7 @@ class _DisplayDataPageState extends State<DisplayDataPage> {
   AppBar _appBar(BuildContext context) {
     return AppBar(
       title: Text(
-        'Display Data',
+        'Streaming Device',
         style: context.h5.copyWith(color: AppColor.whiteColor),
       ),
       iconTheme: const IconThemeData(color: AppColor.whiteColor),
@@ -271,7 +297,7 @@ class _DisplayDataPageState extends State<DisplayDataPage> {
                   Flexible(
                     flex: 1,
                     child: Button(
-                      onPressed: () => _streamData(isStopStream: true),
+                      onPressed: () => _streamData(shouldStart: true),
                       width: double.infinity,
                       text: 'Stream Data',
                       height: 40,
@@ -281,7 +307,7 @@ class _DisplayDataPageState extends State<DisplayDataPage> {
                   Flexible(
                     flex: 1,
                     child: Button(
-                      onPressed: () => _streamData(isStopStream: false),
+                      onPressed: () => _streamData(shouldStart: false),
                       text: 'Stop Stream',
                       width: double.infinity,
                       height: 40,
@@ -331,17 +357,13 @@ class _DisplayDataPageState extends State<DisplayDataPage> {
               Obx(
                 () => streamingDevicesData.isEmpty
                     ? _noDataWidget(context)
-                    : ListView.separated(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: streamingDevicesData.length,
-                        separatorBuilder: (context, index) => AppSpacing.sm,
-                        itemBuilder: (BuildContext context, int index) {
-                          return _streamingDeviceCard(
-                            context,
-                            streamingDevicesData[index],
-                          );
-                        },
+                    : Column(
+                        children: streamingDevicesData
+                            .map(
+                              (deviceData) =>
+                                  _streamingDeviceCard(context, deviceData),
+                            )
+                            .toList(),
                       ),
               ),
               AppSpacing.md,
@@ -383,59 +405,94 @@ class _DisplayDataPageState extends State<DisplayDataPage> {
     BuildContext context,
     Map<String, dynamic> deviceData,
   ) {
-    final values = deviceData['values'] as Map<String, String>? ?? {};
+    final values =
+        deviceData['values'] as Map<String, Map<String, String>>? ?? {};
+    final lastUpdate = deviceData['last_update'] ?? 'Unknown';
 
-    return Card(
-      color: AppColor.cardColor,
-      margin: EdgeInsets.zero,
-      elevation: 2.0,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header dengan info device
-          Container(
-            width: double.infinity,
-            padding: AppPadding.medium,
-            decoration: BoxDecoration(
-              color: AppColor.primaryColor.withValues(alpha: 0.1),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(12),
-                topRight: Radius.circular(12),
+    if (values.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppColor.cardColor,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Center(
+          child: Column(
+            children: [
+              Icon(Icons.sensors, size: 40, color: AppColor.grey),
+              const SizedBox(height: 8),
+              Text(
+                'Waiting for sensor data...',
+                style: context.bodySmall.copyWith(color: AppColor.grey),
               ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      children: values.entries.map((entry) {
+        final sensorData = entry.value;
+        final sensorName = sensorData['name'] ?? 'Unknown Sensor';
+        final sensorValue = sensorData['value'] ?? '0';
+        final sensorAddress = sensorData['address'] ?? entry.key;
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: AppColor.whiteColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: AppColor.primaryColor.withValues(alpha: 0.2),
+              width: 1.5,
             ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Header: Sensor Name & Live
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Expanded(
                       child: Text(
-                        deviceData['device_name'] ?? 'Unknown Device',
+                        sensorName,
                         style: context.h6.copyWith(
                           color: AppColor.primaryColor,
+                          fontWeight: FontWeight.bold,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
+                        horizontal: 6,
+                        vertical: 2,
                       ),
                       decoration: BoxDecoration(
                         color: Colors.green,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.circle, color: Colors.white, size: 8),
-                          const SizedBox(width: 4),
+                          Icon(Icons.circle, color: Colors.white, size: 5),
+                          const SizedBox(width: 3),
                           Text(
                             'Live',
                             style: context.buttonTextSmallest.copyWith(
                               color: Colors.white,
+                              fontSize: 9,
                             ),
                           ),
                         ],
@@ -443,34 +500,76 @@ class _DisplayDataPageState extends State<DisplayDataPage> {
                     ),
                   ],
                 ),
-                AppSpacing.xs,
+                const SizedBox(height: 8),
+                // Address
                 Row(
                   children: [
-                    Badge(
-                      label: Text(
-                        'Modbus: ${deviceData['protocol'] ?? 'Unknown'}',
-                        style: context.buttonTextSmallest.copyWith(
-                          color: AppColor.primaryColor,
-                        ),
-                      ),
-                      backgroundColor: AppColor.lightPrimaryColor,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
+                    Icon(
+                      Icons.location_on_outlined,
+                      size: 14,
+                      color: AppColor.grey,
+                    ),
+                    const SizedBox(width: 3),
+                    Text(
+                      'Addr: $sensorAddress',
+                      style: context.bodySmall.copyWith(
+                        color: AppColor.grey,
+                        fontSize: 11,
                       ),
                     ),
-                    AppSpacing.xs,
-                    Badge(
-                      label: Text(
-                        'Port: ${deviceData['serial_port'] ?? 'Unknown'}',
-                        style: context.buttonTextSmallest.copyWith(
-                          color: AppColor.primaryColor,
+                  ],
+                ),
+                const SizedBox(height: 10),
+                // Value
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 10,
+                    horizontal: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColor.lightPrimaryColor.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: AppColor.primaryColor.withValues(alpha: 0.2),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Value:',
+                        style: context.bodySmall.copyWith(
+                          color: AppColor.grey,
+                          fontSize: 12,
                         ),
                       ),
-                      backgroundColor: AppColor.lightPrimaryColor,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
+                      Text(
+                        sensorValue,
+                        style: context.h5.copyWith(
+                          color: AppColor.primaryColor,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                // Last Update
+                Row(
+                  children: [
+                    Icon(Icons.access_time, size: 12, color: AppColor.grey),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        lastUpdate,
+                        style: context.bodySmall.copyWith(
+                          color: AppColor.grey,
+                          fontSize: 10,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
@@ -478,84 +577,8 @@ class _DisplayDataPageState extends State<DisplayDataPage> {
               ],
             ),
           ),
-
-          // Data values
-          Padding(
-            padding: AppPadding.medium,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (values.isEmpty)
-                  Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Text(
-                        'Waiting for data...',
-                        style: context.bodySmall.copyWith(color: AppColor.grey),
-                      ),
-                    ),
-                  )
-                else
-                  ...values.entries
-                      .map(
-                        (entry) => Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text('Address ${entry.key}', style: context.body),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColor.lightPrimaryColor,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  entry.value,
-                                  style: context.body.copyWith(
-                                    color: AppColor.primaryColor,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      )
-                      .toList(),
-              ],
-            ),
-          ),
-
-          // Footer dengan timestamp
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: AppColor.labelColor.withValues(alpha: 0.3),
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(12),
-                bottomRight: Radius.circular(12),
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.access_time, size: 14, color: AppColor.grey),
-                const SizedBox(width: 4),
-                Text(
-                  'Last update: ${deviceData['last_update'] ?? 'Unknown'}',
-                  style: context.buttonTextSmallest.copyWith(
-                    color: AppColor.grey,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+        );
+      }).toList(),
     );
   }
 }
