@@ -9,12 +9,10 @@ import 'package:gateway_config/core/utils/snackbar_custom.dart';
 import 'package:gateway_config/models/device_model.dart';
 import 'package:gateway_config/models/dropdown_items.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_alert_dialog.dart';
-import 'package:gateway_config/presentation/widgets/common/custom_button.dart';
-import 'package:gateway_config/presentation/widgets/common/custom_radiotile.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_textfield.dart';
 import 'package:gateway_config/presentation/widgets/common/dropdown.dart';
 import 'package:gateway_config/presentation/widgets/common/loading_overlay.dart';
-import 'package:gateway_config/presentation/widgets/spesific/title_tile.dart';
+import 'package:gateway_config/presentation/widgets/common/reusable_widgets.dart';
 import 'package:get/get.dart';
 
 class FormSetupDeviceScreen extends StatefulWidget {
@@ -299,59 +297,26 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
                 isRequired: true,
               ),
               AppSpacing.md,
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Choose Modbus', style: context.h6),
-                  AppSpacing.sm,
-                  CustomRadioTile(
-                    value: 'RTU',
-                    grupValue: modBusSelected,
-                    onChanges: () {
-                      setState(() {
-                        modBusSelected = 'RTU';
-
-                        if (widget.deviceId == null) {
-                          ipAddressController.clear();
-                          serverPortController.clear();
-                        }
-                      });
-                    },
-                  ),
-                  CustomRadioTile(
-                    value: 'TCP',
-                    grupValue: modBusSelected,
-                    onChanges: () {
-                      setState(() {
-                        modBusSelected = 'TCP';
-                        selectedBaudRate = widget.deviceId != null
-                            ? selectedBaudRate
-                            : null;
-                        selectedBitData = widget.deviceId != null
-                            ? selectedBitData
-                            : null;
-                        selectedParity = widget.deviceId != null
-                            ? selectedParity
-                            : null;
-                        selectedStopBit = widget.deviceId != null
-                            ? selectedStopBit
-                            : null;
-                        selectedSerialPort = widget.deviceId != null
-                            ? selectedSerialPort
-                            : null;
-                      });
-                    },
-                  ),
-                ],
+              SectionDivider(
+                title: 'Protocol Selection',
+                icon: Icons.settings_input_antenna,
               ),
               AppSpacing.md,
-              TitleTile(title: 'Modbus Setup $modBusSelected'),
+              _buildModbusTypeSelector(),
+              AppSpacing.md,
+              SectionDivider(
+                title: 'Modbus $modBusSelected Configuration',
+                icon: Icons.tune,
+              ),
               AppSpacing.md,
               modBusSelected == 'RTU'
                   ? _formRS485Wrapper()
                   : _formTCPIPWrapper(),
               AppSpacing.md,
-              TitleTile(title: 'Other Setup'),
+              SectionDivider(
+                title: 'Advanced Settings',
+                icon: Icons.settings_suggest,
+              ),
               AppSpacing.md,
               CustomTextFormField(
                 controller: retryCountController,
@@ -423,11 +388,12 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
                 isRequired: true,
               ),
               AppSpacing.lg,
-              Button(
-                width: MediaQuery.of(context).size.width,
+              GradientButton(
+                text: widget.deviceId != null
+                    ? 'Update Device Configuration'
+                    : 'Save Device Configuration',
+                icon: widget.deviceId != null ? Icons.update : Icons.save,
                 onPressed: _submit,
-                text: widget.deviceId != null ? 'Update Data' : 'Save Data',
-                height: 50,
               ),
               AppSpacing.lg,
             ],
@@ -576,6 +542,133 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
           isRequired: true,
         ),
       ],
+    );
+  }
+
+  Widget _buildModbusTypeSelector() {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColor.whiteColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppColor.primaryColor.withValues(alpha: 0.15),
+          width: 1.5,
+        ),
+      ),
+      padding: const EdgeInsets.all(4),
+      child: Column(
+        children: [
+          _buildModbusOption(
+            value: 'RTU',
+            title: 'Modbus RTU',
+            subtitle: 'Serial communication (RS485)',
+            icon: Icons.settings_input_component,
+          ),
+          const SizedBox(height: 4),
+          _buildModbusOption(
+            value: 'TCP',
+            title: 'Modbus TCP',
+            subtitle: 'Ethernet/IP communication',
+            icon: Icons.lan,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildModbusOption({
+    required String value,
+    required String title,
+    required String subtitle,
+    required IconData icon,
+  }) {
+    final isSelected = modBusSelected == value;
+
+    return InkWell(
+      onTap: () {
+        setState(() {
+          modBusSelected = value;
+
+          if (value == 'RTU') {
+            if (widget.deviceId == null) {
+              ipAddressController.clear();
+              serverPortController.clear();
+            }
+          } else {
+            // TCP selected
+            if (widget.deviceId == null) {
+              selectedBaudRate = null;
+              selectedBitData = null;
+              selectedParity = null;
+              selectedStopBit = null;
+              selectedSerialPort = null;
+            }
+          }
+        });
+      },
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppColor.primaryColor.withValues(alpha: 0.1)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected ? AppColor.primaryColor : Colors.transparent,
+            width: 2,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? AppColor.primaryColor
+                    : AppColor.grey.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                icon,
+                color: isSelected ? AppColor.whiteColor : AppColor.grey,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: context.h6.copyWith(
+                      color: isSelected
+                          ? AppColor.primaryColor
+                          : AppColor.blackColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: context.bodySmall.copyWith(
+                      color: AppColor.grey,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              isSelected ? Icons.check_circle : Icons.circle_outlined,
+              color: isSelected ? AppColor.primaryColor : AppColor.grey,
+              size: 24,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

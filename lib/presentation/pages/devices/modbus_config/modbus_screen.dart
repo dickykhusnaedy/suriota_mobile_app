@@ -11,7 +11,6 @@ import 'package:gateway_config/core/utils/snackbar_custom.dart';
 import 'package:gateway_config/models/device_model.dart';
 import 'package:gateway_config/models/dropdown_items.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_alert_dialog.dart';
-import 'package:gateway_config/presentation/widgets/common/custom_button.dart';
 import 'package:gateway_config/presentation/widgets/common/dropdown.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
@@ -123,24 +122,46 @@ class _ModbusScreenState extends State<ModbusScreen> {
     );
   }
 
-  Container _emptyView(BuildContext context) {
+  Widget _emptyView(BuildContext context) {
     return Container(
-      height: MediaQuery.of(context).size.height * 0.70,
+      height: MediaQuery.of(context).size.height * 0.50,
       alignment: Alignment.center,
-      child: Center(
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        margin: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(
+          color: AppColor.whiteColor,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: AppColor.primaryColor.withValues(alpha: 0.1),
+            width: 1.5,
+          ),
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              'Oops!... \nNo Modbus configuration found.',
-              textAlign: TextAlign.center,
-              style: context.buttonText.copyWith(color: AppColor.blackColor),
+            Icon(
+              Icons.settings_input_component,
+              size: 64,
+              color: AppColor.grey.withValues(alpha: 0.5),
             ),
-            AppSpacing.xs,
+            const SizedBox(height: 16),
             Text(
-              'Please create or select one of device to continue.',
+              'No Modbus Configuration',
               textAlign: TextAlign.center,
-              style: context.bodySmall.copyWith(color: AppColor.grey),
+              style: context.h6.copyWith(
+                color: AppColor.blackColor,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Please create or select a device to continue.',
+              textAlign: TextAlign.center,
+              style: context.bodySmall.copyWith(
+                color: AppColor.grey,
+                height: 1.5,
+              ),
             ),
           ],
         ),
@@ -232,7 +253,7 @@ class _ModbusScreenState extends State<ModbusScreen> {
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
                       itemCount: modbusController.dataModbus.length,
-                      separatorBuilder: (context, index) => AppSpacing.md,
+                      separatorBuilder: (context, index) => AppSpacing.sm,
                       itemBuilder: (context, int index) {
                         final item = modbusController.dataModbus[index];
 
@@ -289,7 +310,6 @@ class _ModbusScreenState extends State<ModbusScreen> {
 
               return;
             }
-
             context.push(
               '/devices/modbus-config/add?d=${widget.model.device.remoteId}',
             );
@@ -300,69 +320,167 @@ class _ModbusScreenState extends State<ModbusScreen> {
     );
   }
 
-  Card cardDataConfig(Map<String, dynamic> modbus, int index) {
-    return Card(
-      color: AppColor.cardColor,
-      elevation: 0.0,
-      margin: EdgeInsets.zero,
+  Widget cardDataConfig(Map<String, dynamic> modbus, int index) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColor.whiteColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppColor.primaryColor.withValues(alpha: 0.2),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       child: Padding(
-        padding: AppPadding.medium,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        padding: const EdgeInsets.all(12),
+        child: Row(
           children: [
-            Text(modbus['register_name'], style: context.h5),
-            AppSpacing.xs,
-            Text('Address : ${modbus['address']}', style: context.bodySmall),
-            AppSpacing.xs,
-            Text(
-              'Data Type : ${modbus['data_type']}',
-              style: context.bodySmall,
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                color: AppColor.lightPrimaryColor.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                Icons.storage,
+                color: AppColor.primaryColor,
+                size: 28,
+              ),
             ),
             AppSpacing.sm,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Register Name
+                  Text(
+                    modbus['register_name'] ?? 'Unknown Register',
+                    style: context.h5.copyWith(
+                      color: AppColor.blackColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
+                  AppSpacing.xs,
+                  // Address
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.location_on_outlined,
+                        size: 12,
+                        color: AppColor.grey,
+                      ),
+                      const SizedBox(width: 3),
+                      Expanded(
+                        child: Text(
+                          'Address: ${modbus['address']}',
+                          style: context.bodySmall.copyWith(
+                            color: AppColor.grey,
+                            fontSize: 10,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  AppSpacing.xs,
+                  // Data Type Badge
+                  _buildDataTypeBadge(context, modbus['data_type'] ?? 'N/A'),
+                ],
+              ),
+            ),
+            AppSpacing.sm,
+            // Kolom Kanan: Action Buttons
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Flexible(
-                  flex: 1,
-                  child: Button(
-                    width: double.infinity,
-                    height: 32,
-                    onPressed: selectedDevice != null
-                        ? () => _deleteDataModbus(
-                            selectedDevice!.value,
-                            modbus['register_id'],
-                          )
-                        : null,
-                    icons: const Icon(
-                      Icons.delete,
-                      size: 18,
-                      color: AppColor.whiteColor,
-                    ),
-                    btnColor: AppColor.redColor,
-                  ),
+                _buildIconButton(
+                  icon: Icons.edit,
+                  color: AppColor.primaryColor,
+                  onPressed: () {
+                    context.push(
+                      '/devices/modbus-config/edit?d=${widget.model.device.remoteId}&device_id=${selectedDevice!.value}&register_id=${modbus['register_id']}',
+                    );
+                  },
                 ),
-                AppSpacing.md,
-                Flexible(
-                  flex: 1,
-                  child: Button(
-                    width: double.infinity,
-                    height: 32,
-                    onPressed: () {
-                      context.push(
-                        '/devices/modbus-config/edit?d=${widget.model.device.remoteId}&device_id=${selectedDevice!.value}&register_id=${modbus['register_id']}',
-                      );
-                    },
-                    icons: const Icon(
-                      Icons.edit,
-                      size: 18,
-                      color: AppColor.whiteColor,
-                    ),
-                  ),
+                AppSpacing.xs,
+                _buildIconButton(
+                  icon: Icons.delete,
+                  color: AppColor.redColor,
+                  onPressed: selectedDevice != null
+                      ? () => _deleteDataModbus(
+                          selectedDevice!.value,
+                          modbus['register_id'],
+                        )
+                      : null,
                 ),
               ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDataTypeBadge(BuildContext context, String dataType) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: AppColor.primaryColor.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: AppColor.primaryColor.withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
+      child: Text(
+        dataType,
+        style: context.bodySmall.copyWith(
+          color: AppColor.primaryColor,
+          fontSize: 9,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildIconButton({
+    required IconData icon,
+    required Color color,
+    VoidCallback? onPressed,
+  }) {
+    return Container(
+      width: 32,
+      height: 32,
+      decoration: BoxDecoration(
+        color: onPressed != null ? color : AppColor.grey,
+        borderRadius: BorderRadius.circular(6),
+        boxShadow: [
+          BoxShadow(
+            color: (onPressed != null ? color : AppColor.grey).withValues(
+              alpha: 0.25,
+            ),
+            blurRadius: 3,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: IconButton(
+        onPressed: onPressed,
+        icon: Icon(icon, size: 14, color: AppColor.whiteColor),
+        padding: EdgeInsets.zero,
+        constraints: const BoxConstraints(),
+        style: IconButton.styleFrom(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
         ),
       ),
     );
