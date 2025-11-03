@@ -27,6 +27,9 @@ class BleController extends GetxController {
   var lastCommand = <String, dynamic>{}.obs;
   var commandCache = <String, CommandResponse>{}.obs;
   var gatewayDeviceResponses = <CommandResponse>[].obs;
+  var isNavigatingHome = false.obs;
+
+  final RxMap<String, String> streamedData = <String, String>{}.obs;
 
   final _deviceCache = <String, DeviceModel>{}.obs;
 
@@ -47,10 +50,38 @@ class BleController extends GetxController {
   void onInit() {
     super.onInit();
 
+    // Listen perubahan koneksi global
+    ever(connectedDevice, (device) {
+      if (device == null && !isNavigatingHome.value) {
+        isNavigatingHome.value = true;
+        AppHelpers.debugLog('connectedDevice null → redirect home');
+
+        SnackbarCustom.showSnackbar(
+          '',
+          'Device disconnect, will be redirect to home in 3 seconds.',
+          AppColor.labelColor,
+          AppColor.whiteColor,
+        );
+
+        Future.delayed(const Duration(seconds: 3), () {
+          AppHelpers.debugLog('connectedDevice null → redirect home duration');
+          if (Get.context != null) {
+            GoRouter.of(Get.context!).go('/');
+          } else {
+            Get.offAllNamed('/');
+          }
+
+          // reset flag setelah navigasi selesai
+          Future.delayed(const Duration(seconds: 1), () {
+            isNavigatingHome.value = false;
+          });
+        });
+      }
+    });
+
     adapterStateSubscription = FlutterBluePlus.adapterState.listen(
       _handleAdapterStateChange,
     );
-    AppHelpers.debugLog('Bluetooth adapter state listener initialized');
   }
 
   // Function to scan devices
@@ -113,8 +144,11 @@ class BleController extends GetxController {
       deviceModel.isConnected.value =
           (state == BluetoothConnectionState.connected);
       update();
-      if (!deviceModel.isConnected.value) {
-        // Reset characteristics if disconnected
+
+      if (state == BluetoothConnectionState.disconnected) {
+        AppHelpers.debugLog('Device auto disconnected');
+
+        // Reset state BLE hanya untuk device yang sedang terhubung
         if (connectedDevice.value?.remoteId == device.remoteId) {
           commandChar = null;
           responseChar = null;
@@ -144,6 +178,8 @@ class BleController extends GetxController {
 
   // Function to connect to device
   Future<void> connectToDevice(DeviceModel deviceModel) async {
+    isNavigatingHome.value = false;
+
     deviceModel.isLoadingConnection.value = true;
     isLoadingConnectionGlobal.value = true;
     errorMessage.value = '';
@@ -327,6 +363,12 @@ class BleController extends GetxController {
       );
       responseSubscription = responseChar!.lastValueStream.listen(
         (data) {
+          // Skip jika completer sudah completed
+          if (responseCompleter.isCompleted) {
+            AppHelpers.debugLog('Completer already completed, ignoring chunk');
+            return;
+          }
+
           final chunk = utf8.decode(data, allowMalformed: true);
           AppHelpers.debugLog('Notify chunk received: $chunk');
           responseBuffer.write(chunk);
@@ -337,48 +379,60 @@ class BleController extends GetxController {
               'Buffer before parsing: ${responseBuffer.toString()}',
             );
             try {
-              // Clean buffer: hapus <END> dan control chars
-              final cleanedBuffer = responseBuffer
-                  .toString()
-                  .replaceAll('<END>', '')
-                  .replaceAll(RegExp(r'[\x00-\x1F\x7F]'), '')
-                  .trim();
+              // Split by <END> to handle multiple messages
+              final bufferStr = responseBuffer.toString();
+              final parts = bufferStr.split('<END>');
 
-              if (cleanedBuffer.isEmpty) {
-                throw Exception('Empty buffer');
-              }
-              if (!cleanedBuffer.startsWith('{') &&
-                  !cleanedBuffer.startsWith('[')) {
-                throw Exception('Malformed JSON structure');
-              }
-              if (!cleanedBuffer.endsWith('}') &&
-                  !cleanedBuffer.endsWith(']')) {
-                throw Exception('Incomplete JSON structure');
-              }
+              // Process only FIRST complete segment (before first <END>)
+              if (parts.isNotEmpty && parts[0].trim().isNotEmpty) {
+                final firstSegment = parts[0]
+                    .replaceAll(RegExp(r'[\x00-\x1F\x7F]'), '')
+                    .trim();
 
-              final responseJson =
-                  jsonDecode(cleanedBuffer) as Map<String, dynamic>;
-              final cmdResponse = CommandResponse.fromJson(responseJson);
+                if (firstSegment.isEmpty) {
+                  throw Exception('Empty buffer');
+                }
+                if (!firstSegment.startsWith('{') &&
+                    !firstSegment.startsWith('[')) {
+                  throw Exception('Malformed JSON structure');
+                }
+                if (!firstSegment.endsWith('}') &&
+                    !firstSegment.endsWith(']')) {
+                  throw Exception('Incomplete JSON structure');
+                }
 
-              // Cache dengan ID (ex. from lastCommand)
-              if (lastCommand.isNotEmpty) {
-                final commandId =
-                    '${lastCommand['op']}_${lastCommand['type'] ?? 'general'}_${DateTime.now().toIso8601String().split('T')[0]}';
-                _cacheResponse(commandId, cmdResponse);
+                final responseJson =
+                    jsonDecode(firstSegment) as Map<String, dynamic>;
+                final cmdResponse = CommandResponse.fromJson(responseJson);
+
+                // Cache dengan ID (ex. from lastCommand)
+                if (lastCommand.isNotEmpty) {
+                  final commandId =
+                      '${lastCommand['op']}_${lastCommand['type'] ?? 'general'}_${DateTime.now().toIso8601String().split('T')[0]}';
+                  _cacheResponse(commandId, cmdResponse);
+                }
+
+                AppHelpers.debugLog('Parsed response: ${cmdResponse.toJson()}');
+
+                // Complete hanya jika belum completed
+                if (!responseCompleter.isCompleted) {
+                  responseCompleter.complete(cmdResponse);
+                }
               }
-
-              AppHelpers.debugLog('Parsed response: ${cmdResponse.toJson()}');
-              responseCompleter.complete(cmdResponse);
             } catch (e) {
               errorMessage.value = 'Invalid response JSON: $e';
               AppHelpers.debugLog('JSON parsing error: $e');
-              responseCompleter.complete(
-                CommandResponse(
-                  status: 'error',
-                  message: 'Invalid response JSON: $e',
-                  type: command['type'] ?? 'device',
-                ),
-              );
+
+              // Complete dengan error hanya jika belum completed
+              if (!responseCompleter.isCompleted) {
+                responseCompleter.complete(
+                  CommandResponse(
+                    status: 'error',
+                    message: 'Invalid response JSON: $e',
+                    type: command['type'] ?? 'device',
+                  ),
+                );
+              }
             }
             responseBuffer.clear();
           }
@@ -386,13 +440,17 @@ class BleController extends GetxController {
         onError: (e) {
           errorMessage.value = 'Notification error: $e';
           AppHelpers.debugLog('Notification error: $e');
-          responseCompleter.complete(
-            CommandResponse(
-              status: 'error',
-              message: 'Notification error: $e',
-              type: command['type'] ?? 'device',
-            ),
-          );
+
+          // Complete dengan error hanya jika belum completed
+          if (!responseCompleter.isCompleted) {
+            responseCompleter.complete(
+              CommandResponse(
+                status: 'error',
+                message: 'Notification error: $e',
+                type: command['type'] ?? 'device',
+              ),
+            );
+          }
         },
       );
 
@@ -555,6 +613,12 @@ class BleController extends GetxController {
       );
       responseSubscription = responseChar!.lastValueStream.listen(
         (data) {
+          // Skip jika completer sudah completed
+          if (responseCompleter.isCompleted) {
+            AppHelpers.debugLog('Completer already completed, ignoring chunk');
+            return;
+          }
+
           final chunk = utf8.decode(data, allowMalformed: true);
           AppHelpers.debugLog('Notify chunk received: $chunk');
           responseBuffer.write(chunk);
@@ -564,90 +628,114 @@ class BleController extends GetxController {
               'Buffer before parsing: ${responseBuffer.toString()}',
             );
             try {
-              final cleanedBuffer = responseBuffer
-                  .toString()
-                  .replaceAll('<END>', '')
-                  .replaceAll(RegExp(r'[\x00-\x1F\x7F]'), '')
-                  .trim();
+              // Split by <END> to handle multiple messages
+              final bufferStr = responseBuffer.toString();
+              final parts = bufferStr.split('<END>');
 
-              AppHelpers.debugLog('Raw cleaned buffer: $cleanedBuffer');
+              // Process only FIRST complete segment (before first <END>)
+              if (parts.isNotEmpty && parts[0].trim().isNotEmpty) {
+                final firstSegment = parts[0]
+                    .replaceAll(RegExp(r'[\x00-\x1F\x7F]'), '')
+                    .trim();
 
-              if (cleanedBuffer.isEmpty) {
-                throw Exception('Empty buffer');
+                AppHelpers.debugLog('Raw cleaned buffer: $firstSegment');
+
+                if (firstSegment.isEmpty) {
+                  throw Exception('Empty buffer');
+                }
+                if (!firstSegment.startsWith('{') &&
+                    !firstSegment.startsWith('[')) {
+                  throw Exception('Malformed JSON structure');
+                }
+                if (!firstSegment.endsWith('}') &&
+                    !firstSegment.endsWith(']')) {
+                  throw Exception('Incomplete JSON structure');
+                }
+
+                final decoded = jsonDecode(firstSegment);
+                Map<String, dynamic> responseJson;
+
+                if (decoded is Map) {
+                  responseJson = Map<String, dynamic>.from(decoded);
+                  responseJson = _sanitizeMap(responseJson);
+                } else if (decoded is List &&
+                    decoded.isNotEmpty &&
+                    decoded.first is Map) {
+                  // fallback jika JSON root array (misal BLE kirim list langsung)
+                  responseJson = Map<String, dynamic>.from(decoded.first);
+                  responseJson = _sanitizeMap(responseJson);
+                } else {
+                  throw Exception('Invalid JSON root: ${decoded.runtimeType}');
+                }
+
+                dynamic configData =
+                    responseJson['config'] ??
+                    responseJson[type] ??
+                    responseJson['data'] ??
+                    {};
+
+                if (configData is Map) {
+                  configData = [configData]; // Wrap Map jadi List<Map>
+                } else if (configData is! List) {
+                  configData = []; // Fallback jika bukan List/Map
+                }
+
+                // Map field lain ke config jika config tidak ada
+                responseJson['config'] = configData;
+                responseJson['message'] = "Get data successfully";
+                responseJson['type'] = responseJson['type'] ?? type;
+
+                final cmdResponse = CommandResponse.fromJson(responseJson);
+
+                AppHelpers.debugLog(
+                  'Parsed response status: ${cmdResponse.status}, full: ${cmdResponse.toJson()}',
+                );
+
+                // Cache jika perlu
+                if (lastCommand.isNotEmpty) {
+                  final commandId =
+                      '${lastCommand['op']}_${lastCommand['type'] ?? 'general'}_${DateTime.now().toIso8601String().split('T')[0]}';
+                  _cacheResponse(commandId, cmdResponse);
+                }
+
+                // Complete hanya jika belum completed
+                if (!responseCompleter.isCompleted) {
+                  responseCompleter.complete(cmdResponse);
+                }
               }
-              if (!cleanedBuffer.startsWith('{') &&
-                  !cleanedBuffer.startsWith('[')) {
-                throw Exception('Malformed JSON structure');
-              }
-              if (!cleanedBuffer.endsWith('}') &&
-                  !cleanedBuffer.endsWith(']')) {
-                throw Exception('Incomplete JSON structure');
-              }
-
-              final responseJson =
-                  jsonDecode(cleanedBuffer) as Map<String, dynamic>;
-
-              // Validasi dan mapping manual untuk config
-              if (!responseJson.containsKey('status')) {
-                throw Exception('Missing status field in response');
-              }
-
-              dynamic configData =
-                  responseJson['config'] ??
-                  responseJson[type] ??
-                  responseJson['data'] ??
-                  {};
-
-              if (configData is Map) {
-                configData = [configData]; // Wrap Map jadi List<Map>
-              } else if (configData is! List) {
-                configData = []; // Fallback jika bukan List/Map
-              }
-
-              // Map field lain ke config jika config tidak ada
-              responseJson['config'] = configData;
-              responseJson['message'] = "Get data successfully";
-              responseJson['type'] = responseJson['type'] ?? type;
-
-              final cmdResponse = CommandResponse.fromJson(responseJson);
-
-              AppHelpers.debugLog(
-                'Parsed response status: ${cmdResponse.status}, full: ${cmdResponse.toJson()}',
-              );
-
-              // Cache jika perlu
-              if (lastCommand.isNotEmpty) {
-                final commandId =
-                    '${lastCommand['op']}_${lastCommand['type'] ?? 'general'}_${DateTime.now().toIso8601String().split('T')[0]}';
-                _cacheResponse(commandId, cmdResponse);
-              }
-
-              responseCompleter.complete(cmdResponse);
             } catch (e) {
               errorMessage.value = 'Invalid response JSON: $e';
               AppHelpers.debugLog('JSON parsing error: $e');
-              responseCompleter.complete(
-                CommandResponse(
-                  status: 'error',
-                  message: 'Invalid response JSON: $e',
-                  type: type,
-                  config: [],
-                ),
-              );
+
+              // Complete dengan error hanya jika belum completed
+              if (!responseCompleter.isCompleted) {
+                responseCompleter.complete(
+                  CommandResponse(
+                    status: 'error',
+                    message: 'Invalid response JSON: $e',
+                    type: type,
+                    config: [],
+                  ),
+                );
+              }
             }
             responseBuffer.clear();
           }
         },
         onError: (e) {
           AppHelpers.debugLog('Notification error: $e');
-          responseCompleter.complete(
-            CommandResponse(
-              status: 'error',
-              message: 'Notification error: $e',
-              type: type,
-              config: [],
-            ),
-          );
+
+          // Complete dengan error hanya jika belum completed
+          if (!responseCompleter.isCompleted) {
+            responseCompleter.complete(
+              CommandResponse(
+                status: 'error',
+                message: 'Notification error: $e',
+                type: type,
+                config: [],
+              ),
+            );
+          }
         },
       );
 
@@ -747,11 +835,404 @@ class BleController extends GetxController {
     return gatewayDeviceResponses.where((resp) => resp.type == type).toList();
   }
 
+  Future<void> startDataStream(String type, String deviceId) async {
+    if (commandChar == null || responseChar == null) {
+      errorMessage.value = 'Not connected';
+      return;
+    }
+
+    final startCommand = {"op": "read", "type": type, "device_id": deviceId};
+    commandLoading.value = true;
+
+    try {
+      // Setup continuous listener BEFORE sending command
+      responseSubscription?.cancel(); // Cancel jika ada sebelumnya
+      StringBuffer streamBuffer = StringBuffer();
+
+      responseSubscription = responseChar!.lastValueStream.listen((data) {
+        final chunk = utf8.decode(data, allowMalformed: true);
+        AppHelpers.debugLog('Realtime chunk received: $chunk');
+        streamBuffer.write(chunk);
+
+        if (chunk.contains('<END>')) {
+          try {
+            final bufferStr = streamBuffer.toString();
+            final parts = bufferStr.split('<END>');
+
+            // Check if buffer ends with <END> delimiter
+            final endsWithDelimiter = bufferStr.endsWith('<END>');
+
+            // Process only complete segments (those followed by <END>)
+            final completeCount = endsWithDelimiter
+                ? parts.length
+                : parts.length - 1;
+
+            for (int i = 0; i < completeCount; i++) {
+              final segment = parts[i].trim();
+              if (segment.isEmpty) continue;
+
+              try {
+                final cleanedSegment = segment
+                    .replaceAll(RegExp(r'[\x00-\x1F\x7F]'), '')
+                    .trim();
+
+                // Skip if not valid JSON structure
+                if (cleanedSegment.isEmpty ||
+                    (!cleanedSegment.startsWith('{') &&
+                        !cleanedSegment.startsWith('['))) {
+                  AppHelpers.debugLog(
+                    'Skipping invalid segment: ${cleanedSegment.substring(0, cleanedSegment.length > 50 ? 50 : cleanedSegment.length)}...',
+                  );
+                  continue;
+                }
+
+                final decoded = jsonDecode(cleanedSegment);
+
+                // Handle nested data structure
+                Map<String, dynamic>? dataMap;
+                if (decoded is Map<String, dynamic>) {
+                  // Check if data is nested in 'data' field
+                  dataMap = decoded['data'] as Map<String, dynamic>? ?? decoded;
+                }
+
+                if (dataMap != null) {
+                  final address = dataMap['address']?.toString();
+                  final value = dataMap['value']?.toString();
+                  if (address != null && value != null) {
+                    streamedData[address] = value;
+                    AppHelpers.debugLog(
+                      'Updated streamedData: $address -> $value',
+                    );
+                  }
+                } else if (decoded is List) {
+                  for (var item in decoded) {
+                    if (item is Map<String, dynamic>) {
+                      final itemData =
+                          item['data'] as Map<String, dynamic>? ?? item;
+                      final address = itemData['address']?.toString();
+                      final value = itemData['value']?.toString();
+                      if (address != null && value != null) {
+                        streamedData[address] = value;
+                      }
+                    }
+                  }
+                }
+              } catch (e) {
+                AppHelpers.debugLog('Realtime parsing error for segment: $e');
+              }
+            }
+
+            // Keep partial segment in buffer if exists
+            streamBuffer.clear();
+            if (!endsWithDelimiter && parts.isNotEmpty) {
+              streamBuffer.write(parts.last);
+              AppHelpers.debugLog(
+                'Keeping partial data for next chunk: ${parts.last.substring(0, parts.last.length > 30 ? 30 : parts.last.length)}...',
+              );
+            }
+          } catch (e) {
+            AppHelpers.debugLog('Realtime parsing error: $e');
+            streamBuffer.clear();
+          }
+        }
+      });
+
+      await responseChar!.setNotifyValue(true);
+      await Future.delayed(const Duration(milliseconds: 300));
+
+      // Send start command manually (without sendCommand to avoid subscription conflict)
+      String jsonStr = jsonEncode(startCommand);
+      AppHelpers.debugLog('Sending stream start command: $jsonStr');
+
+      const chunkSize = 18;
+      final bool useWriteWithResponse =
+          !(commandChar?.properties.writeWithoutResponse ?? false);
+
+      // Send command in chunks
+      for (int i = 0; i < jsonStr.length; i += chunkSize) {
+        String chunk = jsonStr.substring(
+          i,
+          (i + chunkSize > jsonStr.length) ? jsonStr.length : i + chunkSize,
+        );
+        await commandChar!.write(
+          utf8.encode(chunk),
+          withoutResponse: !useWriteWithResponse,
+        );
+        AppHelpers.debugLog('Sent chunk: $chunk');
+        await Future.delayed(const Duration(milliseconds: 50));
+      }
+
+      // Send END delimiter
+      await Future.delayed(const Duration(milliseconds: 100));
+      await commandChar!.write(
+        utf8.encode('<END>'),
+        withoutResponse: !useWriteWithResponse,
+      );
+      AppHelpers.debugLog('Sent chunk: <END>');
+      AppHelpers.debugLog('Stream started successfully');
+    } catch (e) {
+      errorMessage.value = 'Error starting stream: $e';
+      SnackbarCustom.showSnackbar(
+        '',
+        errorMessage.value,
+        Colors.red,
+        AppColor.whiteColor,
+      );
+    } finally {
+      commandLoading.value = false;
+    }
+  }
+
+  Future<void> stopDataStream(String type) async {
+    try {
+      responseSubscription?.cancel();
+      streamedData.clear();
+
+      if (commandChar != null) {
+        final stopCommand = {"op": "read", "type": type, "device_id": "stop"};
+        String jsonStr = jsonEncode(stopCommand);
+        AppHelpers.debugLog('Sending stream stop command: $jsonStr');
+
+        const chunkSize = 18;
+        final bool useWriteWithResponse =
+            !(commandChar?.properties.writeWithoutResponse ?? false);
+
+        // Send command in chunks
+        for (int i = 0; i < jsonStr.length; i += chunkSize) {
+          String chunk = jsonStr.substring(
+            i,
+            (i + chunkSize > jsonStr.length) ? jsonStr.length : i + chunkSize,
+          );
+          await commandChar!.write(
+            utf8.encode(chunk),
+            withoutResponse: !useWriteWithResponse,
+          );
+          await Future.delayed(const Duration(milliseconds: 50));
+        }
+
+        // Send END delimiter
+        await Future.delayed(const Duration(milliseconds: 100));
+        await commandChar!.write(
+          utf8.encode('<END>'),
+          withoutResponse: !useWriteWithResponse,
+        );
+      }
+
+      AppHelpers.debugLog('Stream stopped');
+    } catch (e) {
+      AppHelpers.debugLog('Error stopping stream: $e');
+    }
+  }
+
+  // Function baru untuk enhanced streaming dengan device tracking
+  Future<void> startStreamDevice(String type, String deviceId) async {
+    if (commandChar == null || responseChar == null) {
+      errorMessage.value = 'Not connected';
+      return;
+    }
+
+    final startCommand = {"op": "read", "type": type, "device_id": deviceId};
+    commandLoading.value = true;
+
+    try {
+      // Setup streaming listener yang lebih advanced
+      responseSubscription?.cancel();
+      StringBuffer streamBuffer = StringBuffer();
+
+      responseSubscription = responseChar!.lastValueStream.listen((data) {
+        final chunk = utf8.decode(data, allowMalformed: true);
+        AppHelpers.debugLog(
+          'Stream chunk received for device $deviceId: $chunk',
+        );
+        streamBuffer.write(chunk);
+
+        if (chunk.contains('<END>')) {
+          try {
+            final bufferStr = streamBuffer.toString();
+            final parts = bufferStr.split('<END>');
+
+            // Check if buffer ends with <END> delimiter
+            final endsWithDelimiter = bufferStr.endsWith('<END>');
+
+            // Process only complete segments (those followed by <END>)
+            final completeCount = endsWithDelimiter
+                ? parts.length
+                : parts.length - 1;
+
+            for (int i = 0; i < completeCount; i++) {
+              final segment = parts[i].trim();
+              if (segment.isEmpty) continue;
+
+              try {
+                final cleanedSegment = segment
+                    .replaceAll(RegExp(r'[\x00-\x1F\x7F]'), '')
+                    .trim();
+
+                // Skip if not valid JSON structure
+                if (cleanedSegment.isEmpty ||
+                    (!cleanedSegment.startsWith('{') &&
+                        !cleanedSegment.startsWith('['))) {
+                  AppHelpers.debugLog(
+                    'Skipping invalid segment: ${cleanedSegment.substring(0, cleanedSegment.length > 50 ? 50 : cleanedSegment.length)}...',
+                  );
+                  continue;
+                }
+
+                final decoded = jsonDecode(cleanedSegment);
+
+                // Handle nested data structure
+                Map<String, dynamic>? dataMap;
+                if (decoded is Map<String, dynamic>) {
+                  // Check if data is nested in 'data' field
+                  dataMap = decoded['data'] as Map<String, dynamic>? ?? decoded;
+                }
+
+                if (dataMap != null) {
+                  final address = dataMap['address']?.toString();
+                  final value = dataMap['value']?.toString();
+                  final name = dataMap['name']?.toString();
+
+                  if (address != null && value != null) {
+                    // Store as JSON string to include name and value
+                    final dataJson = jsonEncode({
+                      'name': name ?? 'Unknown Sensor',
+                      'value': value,
+                      'address': address,
+                    });
+                    streamedData[address] = dataJson;
+                    AppHelpers.debugLog(
+                      'Enhanced stream update: $address -> name: $name, value: $value',
+                    );
+                  }
+                } else if (decoded is List) {
+                  for (var item in decoded) {
+                    if (item is Map<String, dynamic>) {
+                      final itemData =
+                          item['data'] as Map<String, dynamic>? ?? item;
+                      final address = itemData['address']?.toString();
+                      final value = itemData['value']?.toString();
+                      final name = itemData['name']?.toString();
+
+                      if (address != null && value != null) {
+                        // Store as JSON string to include name and value
+                        final dataJson = jsonEncode({
+                          'name': name ?? 'Unknown Sensor',
+                          'value': value,
+                          'address': address,
+                        });
+                        streamedData[address] = dataJson;
+                        AppHelpers.debugLog(
+                          'Enhanced stream batch update: $address -> name: $name, value: $value',
+                        );
+                      }
+                    }
+                  }
+                }
+              } catch (e) {
+                AppHelpers.debugLog(
+                  'Enhanced stream parsing error for segment: $e',
+                );
+              }
+            }
+
+            // Keep partial segment in buffer if exists
+            streamBuffer.clear();
+            if (!endsWithDelimiter && parts.isNotEmpty) {
+              streamBuffer.write(parts.last);
+              AppHelpers.debugLog(
+                'Keeping partial data for next chunk: ${parts.last.substring(0, parts.last.length > 30 ? 30 : parts.last.length)}...',
+              );
+            }
+          } catch (e) {
+            AppHelpers.debugLog('Enhanced stream parsing error: $e');
+            streamBuffer.clear();
+          }
+        }
+      });
+
+      await responseChar!.setNotifyValue(true);
+      await Future.delayed(const Duration(milliseconds: 300));
+
+      // Send start command manually (without sendCommand to avoid subscription conflict)
+      String jsonStr = jsonEncode(startCommand);
+      AppHelpers.debugLog('Sending enhanced stream start command: $jsonStr');
+
+      const chunkSize = 18;
+      final bool useWriteWithResponse =
+          !(commandChar?.properties.writeWithoutResponse ?? false);
+
+      // Send command in chunks
+      for (int i = 0; i < jsonStr.length; i += chunkSize) {
+        String chunk = jsonStr.substring(
+          i,
+          (i + chunkSize > jsonStr.length) ? jsonStr.length : i + chunkSize,
+        );
+        await commandChar!.write(
+          utf8.encode(chunk),
+          withoutResponse: !useWriteWithResponse,
+        );
+        AppHelpers.debugLog('Sent chunk: $chunk');
+        await Future.delayed(const Duration(milliseconds: 50));
+      }
+
+      // Send END delimiter
+      await Future.delayed(const Duration(milliseconds: 100));
+      await commandChar!.write(
+        utf8.encode('<END>'),
+        withoutResponse: !useWriteWithResponse,
+      );
+      AppHelpers.debugLog('Sent chunk: <END>');
+      AppHelpers.debugLog('Enhanced streaming started for device: $deviceId');
+    } catch (e) {
+      errorMessage.value = 'Error starting enhanced stream: $e';
+      SnackbarCustom.showSnackbar(
+        '',
+        errorMessage.value,
+        Colors.red,
+        AppColor.whiteColor,
+      );
+    } finally {
+      commandLoading.value = false;
+    }
+  }
+
+  Future<void> stopStreamDevice(String type) async {
+    final stopCommand = {"op": "read", "type": type, "device_id": "stop"};
+
+    try {
+      await sendCommand(stopCommand);
+      responseSubscription?.cancel();
+      streamedData.clear();
+      AppHelpers.debugLog('Enhanced streaming stopped');
+    } catch (e) {
+      AppHelpers.debugLog('Error stopping enhanced stream: $e');
+    }
+  }
+
+  Map<String, dynamic> _sanitizeMap(Map input) {
+    final Map<String, dynamic> result = {};
+    input.forEach((key, value) {
+      final safeKey = key?.toString() ?? 'null';
+      if (value is Map) {
+        result[safeKey] = _sanitizeMap(value);
+      } else if (value is List) {
+        result[safeKey] = value
+            .map((v) => v is Map ? _sanitizeMap(v) : v)
+            .toList();
+      } else {
+        result[safeKey] = value;
+      }
+    });
+    return result;
+  }
+
   @override
   void onClose() {
     _deviceCache.clear();
-    adapterStateSubscription?.cancel();
+    streamedData.clear();
     gatewayDeviceResponses.clear();
+
+    adapterStateSubscription?.cancel();
     clearCommandCache();
     responseSubscription?.cancel();
 

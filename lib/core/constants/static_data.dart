@@ -170,4 +170,9 @@ class StaticData {
     DropdownItems(text: 'Holding Register', value: '3'),
     DropdownItems(text: 'Input Registers', value: '4'),
   ];
+
+  static final List<DropdownItems> booleanOptions = [
+    DropdownItems(text: 'true', value: 'true'),
+    DropdownItems(text: 'false', value: 'false'),
+  ];
 }

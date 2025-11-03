@@ -170,9 +170,10 @@ class _DropdownState extends State<Dropdown> {
               ),
             Container(
               padding: EdgeInsets.symmetric(
-                horizontal: 16.w.clamp(16, 18),
-                vertical: 12.w.clamp(12, 14),
+                horizontal: 14.w.clamp(14, 16),
+                vertical: 10.w.clamp(10, 12),
               ),
+              width: double.infinity,
               decoration: BoxDecoration(
                 color: isSelected
                     ? AppColor.lightPrimaryColor

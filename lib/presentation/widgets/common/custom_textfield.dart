@@ -72,7 +72,6 @@ class CustomTextFormField extends StatelessWidget {
               AppSpacing.sm,
             ],
           ),
-        AppSpacing.sm,
         TextFormField(
           obscureText: obscureText ?? false,
           keyboardType: keyboardType,

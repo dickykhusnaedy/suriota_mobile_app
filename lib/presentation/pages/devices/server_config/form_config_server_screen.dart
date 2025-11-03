@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:gateway_config/core/constants/app_color.dart';
 import 'package:gateway_config/core/constants/app_gap.dart';
+import 'package:gateway_config/core/constants/static_data.dart';
 import 'package:gateway_config/core/controllers/ble_controller.dart';
 import 'package:gateway_config/core/controllers/server_config_controller.dart';
 import 'package:gateway_config/core/utils/app_helpers.dart';
@@ -12,10 +13,10 @@ import 'package:gateway_config/models/device_model.dart';
 import 'package:gateway_config/models/dropdown_items.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_alert_dialog.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_button.dart';
-import 'package:gateway_config/presentation/widgets/common/custom_radiotile.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_textfield.dart';
 import 'package:gateway_config/presentation/widgets/common/dropdown.dart';
 import 'package:gateway_config/presentation/widgets/common/loading_overlay.dart';
+import 'package:gateway_config/presentation/widgets/common/multi_header_form.dart';
 import 'package:gateway_config/presentation/widgets/spesific/title_tile.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
@@ -39,36 +40,42 @@ class _FormConfigServerState extends State<FormConfigServer> {
   bool _passwordVisible = true;
 
   // State variables
-  String protocolSelected = 'mqtt';
-  String communicationSelected = 'ETH'; // ETH or WIFI
-  String connectionMethod =
-      'Automatic'; // Automatic or Manual, berlaku untuk ETH/WIFI
+  String communicationSelected = 'ETH';
+  String isWifiEnabled = 'true';
+  String isEthernetEnabled = 'true';
+  String isUseDhcp = 'true';
+
+  String isEnabledMqtt = 'true';
+  String isEnabledHttp = 'false';
+  String methodRequestSelected = 'POST';
+  String bodyFormatRequestSelected = 'json';
+
   String selectedIntervalType = 'ms';
   String cleanSessionSelected = 'true';
-  String useTlsSelected = 'true';
+  String useTlsSelected = 'false';
 
   // TextEditingControllers
   final ipAddressController = TextEditingController();
-  final macAddressController = TextEditingController();
+  final gatewayController = TextEditingController();
+  final subnetMaskController = TextEditingController();
   final wifiSsidController = TextEditingController();
   final wifiPasswordController = TextEditingController();
-  final intervalTimeController = TextEditingController();
+  final intervalTimeController = TextEditingController(text: '1000');
   final serverNameController = TextEditingController();
-  final portMqttController = TextEditingController();
+  final portMqttController = TextEditingController(text: '1883');
   final publishTopicController = TextEditingController();
   final subscribeTopicController = TextEditingController();
-  final keepAliveController = TextEditingController();
+  final keepAliveController = TextEditingController(text: '60');
   final clientIdController = TextEditingController();
   final urlLinkController = TextEditingController();
-  final methodRequestController = TextEditingController(text: 'POST');
-  final timeoutController = TextEditingController();
-  final retryController = TextEditingController();
+  final timeoutController = TextEditingController(text: '5000');
+  final retryController = TextEditingController(text: '3');
   final usernameController = TextEditingController();
   final passwordController = TextEditingController();
-  final authorizationController = TextEditingController();
-  final xCustomHeaderController = TextEditingController();
-  final contentTypeController = TextEditingController(text: 'application/json');
-  final bodyFormatController = TextEditingController(text: 'json');
+
+  late List<HeaderFieldController> headerControllers = [
+    HeaderFieldController(key: '', value: ''),
+  ];
 
   @override
   void initState() {
@@ -89,18 +96,20 @@ class _FormConfigServerState extends State<FormConfigServer> {
 
   // Method untuk update semua field dari response JSON
   void updateFormFields(Map<String, dynamic> config) {
-    // Communication
-    communicationSelected = config['communication']?['mode'] ?? 'ETH';
-    connectionMethod =
-        config['communication']?['connection_mode'] ?? 'Automatic';
-    ipAddressController.text = config['communication']?['ip_address'] ?? '';
-    macAddressController.text = config['communication']?['mac_address'] ?? '';
-    wifiSsidController.text = config['communication']?['wifi']?['ssid'] ?? '';
-    wifiPasswordController.text =
-        config['communication']?['wifi']?['password'] ?? '';
+    // Communication config
+    communicationSelected = config['communication']?['mode'];
 
-    // Protocol
-    protocolSelected = config['protocol'] ?? 'mqtt';
+    // Wifi config
+    isWifiEnabled = (config['wifi']?['enabled'] ?? '').toString();
+    wifiSsidController.text = config['wifi']?['ssid'] ?? '';
+    wifiPasswordController.text = config['wifi']?['password'] ?? '';
+
+    // Ethernet config
+    isEthernetEnabled = (config['ethernet']?['enabled'] ?? '').toString();
+    isUseDhcp = (config['ethernet']?['use_dhcp'] ?? '').toString();
+    ipAddressController.text = config['ethernet']?['static_ip'] ?? '';
+    gatewayController.text = config['ethernet']?['gateway'] ?? '';
+    subnetMaskController.text = config['ethernet']?['subnet'] ?? '';
 
     // Interval
     intervalTimeController.text =
@@ -108,6 +117,7 @@ class _FormConfigServerState extends State<FormConfigServer> {
     selectedIntervalType = config['data_interval']?['unit'] ?? 'ms';
 
     // MQTT
+    isEnabledMqtt = (config['mqtt_config']?['enabled'] ?? '').toString();
     serverNameController.text = config['mqtt_config']?['broker_address'] ?? '';
     portMqttController.text =
         config['mqtt_config']?['broker_port']?.toString() ?? '';
@@ -124,19 +134,25 @@ class _FormConfigServerState extends State<FormConfigServer> {
     useTlsSelected = (config['mqtt_config']?['use_tls'] ?? '').toString();
 
     // HTTP
+    isEnabledHttp = (config['http_config']?['enabled'] ?? '').toString();
     urlLinkController.text = config['http_config']?['endpoint_url'] ?? '';
-    methodRequestController.text = config['http_config']?['method'] ?? 'POST';
-    authorizationController.text =
-        config['http_config']?['headers']?['Authorization'] ?? '';
-    xCustomHeaderController.text =
-        config['http_config']?['headers']?['X-Custom-Header'] ?? '';
-    contentTypeController.text =
-        config['http_config']?['headers']?['Content-Type'] ??
-        'application/json';
-    bodyFormatController.text = config['http_config']?['body_format'] ?? 'json';
+    methodRequestSelected = config['http_config']?['method'];
+    bodyFormatRequestSelected = config['http_config']?['body_format'];
     timeoutController.text =
         config['http_config']?['timeout']?.toString() ?? '';
     retryController.text = config['http_config']?['retry']?.toString() ?? '';
+    headerControllers =
+        (config['http_config']?['headers'] as Map<String, dynamic>? ?? {})
+            .entries
+            .map(
+              (entry) => HeaderFieldController(
+                key: entry
+                    .key, // atau keyController: TextEditingController(text: entry.key)
+                value: entry.value
+                    .toString(), // sesuaikan dengan class HeaderFieldController lo
+              ),
+            )
+            .toList();
 
     // Refresh UI
     setState(() {});
@@ -155,17 +171,32 @@ class _FormConfigServerState extends State<FormConfigServer> {
         controller.isFetching.value = true;
 
         // Build communication sub-map
-        var communication = {
-          "mode": _sanitizeInput(communicationSelected),
-          "connection_mode": _sanitizeInput(connectionMethod),
-          "ip_address": _sanitizeInput(ipAddressController.text),
-          "mac_address": _sanitizeInput(macAddressController.text),
-          if (communicationSelected == 'WIFI')
-            "wifi": {
-              "ssid": _sanitizeInput(wifiSsidController.text),
-              "password": _sanitizeInput(wifiPasswordController.text),
-            },
+        var communication = {"mode": _sanitizeInput(communicationSelected)};
+
+        var wifi = {
+          "enabled": isWifiEnabled == 'true',
+          "ssid": _sanitizeInput(wifiSsidController.text),
+          "password": _sanitizeInput(wifiPasswordController.text),
         };
+
+        var ethernet = {
+          "enabled": isEthernetEnabled == 'true',
+          "use_dhcp": isUseDhcp == 'true',
+          "static_ip": _sanitizeInput(ipAddressController.text),
+          "gateway": _sanitizeInput(gatewayController.text),
+          "subnet": _sanitizeInput(subnetMaskController.text),
+        };
+
+        String fillProtocol;
+        if (isEnabledMqtt == 'true' && isEnabledHttp == 'true') {
+          fillProtocol = 'both';
+        } else if (isEnabledMqtt == 'true') {
+          fillProtocol = 'mqtt';
+        } else if (isEnabledHttp == 'true') {
+          fillProtocol = 'http';
+        } else {
+          fillProtocol = 'none';
+        }
 
         // Interval
         var dataInterval = {
@@ -175,7 +206,7 @@ class _FormConfigServerState extends State<FormConfigServer> {
 
         // MQTT Config
         var mqttConfig = {
-          "enabled": protocolSelected == 'mqtt',
+          "enabled": isEnabledMqtt == 'true',
           "broker_address": _sanitizeInput(serverNameController.text),
           "broker_port": _tryParseInt(portMqttController.text) ?? 0,
           "client_id": _sanitizeInput(clientIdController.text),
@@ -188,30 +219,25 @@ class _FormConfigServerState extends State<FormConfigServer> {
           "use_tls": useTlsSelected == 'true',
         };
 
-        // HTTP Config
-        var httpHeaders = {
-          "Authorization": _sanitizeInput(authorizationController.text),
-          "Content-Type": _sanitizeInput(contentTypeController.text),
-        };
-        if (xCustomHeaderController.text.isNotEmpty) {
-          httpHeaders["X-Custom-Header"] = _sanitizeInput(
-            xCustomHeaderController.text,
-          );
-        }
         var httpConfig = {
-          "enabled": protocolSelected == 'http',
+          "enabled": isEnabledHttp == 'true',
           "endpoint_url": _sanitizeInput(urlLinkController.text),
-          "method": _sanitizeInput(methodRequestController.text),
-          "headers": httpHeaders,
-          "body_format": _sanitizeInput(bodyFormatController.text),
+          "method": methodRequestSelected,
+          "body_format": bodyFormatRequestSelected,
           "timeout": _tryParseInt(timeoutController.text) ?? 0,
           "retry": _tryParseInt(retryController.text) ?? 0,
+          "headers": {
+            for (final c in headerControllers)
+              c.keyController.text.trim(): c.valueController.text.trim(),
+          },
         };
 
         // Full command untuk BLE (wrap dengan op dan type)
         var fullConfig = {
           "communication": communication,
-          "protocol": protocolSelected,
+          "wifi": wifi,
+          "ethernet": ethernet,
+          "protocol": fillProtocol,
           "data_interval": dataInterval,
           "mqtt_config": mqttConfig,
           "http_config": httpConfig,
@@ -274,12 +300,19 @@ class _FormConfigServerState extends State<FormConfigServer> {
     return int.tryParse(value) ?? defaultValue;
   }
 
+  List<DropdownItems> typeInterval = [
+    DropdownItems(text: 'ms', value: 'ms'),
+    DropdownItems(text: 's', value: 's'),
+    DropdownItems(text: 'min', value: 'min'),
+  ];
+
   @override
   void dispose() {
     _worker.dispose();
 
     ipAddressController.dispose();
-    macAddressController.dispose();
+    gatewayController.dispose();
+    subnetMaskController.dispose();
     wifiSsidController.dispose();
     wifiPasswordController.dispose();
     intervalTimeController.dispose();
@@ -289,13 +322,8 @@ class _FormConfigServerState extends State<FormConfigServer> {
     subscribeTopicController.dispose();
     clientIdController.dispose();
     urlLinkController.dispose();
-    methodRequestController.dispose();
     usernameController.dispose();
     passwordController.dispose();
-    authorizationController.dispose();
-    xCustomHeaderController.dispose();
-    contentTypeController.dispose();
-    bodyFormatController.dispose();
     timeoutController.dispose();
     retryController.dispose();
     keepAliveController.dispose();
@@ -305,15 +333,9 @@ class _FormConfigServerState extends State<FormConfigServer> {
 
   @override
   Widget build(BuildContext context) {
-    List<DropdownItems> typeInterval = [
-      DropdownItems(text: 's', value: 's'),
-      DropdownItems(text: 'm', value: 'm'),
-      DropdownItems(text: 'ms', value: 'ms'),
-    ];
-
     return Stack(
       children: [
-        Scaffold(appBar: _appBar(context), body: _body(context, typeInterval)),
+        Scaffold(appBar: _appBar(context), body: _body(context)),
         Obx(() {
           return LoadingOverlay(
             isLoading: controller.isFetching.value,
@@ -324,7 +346,7 @@ class _FormConfigServerState extends State<FormConfigServer> {
     );
   }
 
-  SafeArea _body(BuildContext context, List<DropdownItems> typeInterval) {
+  SafeArea _body(BuildContext context) {
     return SafeArea(
       child: SingleChildScrollView(
         padding: AppPadding.horizontalMedium,
@@ -335,15 +357,10 @@ class _FormConfigServerState extends State<FormConfigServer> {
             children: [
               AppSpacing.md,
               _communicationModeWrapper(context),
-              AppSpacing.sm,
-              _connectionFields(),
               AppSpacing.md,
-              _protocolWrapper(),
+              _mqttWrapper(),
               AppSpacing.md,
-              _intervalWrapper(context, typeInterval),
-              AppSpacing.md,
-              _mqttField(),
-              _httpField(),
+              _httpWrapper(),
               AppSpacing.md,
               Button(
                 width: MediaQuery.of(context).size.width,
@@ -375,98 +392,133 @@ class _FormConfigServerState extends State<FormConfigServer> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const TitleTile(title: 'Choose Communication Mode'),
-        AppSpacing.sm,
-        Text(
-          'ETH: Ethernet, WIFI: WiFi',
-          style: context.bodySmall.copyWith(color: AppColor.grey),
+        const TitleTile(
+          title: 'Internet',
+          subTitle: 'Configure server connection settings',
+          bgColor: AppColor.lightPrimaryColor,
         ),
-        CustomRadioTile(
-          value: "ETH",
-          grupValue: communicationSelected,
-          onChanges: () {
-            setState(() => communicationSelected = "ETH");
-            _chooseConnectionMethod(context);
-          },
-        ),
-        CustomRadioTile(
-          value: "WIFI",
-          grupValue: communicationSelected,
-          onChanges: () {
-            setState(() => communicationSelected = "WIFI");
-            _chooseConnectionMethod(context);
-          },
-        ),
-      ],
-    );
-  }
-
-  Future<dynamic> _chooseConnectionMethod(BuildContext context) {
-    return showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text("Choose Connection Method", style: context.h5),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Automatic (DHCP) or Manual (Static IP)',
-              style: context.bodySmall.copyWith(color: AppColor.grey),
-            ),
-            AppSpacing.sm,
-            CustomRadioTile(
-              value: "Automatic",
-              grupValue: connectionMethod,
-              onChanges: () {
-                setState(() => connectionMethod = "Automatic");
-                Navigator.pop(context);
-              },
-            ),
-            CustomRadioTile(
-              value: "Manual",
-              grupValue: connectionMethod,
-              onChanges: () {
-                setState(() => connectionMethod = "Manual");
-                Navigator.pop(context);
-              },
-            ),
+        AppSpacing.md,
+        Dropdown(
+          items: [
+            DropdownItems(text: 'ETH', value: 'ETH'),
+            DropdownItems(text: 'WIFI', value: 'WIFI'),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _connectionFields() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Mode: $communicationSelected | Method: $connectionMethod',
-          style: context.bodySmall.copyWith(color: AppColor.grey),
-        ),
-        AppSpacing.sm,
-        CustomTextFormField(
-          controller: ipAddressController,
-          labelTxt: "IP Address",
-          hintTxt: "192.168.0.2",
-          validator: (value) {
-            if (value == null || value.isEmpty) return 'IP address is required';
-            final ipPattern = RegExp(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$');
-            if (!ipPattern.hasMatch(value)) return 'Invalid IP format';
-            return null;
+          label: 'Communication Mode',
+          selectedValue: communicationSelected,
+          onChanged: (item) {
+            setState(() {
+              communicationSelected = item!.value;
+            });
           },
           isRequired: true,
         ),
         AppSpacing.md,
-        CustomTextFormField(
-          controller: macAddressController,
-          labelTxt: "MAC Address",
-          hintTxt: "00:1A:2B:3C:4D:5E",
-          validator: (value) =>
-              value == null || value.isEmpty ? 'MAC Address is required' : null,
+        Text(
+          'Mode: $communicationSelected | Method: Automatic',
+          style: context.bodySmall.copyWith(color: AppColor.grey),
+        ),
+        AppSpacing.md,
+        communicationSelected == 'ETH'
+            ? _communicationSelectedEthWrapper()
+            : _communicationSelectedWifiWrapper(),
+      ],
+    );
+  }
+
+  Column _communicationSelectedEthWrapper() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.start,
+      children: [
+        Dropdown(
+          items: StaticData.booleanOptions,
+          label: 'Ethernet Enabled',
+          selectedValue: isEthernetEnabled,
+          onChanged: (item) {
+            setState(() {
+              isEthernetEnabled = item!.value;
+            });
+          },
           isRequired: true,
         ),
-        if (communicationSelected == 'WIFI') ...[
+        AppSpacing.md,
+        Dropdown(
+          items: StaticData.booleanOptions,
+          label: 'Using DHCP (Automatic IP)',
+          selectedValue: isUseDhcp,
+          onChanged: (item) {
+            setState(() {
+              isUseDhcp = item!.value;
+            });
+          },
+          isRequired: true,
+        ),
+        if (isUseDhcp == 'false') ...[
+          AppSpacing.md,
+          CustomTextFormField(
+            controller: ipAddressController,
+            labelTxt: "Static IP",
+            hintTxt: "192.168.1.177",
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'IP address is required';
+              }
+              final ipPattern = RegExp(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$');
+              if (!ipPattern.hasMatch(value)) return 'Invalid IP format';
+              return null;
+            },
+            isRequired: true,
+          ),
+          AppSpacing.md,
+          CustomTextFormField(
+            controller: gatewayController,
+            labelTxt: "Gateway",
+            hintTxt: "192.168.1.1",
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'IP address is required';
+              }
+              final ipPattern = RegExp(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$');
+              if (!ipPattern.hasMatch(value)) return 'Invalid Gateway format';
+              return null;
+            },
+            isRequired: true,
+          ),
+          AppSpacing.md,
+          CustomTextFormField(
+            controller: subnetMaskController,
+            labelTxt: "Subnet",
+            hintTxt: "255.255.255.0",
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'IP address is required';
+              }
+              final ipPattern = RegExp(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$');
+              if (!ipPattern.hasMatch(value)) return 'Invalid IP format';
+              return null;
+            },
+            isRequired: true,
+          ),
+        ],
+      ],
+    );
+  }
+
+  Column _communicationSelectedWifiWrapper() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.start,
+      children: [
+        Dropdown(
+          items: StaticData.booleanOptions,
+          label: 'WiFi Enabled',
+          selectedValue: isWifiEnabled,
+          onChanged: (item) {
+            setState(() {
+              isWifiEnabled = item!.value;
+            });
+          },
+          isRequired: true,
+        ),
+        if (isWifiEnabled == 'true') ...[
           AppSpacing.md,
           CustomTextFormField(
             controller: wifiSsidController,
@@ -498,225 +550,224 @@ class _FormConfigServerState extends State<FormConfigServer> {
             ),
           ),
         ],
-        AppSpacing.md,
       ],
     );
   }
 
-  Column _protocolWrapper() {
+  Column _mqttWrapper() {
     return Column(
       children: [
-        const TitleTile(title: 'Choose Protocol'),
-        AppSpacing.sm,
-        CustomRadioTile(
-          value: "mqtt",
-          grupValue: protocolSelected,
-          onChanges: () => setState(() => protocolSelected = "mqtt"),
+        const TitleTile(
+          title: 'Telemetry – MQTT',
+          subTitle: 'Send data using MQTT protocol',
+          bgColor: AppColor.lightPrimaryColor,
         ),
-        CustomRadioTile(
-          value: "http",
-          grupValue: protocolSelected,
-          onChanges: () => setState(() => protocolSelected = "http"),
+        AppSpacing.md,
+        Dropdown(
+          items: StaticData.booleanOptions,
+          label: 'Enabled',
+          selectedValue: isEnabledMqtt,
+          onChanged: (item) {
+            setState(() {
+              isEnabledMqtt = item!.value;
+            });
+          },
+          isRequired: true,
         ),
+        if (isEnabledMqtt == 'true') ...[
+          AppSpacing.md,
+          CustomTextFormField(
+            controller: serverNameController,
+            labelTxt: "Broker Address",
+            hintTxt: "mqtt.example.com",
+            isRequired: true,
+          ),
+          AppSpacing.md,
+          CustomTextFormField(
+            controller: portMqttController,
+            labelTxt: "Broker Port",
+            hintTxt: "1883",
+            keyboardType: TextInputType.number,
+            isRequired: true,
+          ),
+          AppSpacing.md,
+          CustomTextFormField(
+            controller: clientIdController,
+            labelTxt: "Client ID",
+            hintTxt: "gateway_001",
+            isRequired: true,
+          ),
+          AppSpacing.md,
+          CustomTextFormField(
+            controller: usernameController,
+            labelTxt: "Username",
+            hintTxt: "username",
+            isRequired: true,
+          ),
+          AppSpacing.md,
+          CustomTextFormField(
+            controller: passwordController,
+            labelTxt: "Password",
+            hintTxt: "password",
+            obscureText: _passwordVisible,
+            isRequired: true,
+            suffixIcon: IconButton(
+              icon: Icon(
+                _passwordVisible ? Icons.visibility : Icons.visibility_off,
+                size: 18,
+              ),
+              onPressed: () {
+                setState(() {
+                  _passwordVisible = !_passwordVisible;
+                });
+              },
+            ),
+          ),
+          AppSpacing.md,
+          CustomTextFormField(
+            controller: publishTopicController,
+            labelTxt: "Publish Topic",
+            hintTxt: "data/topic",
+            isRequired: true,
+          ),
+          AppSpacing.md,
+          CustomTextFormField(
+            controller: subscribeTopicController,
+            labelTxt: "Subscribe Topic",
+            hintTxt: "control/topic",
+            isRequired: true,
+          ),
+          AppSpacing.md,
+          CustomTextFormField(
+            controller: keepAliveController,
+            labelTxt: "Keep Alive (s)",
+            hintTxt: "60",
+            keyboardType: TextInputType.number,
+            isRequired: true,
+          ),
+          AppSpacing.md,
+          Dropdown(
+            label: 'Clean Session',
+            items: StaticData.booleanOptions,
+            selectedValue: cleanSessionSelected,
+            onChanged: (item) =>
+                setState(() => cleanSessionSelected = item!.value),
+            isRequired: true,
+          ),
+          AppSpacing.md,
+          Dropdown(
+            label: 'Use TLS',
+            items: StaticData.booleanOptions,
+            selectedValue: useTlsSelected,
+            onChanged: (item) => setState(() => useTlsSelected = item!.value),
+            isRequired: true,
+          ),
+        ],
       ],
     );
   }
 
-  Column _intervalWrapper(
-    BuildContext context,
-    List<DropdownItems> typeInterval,
-  ) {
+  Widget _httpWrapper() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        TitleTile(title: 'Data Interval'),
-        AppSpacing.sm,
-        Text(
-          's: seconds, m: minutes, ms: milliseconds',
-          style: context.bodySmall.copyWith(color: AppColor.grey),
+        const TitleTile(
+          title: 'Telemetry – HTTP',
+          subTitle: 'Send data using HTTP protocol',
+          bgColor: AppColor.lightPrimaryColor,
         ),
-        AppSpacing.sm,
+        AppSpacing.md,
+        Dropdown(
+          items: StaticData.booleanOptions,
+          label: 'Enabled',
+          selectedValue: isEnabledHttp,
+          onChanged: (item) {
+            setState(() {
+              isEnabledHttp = item!.value;
+            });
+          },
+          isRequired: true,
+        ),
+        AppSpacing.md,
         CustomTextFormField(
           controller: intervalTimeController,
-          labelTxt: "Interval Value",
+          labelTxt: "Data Interval - Value",
           hintTxt: "5000",
           keyboardType: TextInputType.number,
           validator: (value) =>
               value == null || value.isEmpty ? 'Value is required' : null,
         ),
-        AppSpacing.sm,
+        AppSpacing.md,
         Dropdown(
-          label: 'Unit',
+          label: 'Data Interval - Unit',
           items: typeInterval,
           selectedValue: selectedIntervalType,
           onChanged: (item) =>
               setState(() => selectedIntervalType = item!.value),
           isRequired: true,
         ),
-      ],
-    );
-  }
-
-  Widget _mqttField() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        TitleTile(title: "Setup MQTT Connection"),
-        AppSpacing.md,
-        CustomTextFormField(
-          controller: serverNameController,
-          labelTxt: "Broker Address",
-          hintTxt: "mqtt.example.com",
-          isRequired: true,
+        AppSpacing.sm,
+        Text(
+          's: seconds, m: minutes, ms: milliseconds',
+          style: context.bodySmall.copyWith(color: AppColor.grey),
         ),
-        AppSpacing.md,
-        CustomTextFormField(
-          controller: portMqttController,
-          labelTxt: "Broker Port",
-          hintTxt: "1883",
-          keyboardType: TextInputType.number,
-          isRequired: true,
-        ),
-        AppSpacing.md,
-        CustomTextFormField(
-          controller: clientIdController,
-          labelTxt: "Client ID",
-          hintTxt: "gateway_001",
-          isRequired: true,
-        ),
-        AppSpacing.md,
-        CustomTextFormField(
-          controller: usernameController,
-          labelTxt: "Username",
-          hintTxt: "username",
-          isRequired: true,
-        ),
-        AppSpacing.md,
-        CustomTextFormField(
-          controller: passwordController,
-          labelTxt: "Password",
-          hintTxt: "password",
-          obscureText: _passwordVisible,
-          isRequired: true,
-          suffixIcon: IconButton(
-            icon: Icon(
-              _passwordVisible ? Icons.visibility : Icons.visibility_off,
-              size: 18,
-            ),
-            onPressed: () {
-              setState(() {
-                _passwordVisible = !_passwordVisible;
-              });
-            },
+        if (isEnabledHttp == 'true') ...[
+          AppSpacing.md,
+          CustomTextFormField(
+            controller: urlLinkController,
+            labelTxt: "Endpoint URL",
+            hintTxt: "https://api.example.com",
+            isRequired: true,
           ),
-        ),
+          AppSpacing.md,
+          Dropdown(
+            label: 'Method',
+            items: [
+              DropdownItems(text: 'POST', value: 'POST'),
+              DropdownItems(text: 'GET', value: 'GET'),
+              DropdownItems(text: 'PUT', value: 'PUT'),
+              DropdownItems(text: 'DELETE', value: 'DELETE'),
+            ],
+            selectedValue: methodRequestSelected,
+            onChanged: (item) =>
+                setState(() => methodRequestSelected = item!.value),
+            isRequired: true,
+          ),
+          AppSpacing.md,
+          Dropdown(
+            label: 'Body Format',
+            items: [
+              DropdownItems(text: 'json', value: 'json'),
+              DropdownItems(text: 'form', value: 'form'),
+              DropdownItems(text: 'raw', value: 'raw'),
+            ],
+            selectedValue: bodyFormatRequestSelected,
+            onChanged: (item) =>
+                setState(() => bodyFormatRequestSelected = item!.value),
+            isRequired: true,
+          ),
+          AppSpacing.md,
+          CustomTextFormField(
+            controller: timeoutController,
+            labelTxt: "Timeout (ms)",
+            keyboardType: TextInputType.number,
+            hintTxt: "15000",
+          ),
+          AppSpacing.md,
+          CustomTextFormField(
+            controller: retryController,
+            labelTxt: "Retry Count",
+            keyboardType: TextInputType.number,
+            hintTxt: "5",
+          ),
+        ],
         AppSpacing.md,
-        CustomTextFormField(
-          controller: publishTopicController,
-          labelTxt: "Publish Topic",
-          hintTxt: "data/topic",
-          isRequired: true,
+        MultiHeaderForm(
+          controllers: headerControllers,
+          onChanged: () {
+            setState(() {});
+          },
         ),
-        AppSpacing.md,
-        CustomTextFormField(
-          controller: subscribeTopicController,
-          labelTxt: "Subscribe Topic",
-          hintTxt: "control/topic",
-          isRequired: true,
-        ),
-        AppSpacing.md,
-        CustomTextFormField(
-          controller: keepAliveController,
-          labelTxt: "Keep Alive (s)",
-          hintTxt: "60",
-          keyboardType: TextInputType.number,
-          isRequired: true,
-        ),
-        AppSpacing.md,
-        Dropdown(
-          label: 'Clean Session',
-          items: [
-            DropdownItems(text: 'true', value: 'true'),
-            DropdownItems(text: 'false', value: 'false'),
-          ],
-          selectedValue: cleanSessionSelected,
-          onChanged: (item) =>
-              setState(() => cleanSessionSelected = item!.value),
-          isRequired: true,
-        ),
-        AppSpacing.md,
-        Dropdown(
-          label: 'Use TLS',
-          items: [
-            DropdownItems(text: 'true', value: 'true'),
-            DropdownItems(text: 'false', value: 'false'),
-          ],
-          selectedValue: useTlsSelected,
-          onChanged: (item) => setState(() => useTlsSelected = item!.value),
-          isRequired: true,
-        ),
-        AppSpacing.lg,
-      ],
-    );
-  }
-
-  Widget _httpField() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        TitleTile(title: "Setup HTTP Connection"),
-        AppSpacing.md,
-        CustomTextFormField(
-          controller: urlLinkController,
-          labelTxt: "Endpoint URL",
-          hintTxt: "https://api.example.com",
-          isRequired: true,
-        ),
-        AppSpacing.md,
-        CustomTextFormField(
-          controller: methodRequestController,
-          labelTxt: "Method",
-          readOnly: true,
-        ),
-        AppSpacing.md,
-        CustomTextFormField(
-          controller: authorizationController,
-          labelTxt: "Authorization",
-          hintTxt: "Bearer token",
-        ),
-        AppSpacing.md,
-        CustomTextFormField(
-          controller: xCustomHeaderController,
-          labelTxt: "X-Custom-Header",
-          hintTxt: "X-Custom-Header",
-        ),
-        AppSpacing.md,
-        CustomTextFormField(
-          controller: contentTypeController,
-          labelTxt: "Content-Type",
-          readOnly: true,
-        ),
-        AppSpacing.md,
-        CustomTextFormField(
-          controller: bodyFormatController,
-          labelTxt: "Body Format",
-          readOnly: true,
-        ),
-        AppSpacing.md,
-        CustomTextFormField(
-          controller: timeoutController,
-          labelTxt: "Timeout (ms)",
-          keyboardType: TextInputType.number,
-          hintTxt: "15000",
-        ),
-        AppSpacing.md,
-        CustomTextFormField(
-          controller: retryController,
-          labelTxt: "Retry Count",
-          keyboardType: TextInputType.number,
-          hintTxt: "5",
-        ),
-        AppSpacing.lg,
       ],
     );
   }
