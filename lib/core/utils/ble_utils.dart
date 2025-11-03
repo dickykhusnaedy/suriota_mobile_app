@@ -1,26 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:gateway_config/models/device_model.dart';
 import 'package:get/get.dart';
-import 'package:suriota_mobile_gateway/presentation/widgets/common/custom_alert_dialog.dart';
-import 'package:suriota_mobile_gateway/presentation/pages/devices/detail_device_screen.dart';
+import 'package:gateway_config/presentation/widgets/common/custom_alert_dialog.dart';
+import 'package:gateway_config/presentation/pages/devices/detail_device_screen.dart';
 
 class BLEUtils {
   // Show dialog when a device is connected
-  static void showConnectedBottomSheet(BluetoothDevice device) {
+  static void showConnectedBottomSheet(DeviceModel model) {
     CustomAlertDialog.show(
       title: 'Device Connected',
       message:
-          'Do you want to open device (${device.platformName.isNotEmpty ? device.platformName : device.remoteId}) page detail?',
+          'Do you want to open device (${model.device.platformName.isNotEmpty ? model.device.platformName : model.device.remoteId}) page detail?',
       primaryButtonText: 'Yes',
       secondaryButtonText: 'No',
-      onPrimaryPressed: () => Get.to(() => DetailDeviceScreen(device: device)),
+      onPrimaryPressed: () {
+        Get.back();
+        Get.to(() => DetailDeviceScreen(model: model));
+      },
       barrierDismissible: false,
     );
   }
 
   // Show dialog to confirm device disconnection
   static void showDisconnectedBottomSheet(
-      BluetoothDevice device, VoidCallback? onDisconnect) {
+    BluetoothDevice device,
+    VoidCallback? onDisconnect,
+  ) {
     final deviceName = device.platformName.isNotEmpty
         ? device.platformName
         : device.remoteId.toString();

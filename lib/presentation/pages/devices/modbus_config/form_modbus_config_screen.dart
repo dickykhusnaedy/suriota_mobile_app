@@ -1,35 +1,44 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
+import 'package:gateway_config/core/constants/app_color.dart';
+import 'package:gateway_config/core/constants/app_gap.dart';
+import 'package:gateway_config/core/constants/static_data.dart';
+import 'package:gateway_config/core/controllers/ble_controller.dart';
+import 'package:gateway_config/core/controllers/devices_controller.dart';
+import 'package:gateway_config/core/controllers/modbus_controller.dart';
+import 'package:gateway_config/core/utils/app_helpers.dart';
+import 'package:gateway_config/core/utils/extensions.dart';
+import 'package:gateway_config/core/utils/snackbar_custom.dart';
+import 'package:gateway_config/models/device_model.dart';
+import 'package:gateway_config/models/dropdown_items.dart';
+import 'package:gateway_config/presentation/widgets/common/custom_alert_dialog.dart';
+import 'package:gateway_config/presentation/widgets/common/custom_button.dart';
+import 'package:gateway_config/presentation/widgets/common/custom_textfield.dart';
+import 'package:gateway_config/presentation/widgets/common/dropdown.dart';
+import 'package:gateway_config/presentation/widgets/common/loading_overlay.dart';
 import 'package:get/get.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_color.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_gap.dart';
-import 'package:suriota_mobile_gateway/core/controllers/ble/ble_controller.dart';
-import 'package:suriota_mobile_gateway/core/controllers/devices/device_pagination_controller.dart';
-import 'package:suriota_mobile_gateway/core/controllers/modbus/modbus_pagination_controller.dart';
-import 'package:suriota_mobile_gateway/core/utils/app_helpers.dart';
-import 'package:suriota_mobile_gateway/core/utils/extensions.dart';
-import 'package:suriota_mobile_gateway/presentation/widgets/common/custom_alert_dialog.dart';
-import 'package:suriota_mobile_gateway/presentation/widgets/common/custom_button.dart';
-import 'package:suriota_mobile_gateway/presentation/widgets/common/custom_dropdown.dart';
-import 'package:suriota_mobile_gateway/presentation/widgets/common/custom_textfield.dart';
-import 'package:suriota_mobile_gateway/presentation/widgets/common/loading_overlay.dart';
 
 class FormModbusConfigScreen extends StatefulWidget {
-  final int? id;
+  const FormModbusConfigScreen({
+    super.key,
+    required this.model,
+    this.deviceId,
+    this.registerId,
+  });
 
-  const FormModbusConfigScreen({super.key, this.id});
+  final DeviceModel model;
+  final String? deviceId;
+  final String? registerId;
 
   @override
   State<FormModbusConfigScreen> createState() => _FormModbusConfigScreenState();
 }
 
 class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
-  final BLEController bleController = Get.put(BLEController(), permanent: true);
-  final DevicePaginationController controller =
-      Get.put(DevicePaginationController(), permanent: true);
-  final ModbusPaginationController controllerModbus =
-      Get.put(ModbusPaginationController(), permanent: true);
+  final BleController bleController;
+  final DevicesController controller;
+  final ModbusController modbusController = Get.put(ModbusController());
+
+  late Worker _worker;
 
   Map<String, dynamic> dataModbus = {};
   bool isLoading = false;
@@ -38,88 +47,70 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
   String errorMessage = '';
 
   final deviceNameController = TextEditingController();
-  final idSlaveController = TextEditingController();
   final addressController = TextEditingController();
   final serverPortController = TextEditingController();
   final connectionTimeoutController = TextEditingController();
+  final descriptionController = TextEditingController();
+  final refreshRateController = TextEditingController();
 
-  static const List<String> modbusReadFunctions = ['1', '2', '3', '4'];
-
-  static const List<String> modbusDataTypes = [
-    'INT16',
-    'UINT16',
-    'INT32',
-    'UINT32',
-    'FLOAT32',
-    'INT64',
-    'FLOAT64',
-  ];
+  List<DropdownItems> modbusDataTypes = StaticData.dataModbusType
+      .map(
+        (data) => DropdownItems(
+          text: data['text'],
+          value: data['value'].toString(),
+          group: data['group'],
+        ),
+      )
+      .toList();
 
   String? selectedDevice;
   String? selectedFunction;
+  String? selectedFunctionText;
   String? selectedTypeData;
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+
+  _FormModbusConfigScreenState()
+    : bleController = Get.put(BleController(), permanent: true),
+      controller = Get.put(DevicesController(), permanent: true) {
+    debugPrint('Initialized BleController and DeviceController with Get.put');
+  }
 
   @override
   void initState() {
     super.initState();
 
-    if (widget.id != null) {
-      dataModbus = controllerModbus.modbus
-          .firstWhere((item) => item['id'] == widget.id, orElse: () => {});
-
-      _fillFormFromDevice(dataModbus);
-    }
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (!isInitialized) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        fetchDataDevices();
-        isInitialized = true;
-      });
-    }
-  }
-
-  Future<void> fetchDataDevices() async {
-    setState(() {
-      isLoading = true;
-      errorMessage = '';
+    _worker = ever(modbusController.selectedModbus, (dataList) {
+      if (!mounted) return;
+      if (dataList.isNotEmpty) {
+        _fillFormFromDevice(dataList[0]);
+      }
     });
 
-    try {
-      final data =
-          await bleController.fetchData("READ|devices|names", 'devices');
+    // Fetch data after widget build
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await controller.fetchDevices(widget.model);
 
-      print('data devices aa: $data');
+      if (widget.deviceId != null && widget.registerId != null) {
+        await modbusController.getDeviceById(
+          widget.model,
+          widget.deviceId!,
+          widget.registerId!,
+        );
+      }
+    });
+  }
 
-      setState(() {
-        if (data['data'] is List) {
-          deviceNames = (data['data'] as List).map((device) {
-            if (device is Map<String, dynamic>) {
-              return device['name'] as String? ?? 'Unknown';
-            } else if (device is String) {
-              return device; // Langsung gunakan string dari array
-            }
-            return 'Unknown';
-          }).toList();
-        } else {
-          deviceNames = [];
-          errorMessage = 'No devices found';
-        }
-      });
-    } catch (e) {
-      setState(() {
-        deviceNames = [];
-        errorMessage = e is TimeoutException
-            ? 'Timeout: Could not load devices. Please try again.'
-            : 'Failed to load devices: $e';
-        isLoading = false;
-      });
-    }
+  void _fillFormFromDevice(Map<String, dynamic> modbus) {
+    selectedDevice = widget.deviceId;
+    selectedFunction = modbus['function_code']?.toString() ?? '';
+    selectedTypeData = modbus['data_type']?.toString() ?? '';
+    deviceNameController.text = modbus['register_name'] ?? '';
+    addressController.text = modbus['address']?.toString() ?? '';
+    descriptionController.text = modbus['description'] ?? '';
+    refreshRateController.text = modbus['refresh_rate_ms']?.toString() ?? '';
+
+    setState(() {});
   }
 
   int? _tryParseInt(String? value, {int? defaultValue}) {
@@ -127,63 +118,66 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
     return int.tryParse(value) ?? defaultValue;
   }
 
-  void _fillFormFromDevice(Map<String, dynamic> modbus) {
-    deviceNameController.text = modbus['name'];
-    addressController.text = modbus['address'];
-    idSlaveController.text = modbus['id'].toString();
-
-    setState(() {
-      selectedDevice = modbus['device_choose'];
-      selectedFunction = modbus['function_code'];
-      selectedTypeData = modbus['data_type'];
-    });
-  }
-
-  String _formData() {
-    final device = selectedDevice;
-    final type = selectedTypeData;
-    final name = deviceNameController.text;
-    final address = _tryParseInt(addressController.text);
-    final function = _tryParseInt(selectedFunction, defaultValue: 1);
-
-    if (widget.id != null) {
-      final id = widget.id;
-      return 'UPDATE|modbus|id:$id|name:$name|device_choose:$device|data_type:$type|address:$address|function_code:$function';
-    }
-    return 'CREATE|modbus|name:$name|device_choose:$device|data_type:$type|address:$address|function_code:$function';
+  String _sanitizeInput(String input) {
+    return input.replaceAll('|', '').replaceAll('#', '');
   }
 
   void _submit() async {
     // Validasi form
     if (!_formKey.currentState!.validate()) return;
 
-    // Periksa koneksi BLE
-    if (bleController.isConnected.isEmpty ||
-        !bleController.isConnected.values.any((connected) => connected)) {
-      Get.snackbar('Error', 'No BLE device connected');
+    if (!widget.model.isConnected.value) {
+      SnackbarCustom.showSnackbar(
+        '',
+        'Device not connected',
+        AppColor.redColor,
+        AppColor.whiteColor,
+      );
       return;
     }
 
-    // Konfirmasi sebelum submit
     CustomAlertDialog.show(
-      title: "Are you sure?",
+      title: 'Are you sure?',
       message:
-          "Are you sure you want to ${widget.id != null ? 'update' : 'save'} this modbus config?",
+          'Are you sure you want to ${widget.registerId == null ? 'save' : 'update'} this modbus configuration?',
       primaryButtonText: 'Yes',
       secondaryButtonText: 'No',
       onPrimaryPressed: () async {
         Get.back();
-        await Future.delayed(const Duration(seconds: 1));
+        controller.isFetching.value = true;
 
         try {
-          final sendDataDelimiter = _formData();
-          bleController.sendCommand(sendDataDelimiter, 'modbus');
+          var formData = {
+            "op": widget.registerId != null ? "update" : "create",
+            "type": "register",
+            "device_id": selectedDevice,
+            if (widget.registerId != null) "register_id": widget.registerId,
+            "config": {
+              "address": _tryParseInt(addressController.text),
+              "register_name": _sanitizeInput(deviceNameController.text),
+              "type": selectedFunctionText,
+              "function_code": _tryParseInt(selectedFunction),
+              "data_type": selectedTypeData,
+              "description": descriptionController.text,
+              "refresh_rate_ms": _tryParseInt(refreshRateController.text),
+            },
+          };
+
+          await bleController.sendCommand(formData);
+
+          await Future.delayed(const Duration(seconds: 1));
+
+          AppHelpers.backNTimes(2);
         } catch (e) {
-          debugPrint('Error submitting form: $e');
-          Get.snackbar('Error', 'Failed to submit form: $e');
+          SnackbarCustom.showSnackbar(
+            '',
+            'Failed to submit form',
+            AppColor.redColor,
+            AppColor.whiteColor,
+          );
+          AppHelpers.debugLog('Error submitting form: $e');
         } finally {
-          await Future.delayed(const Duration(seconds: 3));
-          AppHelpers.backNTimes(1);
+          controller.isFetching.value = false;
         }
       },
       barrierDismissible: false,
@@ -192,9 +186,12 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
 
   @override
   void dispose() {
+    _worker.dispose();
+
     deviceNameController.dispose();
-    idSlaveController.dispose();
     addressController.dispose();
+    descriptionController.dispose();
+    refreshRateController.dispose();
     isInitialized = false;
     super.dispose();
   }
@@ -203,12 +200,10 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        Scaffold(
-          appBar: _appBar(context),
-          body: _body(context),
-        ),
+        Scaffold(appBar: _appBar(context), body: _body(context)),
         Obx(() {
-          final isAnyDeviceLoading = bleController.isLoading.value;
+          final isAnyDeviceLoading =
+              controller.isFetching.value || bleController.commandLoading.value;
           return LoadingOverlay(
             isLoading: isAnyDeviceLoading,
             message: 'Processing request...',
@@ -221,7 +216,7 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
   AppBar _appBar(BuildContext context) {
     return AppBar(
       title: Text(
-        widget.id == null ? 'Setup Modbus' : 'Update Modbus',
+        'Setup Modbus',
         style: context.h5.copyWith(color: AppColor.whiteColor),
       ),
       centerTitle: true,
@@ -231,6 +226,14 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
   }
 
   SafeArea _body(BuildContext context) {
+    List<DropdownItems> deviceItem = controller.dataDevices
+        .map(
+          (data) => DropdownItems(
+            text: data['device_name'],
+            value: data['device_id'],
+          ),
+        )
+        .toList();
     return SafeArea(
       child: SingleChildScrollView(
         padding: AppPadding.horizontalMedium,
@@ -250,33 +253,16 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
                   }
                   return null;
                 },
+                isRequired: true,
               ),
               AppSpacing.md,
-              CustomTextFormField(
-                controller: idSlaveController,
-                labelTxt: "ID Slave",
-                hintTxt: "1",
-                keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'ID Slave is required';
-                  }
-                  return null;
-                },
-              ),
-              AppSpacing.md,
-              Text(
-                'Choose Device',
-                style: context.h6,
-              ),
-              AppSpacing.sm,
-              CustomDropdown(
-                listItem: deviceNames ?? [],
-                hintText: 'Choose device',
-                selectedItem: selectedDevice,
-                onChanged: (value) {
+              Dropdown(
+                items: deviceItem,
+                selectedValue: selectedDevice,
+                label: 'Choose Device',
+                onChanged: (item) {
                   setState(() {
-                    selectedDevice = value;
+                    selectedDevice = item!.value;
                   });
                 },
                 validator: (value) {
@@ -285,20 +271,18 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
                   }
                   return null;
                 },
+                isRequired: true,
+                isDisabled: widget.registerId != null,
               ),
               AppSpacing.md,
-              Text(
-                'Choose Function',
-                style: context.h6,
-              ),
-              AppSpacing.sm,
-              CustomDropdown(
-                listItem: modbusReadFunctions,
-                hintText: 'Choose the function',
-                selectedItem: selectedFunction,
-                onChanged: (value) {
+              Dropdown(
+                items: StaticData.modbusReadFunctions,
+                selectedValue: selectedFunction,
+                label: 'Choose Function',
+                onChanged: (item) {
                   setState(() {
-                    selectedFunction = value;
+                    selectedFunctionText = item!.text;
+                    selectedFunction = item.value;
                   });
                 },
                 validator: (value) {
@@ -307,12 +291,13 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
                   }
                   return null;
                 },
+                isRequired: true,
               ),
               AppSpacing.md,
               CustomTextFormField(
                 controller: addressController,
                 labelTxt: "Address Modbus",
-                hintTxt: "1",
+                hintTxt: "ex. 1",
                 keyboardType: TextInputType.number,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
@@ -323,20 +308,16 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
                   }
                   return null;
                 },
+                isRequired: true,
               ),
               AppSpacing.md,
-              Text(
-                'Choose Data Type',
-                style: context.h6,
-              ),
-              AppSpacing.sm,
-              CustomDropdown(
-                listItem: modbusDataTypes,
-                hintText: 'Choose data type',
-                selectedItem: selectedTypeData,
-                onChanged: (value) {
+              Dropdown(
+                items: modbusDataTypes,
+                selectedValue: selectedTypeData,
+                label: 'Choose Data Type',
+                onChanged: (item) {
                   setState(() {
-                    selectedTypeData = value;
+                    selectedTypeData = item!.value;
                   });
                 },
                 validator: (value) {
@@ -345,12 +326,55 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
                   }
                   return null;
                 },
+                isRequired: true,
+              ),
+              AppSpacing.md,
+              CustomTextFormField(
+                controller: descriptionController,
+                labelTxt: "Description",
+                hintTxt: "ex. Main Temperature",
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Address Modbus is required';
+                  }
+                  return null;
+                },
+                isRequired: true,
+              ),
+              AppSpacing.md,
+              CustomTextFormField(
+                controller: refreshRateController,
+                labelTxt: 'Refresh Rate',
+                hintTxt: 'ex. 5000',
+                keyboardType: TextInputType.number,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Refresh rate is required';
+                  }
+                  final num = int.tryParse(value);
+                  if (num == null || num <= 0) {
+                    return 'Enter a valid positive number';
+                  }
+                  return null;
+                },
+                suffixIcon: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'm/s',
+                      style: context.bodySmall.copyWith(color: AppColor.grey),
+                    ),
+                  ],
+                ),
+                isRequired: true,
               ),
               AppSpacing.lg,
               Button(
                 width: MediaQuery.of(context).size.width,
                 onPressed: _submit,
-                text: widget.id != null ? 'Update' : 'Save',
+                text: widget.deviceId != null && widget.registerId != null
+                    ? 'Update Data'
+                    : 'Save Data',
                 height: 50,
               ),
               AppSpacing.lg,

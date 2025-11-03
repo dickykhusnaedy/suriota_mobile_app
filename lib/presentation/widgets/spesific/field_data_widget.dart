@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_color.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_gap.dart';
-import 'package:suriota_mobile_gateway/core/utils/extensions.dart';
+import 'package:gateway_config/core/constants/app_color.dart';
+import 'package:gateway_config/core/constants/app_gap.dart';
+import 'package:gateway_config/core/utils/extensions.dart';
 
 class FieldDataWidget extends StatelessWidget {
   final String label;
   final String description;
 
-  const FieldDataWidget(
-      {super.key, required this.label, required this.description});
+  const FieldDataWidget({
+    super.key,
+    required this.label,
+    required this.description,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -17,7 +20,7 @@ class FieldDataWidget extends StatelessWidget {
       children: [
         Text(label, style: context.h6.copyWith(color: AppColor.blackColor)),
         AppSpacing.sm,
-        Text(description, style: context.body.copyWith(color: AppColor.grey))
+        Text(description, style: context.body.copyWith(color: AppColor.grey)),
       ],
     );
   }

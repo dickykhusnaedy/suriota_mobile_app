@@ -4,10 +4,10 @@ project(runner LANGUAGES CXX)
 
 # The name of the executable created for the application. Change this to change
 # the on-disk name of your application.
-set(BINARY_NAME "suriota_mobile_gateway")
+set(BINARY_NAME "gateway_config")
 # The unique GTK application identifier for this application. See:
 # https://wiki.gnome.org/HowDoI/ChooseApplicationID
-set(APPLICATION_ID "com.suriota.gateway_configsuriota_mobile_gateway")
+set(APPLICATION_ID "com.suriota.gateway_configgateway_config")
 
 # Explicitly opt in to modern CMake behaviors to avoid warnings with recent
 # versions of CMake.

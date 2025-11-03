@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_color.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_gap.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_font.dart';
-import 'package:suriota_mobile_gateway/core/utils/extensions.dart';
+import 'package:gateway_config/core/constants/app_color.dart';
+import 'package:gateway_config/core/constants/app_gap.dart';
+import 'package:gateway_config/core/constants/app_font.dart';
+import 'package:gateway_config/core/utils/extensions.dart';
 
 class CustomTextFormField extends StatelessWidget {
   final TextEditingController? controller;
@@ -20,24 +20,27 @@ class CustomTextFormField extends StatelessWidget {
   final EdgeInsetsGeometry padding;
   final TextInputType? keyboardType;
   final bool? obscureText;
+  final bool isRequired;
 
-  const CustomTextFormField(
-      {super.key,
-      this.labelTxt,
-      this.hintTxt = "",
-      this.labelTxtStyle,
-      this.hintTxtStyle,
-      this.suffixIcon,
-      this.prefixIcon,
-      this.errorTxt,
-      this.padding = const EdgeInsets.only(top: 4, bottom: 6),
-      this.controller,
-      this.validator,
-      this.readOnly = false,
-      this.onTap,
-      this.onChanges,
-      this.keyboardType,
-      this.obscureText});
+  const CustomTextFormField({
+    super.key,
+    this.labelTxt,
+    this.hintTxt = "",
+    this.labelTxtStyle,
+    this.hintTxtStyle,
+    this.suffixIcon,
+    this.prefixIcon,
+    this.errorTxt,
+    this.padding = const EdgeInsets.only(top: 4, bottom: 6),
+    this.controller,
+    this.validator,
+    this.readOnly = false,
+    this.onTap,
+    this.onChanges,
+    this.keyboardType,
+    this.obscureText,
+    this.isRequired = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -46,12 +49,29 @@ class CustomTextFormField extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         if (labelTxt != null)
-          Text(
-            labelTxt!,
-            style: labelTxtStyle ??
-                context.h6.copyWith(fontWeight: FontWeightTheme.bold),
+          Column(
+            children: [
+              Row(
+                children: [
+                  Text(
+                    labelTxt!,
+                    style:
+                        labelTxtStyle ??
+                        context.h6.copyWith(fontWeight: FontWeightTheme.bold),
+                  ),
+                  AppSpacing.xs,
+                  if (isRequired)
+                    Text(
+                      '*',
+                      style: context.buttonTextSmallest.copyWith(
+                        color: Colors.red,
+                      ),
+                    ),
+                ],
+              ),
+              AppSpacing.sm,
+            ],
           ),
-        AppSpacing.sm,
         TextFormField(
           obscureText: obscureText ?? false,
           keyboardType: keyboardType,
@@ -67,7 +87,7 @@ class CustomTextFormField extends StatelessWidget {
             fillColor: readOnly ? Colors.grey[200] : Colors.white,
             floatingLabelBehavior: FloatingLabelBehavior.always,
             alignLabelWithHint: false,
-            contentPadding: AppPadding.horizontalMedium,
+            contentPadding: AppPadding.small,
             hintText: hintTxt,
             hintStyle:
                 hintTxtStyle ?? context.body.copyWith(color: AppColor.grey),
@@ -87,34 +107,22 @@ class CustomTextFormField extends StatelessWidget {
   }
 
   OutlineInputBorder get borderStyle => OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(
-          color: AppColor.primaryColor,
-          width: 1,
-        ),
-      );
+    borderRadius: BorderRadius.circular(12),
+    borderSide: const BorderSide(color: AppColor.lightGrey, width: 1),
+  );
 
   OutlineInputBorder get focusedBorder => OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(
-          color: AppColor.primaryColor,
-          width: 2,
-        ),
-      );
+    borderRadius: BorderRadius.circular(12),
+    borderSide: const BorderSide(color: AppColor.primaryColor, width: 1),
+  );
 
   OutlineInputBorder get errorBorder => OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(
-          color: Colors.red,
-          width: 1,
-        ),
-      );
+    borderRadius: BorderRadius.circular(12),
+    borderSide: const BorderSide(color: Colors.red, width: 1),
+  );
 
   OutlineInputBorder get focusedErrorBorder => OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(
-          color: Colors.red,
-          width: 2,
-        ),
-      );
+    borderRadius: BorderRadius.circular(12),
+    borderSide: const BorderSide(color: Colors.red, width: 1),
+  );
 }

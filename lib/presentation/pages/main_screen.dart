@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_color.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_font.dart';
-import 'package:suriota_mobile_gateway/presentation/pages/sidebar_menu/about_us_page.dart';
-import 'package:suriota_mobile_gateway/presentation/pages/home/home_screen.dart';
-import 'package:suriota_mobile_gateway/presentation/pages/login/login_page.dart';
+import 'package:gateway_config/core/constants/app_color.dart';
+import 'package:gateway_config/core/constants/app_font.dart';
+import 'package:gateway_config/presentation/pages/sidebar_menu/about_us_page.dart';
+import 'package:gateway_config/presentation/pages/home/home_screen.dart';
+import 'package:gateway_config/presentation/pages/login/login_page.dart';
 import '../../core/constants/app_image_assets.dart';
 import 'sidebar_menu/profile.dart';
 
@@ -45,21 +45,16 @@ class _MainScreenState extends State<MainScreen> {
               Center(
                 child: Text(
                   'Fulan bin Fulan',
-                  style: FontFamily.headlineLarge
-                      .copyWith(color: AppColor.blackColor),
+                  style: FontFamily.headlineLarge.copyWith(
+                    color: AppColor.blackColor,
+                  ),
                 ),
               ),
               const SizedBox(height: 100),
               ListTile(
                 selected: bottomSelectedIndex == 0,
-                leading: const Icon(
-                  Icons.home,
-                  color: AppColor.primaryColor,
-                ),
-                title: Text(
-                  'Home',
-                  style: FontFamily.normal,
-                ),
+                leading: const Icon(Icons.home, color: AppColor.primaryColor),
+                title: Text('Home', style: FontFamily.normal),
                 onTap: () {
                   onItemTapped(0);
                   Navigator.pop(context); // Menutup drawer setelah tap
@@ -67,14 +62,8 @@ class _MainScreenState extends State<MainScreen> {
               ),
               ListTile(
                 selected: bottomSelectedIndex == 1,
-                leading: const Icon(
-                  Icons.person,
-                  color: AppColor.primaryColor,
-                ),
-                title: Text(
-                  'Profile',
-                  style: FontFamily.normal,
-                ),
+                leading: const Icon(Icons.person, color: AppColor.primaryColor),
+                title: Text('Profile', style: FontFamily.normal),
                 onTap: () {
                   onItemTapped(1);
                   Navigator.pop(context); // Menutup drawer setelah tap
@@ -82,33 +71,19 @@ class _MainScreenState extends State<MainScreen> {
               ),
               ListTile(
                 selected: bottomSelectedIndex == 2,
-                leading: const Icon(
-                  Icons.info,
-                  color: AppColor.primaryColor,
-                ),
-                title: Text(
-                  'About Product',
-                  style: FontFamily.normal,
-                ),
+                leading: const Icon(Icons.info, color: AppColor.primaryColor),
+                title: Text('About Product', style: FontFamily.normal),
                 onTap: () {
                   onItemTapped(2);
                   Navigator.pop(context); // Menutup drawer setelah tap
                 },
               ),
               ListTile(
-                leading: const Icon(
-                  Icons.logout,
-                  color: AppColor.primaryColor,
-                ),
-                title: Text(
-                  'Log Out',
-                  style: FontFamily.normal,
-                ),
+                leading: const Icon(Icons.logout, color: AppColor.primaryColor),
+                title: Text('Log Out', style: FontFamily.normal),
                 onTap: () {
                   Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(
-                      builder: (context) => const LoginPage(),
-                    ),
+                    MaterialPageRoute(builder: (context) => const LoginPage()),
                     (Route<dynamic> route) => false,
                   );
                 },
@@ -119,11 +94,7 @@ class _MainScreenState extends State<MainScreen> {
       ),
       body: IndexedStack(
         index: bottomSelectedIndex,
-        children: const [
-          HomeScreen(),
-          ProfilePage(),
-          AboutUsPage(),
-        ],
+        children: const [HomeScreen(), ProfilePage(), AboutUsPage()],
       ),
     );
   }

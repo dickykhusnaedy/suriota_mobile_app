@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_color.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_gap.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_image_assets.dart';
-import 'package:suriota_mobile_gateway/core/utils/app_helpers.dart';
-import 'package:suriota_mobile_gateway/core/utils/extensions.dart';
-import 'package:suriota_mobile_gateway/presentation/widgets/common/custom_button.dart';
+import 'package:gateway_config/core/constants/app_color.dart';
+import 'package:gateway_config/core/constants/app_gap.dart';
+import 'package:gateway_config/core/constants/app_image_assets.dart';
+import 'package:gateway_config/core/utils/app_helpers.dart';
+import 'package:gateway_config/core/utils/extensions.dart';
+import 'package:gateway_config/presentation/widgets/common/custom_button.dart';
 
 class AboutUsPage extends StatelessWidget {
   const AboutUsPage({super.key});
@@ -75,16 +75,18 @@ class AboutUsPage extends StatelessWidget {
                       Text(
                         '•',
                         textAlign: TextAlign.left,
-                        style:
-                            context.body.copyWith(color: AppColor.blackColor),
+                        style: context.body.copyWith(
+                          color: AppColor.blackColor,
+                        ),
                       ),
                       AppSpacing.sm,
                       Expanded(
                         child: Text(
                           'Easy No-Code Configuration\nConfigure Modbus register mapping without coding, directly transforming raw data into structured formats like JSON or customized MQTT topics.',
                           textAlign: TextAlign.left,
-                          style:
-                              context.body.copyWith(color: AppColor.blackColor),
+                          style: context.body.copyWith(
+                            color: AppColor.blackColor,
+                          ),
                         ),
                       ),
                     ],
@@ -96,16 +98,18 @@ class AboutUsPage extends StatelessWidget {
                       Text(
                         '•',
                         textAlign: TextAlign.left,
-                        style:
-                            context.body.copyWith(color: AppColor.blackColor),
+                        style: context.body.copyWith(
+                          color: AppColor.blackColor,
+                        ),
                       ),
                       AppSpacing.sm,
                       Expanded(
                         child: Text(
                           'Real-Time Monitoring\nMonitor operational data such as machine RPM, pressure readings, or equipment status directly through intuitive dashboards or IoT platforms.',
                           textAlign: TextAlign.left,
-                          style:
-                              context.body.copyWith(color: AppColor.blackColor),
+                          style: context.body.copyWith(
+                            color: AppColor.blackColor,
+                          ),
                         ),
                       ),
                     ],
@@ -117,16 +121,18 @@ class AboutUsPage extends StatelessWidget {
                       Text(
                         '•',
                         textAlign: TextAlign.left,
-                        style:
-                            context.body.copyWith(color: AppColor.blackColor),
+                        style: context.body.copyWith(
+                          color: AppColor.blackColor,
+                        ),
                       ),
                       AppSpacing.sm,
                       Expanded(
                         child: Text(
                           'Dual & Reliable Connectivity\nEquipped with WiFi (2.4 GHz) and Ethernet (10/100 Mbps) featuring auto-failover for uninterrupted connection.',
                           textAlign: TextAlign.left,
-                          style:
-                              context.body.copyWith(color: AppColor.blackColor),
+                          style: context.body.copyWith(
+                            color: AppColor.blackColor,
+                          ),
                         ),
                       ),
                     ],
@@ -138,16 +144,18 @@ class AboutUsPage extends StatelessWidget {
                       Text(
                         '•',
                         textAlign: TextAlign.left,
-                        style:
-                            context.body.copyWith(color: AppColor.blackColor),
+                        style: context.body.copyWith(
+                          color: AppColor.blackColor,
+                        ),
                       ),
                       AppSpacing.sm,
                       Expanded(
                         child: Text(
                           'Multi-Protocol Support\nConverts between Modbus RTU (RS-485), Modbus TCP/IP, MQTT, and HTTP.',
                           textAlign: TextAlign.left,
-                          style:
-                              context.body.copyWith(color: AppColor.blackColor),
+                          style: context.body.copyWith(
+                            color: AppColor.blackColor,
+                          ),
                         ),
                       ),
                     ],
@@ -159,16 +167,18 @@ class AboutUsPage extends StatelessWidget {
                       Text(
                         '•',
                         textAlign: TextAlign.left,
-                        style:
-                            context.body.copyWith(color: AppColor.blackColor),
+                        style: context.body.copyWith(
+                          color: AppColor.blackColor,
+                        ),
                       ),
                       AppSpacing.sm,
                       Expanded(
                         child: Text(
                           'Designed for Industrial Environments\nWith a wide operating temperature range (-40°C to 75°C) and 2 kV isolation protection on RS-485 ports, this gateway is robust for harsh environments.',
                           textAlign: TextAlign.left,
-                          style:
-                              context.body.copyWith(color: AppColor.blackColor),
+                          style: context.body.copyWith(
+                            color: AppColor.blackColor,
+                          ),
                         ),
                       ),
                     ],
@@ -180,16 +190,18 @@ class AboutUsPage extends StatelessWidget {
                       Text(
                         '•',
                         textAlign: TextAlign.left,
-                        style:
-                            context.body.copyWith(color: AppColor.blackColor),
+                        style: context.body.copyWith(
+                          color: AppColor.blackColor,
+                        ),
                       ),
                       AppSpacing.sm,
                       Expanded(
                         child: Text(
                           'Guaranteed Security\nFeatures TLS/SSL encryption and firewall rules for strong data security.',
                           textAlign: TextAlign.left,
-                          style:
-                              context.body.copyWith(color: AppColor.blackColor),
+                          style: context.body.copyWith(
+                            color: AppColor.blackColor,
+                          ),
                         ),
                       ),
                     ],
@@ -201,16 +213,18 @@ class AboutUsPage extends StatelessWidget {
                       Text(
                         '•',
                         textAlign: TextAlign.left,
-                        style:
-                            context.body.copyWith(color: AppColor.blackColor),
+                        style: context.body.copyWith(
+                          color: AppColor.blackColor,
+                        ),
                       ),
                       AppSpacing.sm,
                       Expanded(
                         child: Text(
                           'Easy Mobile App Configuration\nWirelessly set up and monitor the gateway using the Android/iOS-based Suriota Config app via BLE (Bluetooth Low Energy) connection.',
                           textAlign: TextAlign.left,
-                          style:
-                              context.body.copyWith(color: AppColor.blackColor),
+                          style: context.body.copyWith(
+                            color: AppColor.blackColor,
+                          ),
                         ),
                       ),
                     ],
@@ -222,16 +236,18 @@ class AboutUsPage extends StatelessWidget {
                       Text(
                         '•',
                         textAlign: TextAlign.left,
-                        style:
-                            context.body.copyWith(color: AppColor.blackColor),
+                        style: context.body.copyWith(
+                          color: AppColor.blackColor,
+                        ),
                       ),
                       AppSpacing.sm,
                       Expanded(
                         child: Text(
                           'Local Data Logging\nA MicroSD slot allows local data logging (CSV/JSON) during network outages, ensuring no data is lost.',
                           textAlign: TextAlign.left,
-                          style:
-                              context.body.copyWith(color: AppColor.blackColor),
+                          style: context.body.copyWith(
+                            color: AppColor.blackColor,
+                          ),
                         ),
                       ),
                     ],
@@ -254,16 +270,18 @@ class AboutUsPage extends StatelessWidget {
                       Text(
                         '•',
                         textAlign: TextAlign.left,
-                        style:
-                            context.body.copyWith(color: AppColor.blackColor),
+                        style: context.body.copyWith(
+                          color: AppColor.blackColor,
+                        ),
                       ),
                       AppSpacing.sm,
                       Expanded(
                         child: Text(
                           'CPU\nESPRESSIF',
                           textAlign: TextAlign.left,
-                          style:
-                              context.body.copyWith(color: AppColor.blackColor),
+                          style: context.body.copyWith(
+                            color: AppColor.blackColor,
+                          ),
                         ),
                       ),
                     ],
@@ -275,16 +293,18 @@ class AboutUsPage extends StatelessWidget {
                       Text(
                         '•',
                         textAlign: TextAlign.left,
-                        style:
-                            context.body.copyWith(color: AppColor.blackColor),
+                        style: context.body.copyWith(
+                          color: AppColor.blackColor,
+                        ),
                       ),
                       AppSpacing.sm,
                       Expanded(
                         child: Text(
                           'Wireless Connectivity\nWiFi 2.4 GHz (802.11 b/g/n), Bluetooth 5.0 (BLE) with a range of up to 50m (LOS).',
                           textAlign: TextAlign.left,
-                          style:
-                              context.body.copyWith(color: AppColor.blackColor),
+                          style: context.body.copyWith(
+                            color: AppColor.blackColor,
+                          ),
                         ),
                       ),
                     ],
@@ -296,16 +316,18 @@ class AboutUsPage extends StatelessWidget {
                       Text(
                         '•',
                         textAlign: TextAlign.left,
-                        style:
-                            context.body.copyWith(color: AppColor.blackColor),
+                        style: context.body.copyWith(
+                          color: AppColor.blackColor,
+                        ),
                       ),
                       AppSpacing.sm,
                       Expanded(
                         child: Text(
                           'Ports\n2x Isolated RS-485 (up to 32 devices per port), 1x RJ45 Ethernet 10/100 Mbps.',
                           textAlign: TextAlign.left,
-                          style:
-                              context.body.copyWith(color: AppColor.blackColor),
+                          style: context.body.copyWith(
+                            color: AppColor.blackColor,
+                          ),
                         ),
                       ),
                     ],
@@ -317,16 +339,18 @@ class AboutUsPage extends StatelessWidget {
                       Text(
                         '•',
                         textAlign: TextAlign.left,
-                        style:
-                            context.body.copyWith(color: AppColor.blackColor),
+                        style: context.body.copyWith(
+                          color: AppColor.blackColor,
+                        ),
                       ),
                       AppSpacing.sm,
                       Expanded(
                         child: Text(
                           'Power\nDual DC 12-48VDC inputs for redundancy, PoE option (IEEE 802.3af/at) on specific versions.',
                           textAlign: TextAlign.left,
-                          style:
-                              context.body.copyWith(color: AppColor.blackColor),
+                          style: context.body.copyWith(
+                            color: AppColor.blackColor,
+                          ),
                         ),
                       ),
                     ],
@@ -338,16 +362,18 @@ class AboutUsPage extends StatelessWidget {
                       Text(
                         '•',
                         textAlign: TextAlign.left,
-                        style:
-                            context.body.copyWith(color: AppColor.blackColor),
+                        style: context.body.copyWith(
+                          color: AppColor.blackColor,
+                        ),
                       ),
                       AppSpacing.sm,
                       Expanded(
                         child: Text(
                           'Communication Protocols\nMQTT (ISO/IEC 20922), HTTP/HTTPS, REST API.',
                           textAlign: TextAlign.left,
-                          style:
-                              context.body.copyWith(color: AppColor.blackColor),
+                          style: context.body.copyWith(
+                            color: AppColor.blackColor,
+                          ),
                         ),
                       ),
                     ],
@@ -381,7 +407,8 @@ class AboutUsPage extends StatelessWidget {
                       width: double.infinity,
                       onPressed: () async {
                         final Uri url = Uri.parse(
-                            'https://drive.google.com/drive/folders/12XOl4YRrcpPVdAbYFFdjo-ylfev5Z-Lu?usp=sharing');
+                          'https://drive.google.com/drive/folders/12XOl4YRrcpPVdAbYFFdjo-ylfev5Z-Lu?usp=sharing',
+                        );
                         AppHelpers.launchInBrowser(url);
                       },
                       text: 'Datasheet',

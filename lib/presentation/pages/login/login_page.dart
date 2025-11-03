@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_color.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_gap.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_image_assets.dart';
-import 'package:suriota_mobile_gateway/core/utils/extensions.dart';
-import 'package:suriota_mobile_gateway/presentation/widgets/common/custom_button.dart';
-import 'package:suriota_mobile_gateway/presentation/widgets/common/custom_textfield.dart';
-import 'package:suriota_mobile_gateway/presentation/pages/home/home_screen.dart';
-import 'package:suriota_mobile_gateway/presentation/pages/login/register.dart';
+import 'package:gateway_config/core/constants/app_color.dart';
+import 'package:gateway_config/core/constants/app_gap.dart';
+import 'package:gateway_config/core/constants/app_image_assets.dart';
+import 'package:gateway_config/core/utils/extensions.dart';
+import 'package:gateway_config/presentation/widgets/common/custom_button.dart';
+import 'package:gateway_config/presentation/widgets/common/custom_textfield.dart';
+import 'package:gateway_config/presentation/pages/home/home_screen.dart';
+import 'package:gateway_config/presentation/pages/login/register.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -71,15 +71,9 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
                 AppSpacing.sm,
-                Text(
-                  'Welcome to Suriota Mobile Gateway!',
-                  style: context.h2,
-                ),
+                Text('Welcome to Suriota Mobile Gateway!', style: context.h2),
                 AppSpacing.xs,
-                Text(
-                  'Sign in to continue',
-                  style: context.h6,
-                ),
+                Text('Sign in to continue', style: context.h6),
                 AppSpacing.lg,
                 CustomTextFormField(
                   keyboardType: TextInputType.emailAddress,
@@ -126,7 +120,8 @@ class _LoginPageState extends State<LoginPage> {
                     Navigator.pushAndRemoveUntil(
                       context,
                       MaterialPageRoute(
-                          builder: (context) => const HomeScreen()),
+                        builder: (context) => const HomeScreen(),
+                      ),
                       (Route<dynamic> route) => false,
                     );
                   },
@@ -146,7 +141,8 @@ class _LoginPageState extends State<LoginPage> {
                     Navigator.pushAndRemoveUntil(
                       context,
                       MaterialPageRoute(
-                          builder: (context) => const HomeScreen()),
+                        builder: (context) => const HomeScreen(),
+                      ),
                       (Route<dynamic> route) => false,
                     );
                   },
@@ -159,7 +155,8 @@ class _LoginPageState extends State<LoginPage> {
                     Navigator.pushAndRemoveUntil(
                       context,
                       MaterialPageRoute(
-                          builder: (context) => const RegisterPage()),
+                        builder: (context) => const RegisterPage(),
+                      ),
                       (Route<dynamic> route) => false,
                     );
                   },
@@ -173,8 +170,9 @@ class _LoginPageState extends State<LoginPage> {
                       Text(
                         "Register Here",
                         style: context.bodySmall.copyWith(
-                            color: AppColor.primaryColor,
-                            fontWeight: FontWeight.bold),
+                          color: AppColor.primaryColor,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ],
                   ),

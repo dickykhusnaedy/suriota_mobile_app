@@ -1,29 +1,48 @@
 import 'package:flutter/material.dart';
+import 'package:gateway_config/core/constants/app_color.dart';
+import 'package:gateway_config/core/constants/app_gap.dart';
+import 'package:gateway_config/core/controllers/ble_controller.dart';
+import 'package:gateway_config/core/controllers/devices_controller.dart';
+import 'package:gateway_config/core/controllers/modbus_controller.dart';
+import 'package:gateway_config/core/utils/app_helpers.dart';
+import 'package:gateway_config/core/utils/extensions.dart';
+import 'package:gateway_config/core/utils/loading_progress.dart';
+import 'package:gateway_config/core/utils/snackbar_custom.dart';
+import 'package:gateway_config/models/device_model.dart';
+import 'package:gateway_config/models/dropdown_items.dart';
+import 'package:gateway_config/presentation/widgets/common/custom_alert_dialog.dart';
+import 'package:gateway_config/presentation/widgets/common/custom_button.dart';
+import 'package:gateway_config/presentation/widgets/common/dropdown.dart';
 import 'package:get/get.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_color.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_gap.dart';
-import 'package:suriota_mobile_gateway/core/controllers/ble/ble_controller.dart';
-import 'package:suriota_mobile_gateway/core/controllers/modbus/modbus_pagination_controller.dart';
-import 'package:suriota_mobile_gateway/core/utils/extensions.dart';
-import 'package:suriota_mobile_gateway/core/utils/loading_progress.dart';
-import 'package:suriota_mobile_gateway/presentation/widgets/common/custom_alert_dialog.dart';
-import 'package:suriota_mobile_gateway/presentation/widgets/common/custom_button.dart';
-import 'package:suriota_mobile_gateway/presentation/pages/devices/modbus_config/form_modbus_config_screen.dart';
+import 'package:go_router/go_router.dart';
 
 class ModbusScreen extends StatefulWidget {
-  const ModbusScreen({super.key});
+  const ModbusScreen({super.key, required this.model});
+  final DeviceModel model;
 
   @override
   State<ModbusScreen> createState() => _ModbusScreenState();
 }
 
 class _ModbusScreenState extends State<ModbusScreen> {
-  final BLEController bleController = Get.put(BLEController(), permanent: true);
-  final ModbusPaginationController controller =
-      Get.put(ModbusPaginationController(), permanent: true);
+  final BleController bleController;
+  final DevicesController controller;
+
+  final ModbusController modbusController = Get.put(
+    ModbusController(),
+    permanent: true,
+  );
 
   bool isLoading = false;
   bool isInitialized = false;
+
+  DropdownItems? selectedDevice;
+
+  _ModbusScreenState()
+    : bleController = Get.put(BleController(), permanent: true),
+      controller = Get.put(DevicesController(), permanent: true) {
+    debugPrint('Initialized BleController and DeviceController with Get.put');
+  }
 
   @override
   void initState() {
@@ -35,7 +54,9 @@ class _ModbusScreenState extends State<ModbusScreen> {
     super.didChangeDependencies();
     if (!isInitialized) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _fetchDataModbus();
+        modbusController.dataModbus.clear();
+
+        controller.fetchDevices(widget.model);
         isInitialized = true;
       });
     }
@@ -47,61 +68,55 @@ class _ModbusScreenState extends State<ModbusScreen> {
     super.dispose();
   }
 
-  void _fetchDataModbus() async {
-    if (isLoading) {
-      debugPrint('Fetch devices skipped: already loading');
-      return;
-    }
-
-    setState(() => isLoading = true);
-
-    try {
-      // Periksa koneksi BLE
-      if (bleController.isConnected.isEmpty ||
-          !bleController.isConnected.values.any((connected) => connected)) {
-        Get.snackbar('Error', 'No BLE device connected');
-        setState(() => isLoading = false);
-        return;
-      }
-
-      bleController.sendCommand('READ|modbus|page:1|pageSize:2', 'modbus');
-    } catch (e) {
-      debugPrint('Error fetching devices: $e');
-      Get.snackbar('Error', 'Failed to fetch devices: $e');
-    } finally {
-      setState(() => isLoading = false);
-    }
-  }
-
-  void _deleteConfigModbus(int modbusId) async {
-    if (bleController.isConnected.isEmpty ||
-        !bleController.isConnected.values.any((connected) => connected)) {
-      Get.snackbar('Error', 'No BLE device connected');
+  void _deleteDataModbus(String deviceId, String registerId) async {
+    AppHelpers.debugLog(
+      'delete data device $deviceId dan register $registerId',
+    );
+    if (!widget.model.isConnected.value) {
+      SnackbarCustom.showSnackbar(
+        '',
+        'Device not connected',
+        AppColor.redColor,
+        AppColor.whiteColor,
+      );
       return;
     }
 
     CustomAlertDialog.show(
       title: "Are you sure?",
-      message: "Are you sure you want to delete this config?",
+      message: "Are you sure you want to delete this device?",
       primaryButtonText: 'Yes',
       secondaryButtonText: 'No',
       onPrimaryPressed: () async {
-        setState(() => isLoading = true);
-
         Get.back();
-        await Future.delayed(const Duration(seconds: 1));
+        modbusController.isFetching.value = true;
 
         try {
-          bleController.sendCommand('DELETE|modbus|id:$modbusId', 'modbus');
+          await modbusController.deleteDevice(
+            widget.model,
+            deviceId,
+            registerId,
+          );
+
+          if (Get.context != null) {
+            SnackbarCustom.showSnackbar(
+              '',
+              'Modbus config deleted successfully, refreshing data...',
+              Colors.green,
+              AppColor.whiteColor,
+            );
+          }
+
+          await modbusController.fetchDevices(widget.model, deviceId);
         } catch (e) {
-          debugPrint('Error deleting config modbus: $e');
-
-          Get.snackbar('Error', 'Failed to delete device: $e');
+          SnackbarCustom.showSnackbar(
+            '',
+            'Failed to delete modbus config',
+            AppColor.redColor,
+            AppColor.whiteColor,
+          );
         } finally {
-          await Future.delayed(const Duration(milliseconds: 3000));
-          bleController.sendCommand('READ|modbus|page:1|pageSize:2', 'modbus');
-
-          setState(() => isLoading = false);
+          modbusController.isFetching.value = false;
         }
       },
       barrierDismissible: false,
@@ -117,9 +132,15 @@ class _ModbusScreenState extends State<ModbusScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'No modbus found.',
+              'Oops!... \nNo Modbus configuration found.',
               textAlign: TextAlign.center,
-              style: context.body.copyWith(color: AppColor.grey),
+              style: context.buttonText.copyWith(color: AppColor.blackColor),
+            ),
+            AppSpacing.xs,
+            Text(
+              'Please create or select one of device to continue.',
+              textAlign: TextAlign.center,
+              style: context.bodySmall.copyWith(color: AppColor.grey),
             ),
           ],
         ),
@@ -129,6 +150,15 @@ class _ModbusScreenState extends State<ModbusScreen> {
 
   @override
   Widget build(BuildContext context) {
+    List<DropdownItems> deviceItem = controller.dataDevices
+        .map(
+          (data) => DropdownItems(
+            text: data['device_name'],
+            value: data['device_id'],
+          ),
+        )
+        .toList();
+
     return Scaffold(
       appBar: _appBar(context),
       body: SafeArea(
@@ -142,16 +172,13 @@ class _ModbusScreenState extends State<ModbusScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Data Modbus',
+                    'Choose Device',
                     style: context.h5,
                     overflow: TextOverflow.ellipsis,
                   ),
                   TextButton.icon(
-                    onPressed: _fetchDataModbus,
-                    label: const Icon(
-                      Icons.rotate_left,
-                      size: 20,
-                    ),
+                    onPressed: () => controller.fetchDevices(widget.model),
+                    label: const Icon(Icons.rotate_left, size: 20),
                     style: TextButton.styleFrom(
                       iconColor: AppColor.primaryColor,
                       padding: EdgeInsets.zero,
@@ -163,40 +190,70 @@ class _ModbusScreenState extends State<ModbusScreen> {
               ),
               AppSpacing.sm,
               Obx(() {
-                if (isLoading || bleController.isLoading.value) {
-                  return LoadingProgress(
-                    receivedPackets: bleController.receivedPackets,
-                    expectedPackets: bleController.expectedPackets,
-                  );
+                if (controller.isFetching.value) {
+                  return LoadingProgress();
                 }
 
-                if (controller.modbus.isEmpty) {
+                if (controller.dataDevices.isEmpty) {
                   return _emptyView(context);
                 }
 
-                return ListView.separated(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: controller.modbus.length,
-                    separatorBuilder: (context, index) => AppSpacing.md,
-                    itemBuilder: (context, int index) {
-                      final item = controller.modbus[index];
-
-                      return cardDataConfig(item, index);
+                return Dropdown(
+                  items: deviceItem,
+                  selectedValue: selectedDevice?.value,
+                  onChanged: (item) {
+                    modbusController.fetchDevices(widget.model, item!.value);
+                    setState(() {
+                      selectedDevice = item;
                     });
+                  },
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please select an device';
+                    }
+                    return null;
+                  },
+                  isRequired: true,
+                );
               }),
               AppSpacing.md,
               Obx(() {
-                if (controller.modbus.isNotEmpty &&
-                    !bleController.isLoading.value) {
-                  return Center(
-                    child: Text(
-                      'Showing ${controller.totalRecords.value} entries',
-                      style: context.bodySmall,
-                    ),
-                  );
+                if (modbusController.isFetching.value) {
+                  return LoadingProgress();
                 }
-                return const SizedBox.shrink();
+
+                if (modbusController.dataModbus.isEmpty) {
+                  return _emptyView(context);
+                }
+
+                return Column(
+                  children: [
+                    ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: modbusController.dataModbus.length,
+                      separatorBuilder: (context, index) => AppSpacing.md,
+                      itemBuilder: (context, int index) {
+                        final item = modbusController.dataModbus[index];
+
+                        return cardDataConfig(item, index);
+                      },
+                    ),
+                    AppSpacing.md,
+                    Obx(() {
+                      if (modbusController.dataModbus.isNotEmpty &&
+                          !bleController.isLoading.value) {
+                        return Center(
+                          child: Text(
+                            'Showing ${modbusController.dataModbus.length} entries',
+                            style: context.bodySmall,
+                          ),
+                        );
+                      }
+                      return const SizedBox.shrink();
+                    }),
+                  ],
+                );
               }),
               AppSpacing.md,
             ],
@@ -217,13 +274,28 @@ class _ModbusScreenState extends State<ModbusScreen> {
       iconTheme: const IconThemeData(color: Colors.white),
       actions: [
         IconButton(
-            onPressed: () {
-              Get.to(() => const FormModbusConfigScreen());
-            },
-            icon: const Icon(
-              Icons.add_circle,
-              size: 22,
-            ))
+          onPressed: () {
+            if (controller.dataDevices.isEmpty) {
+              CustomAlertDialog.show(
+                title: "No Devices Available",
+                message:
+                    "Please add a device or scan device first before adding Modbus configuration.",
+                primaryButtonText: 'OK',
+                onPrimaryPressed: () {
+                  Get.back();
+                },
+                barrierDismissible: false,
+              );
+
+              return;
+            }
+
+            context.push(
+              '/devices/modbus-config/add?d=${widget.model.device.remoteId}',
+            );
+          },
+          icon: const Icon(Icons.add_circle, size: 22),
+        ),
       ],
     );
   }
@@ -238,30 +310,9 @@ class _ModbusScreenState extends State<ModbusScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              modbus['name'],
-              style: context.h5,
-            ),
-            AppSpacing.sm,
-            Text(
-              'Devices : ${modbus['device_choose']}',
-              style: context.bodySmall,
-            ),
-            AppSpacing.sm,
-            Text(
-              'Slave ID : ${modbus['id']}',
-              style: context.bodySmall,
-            ),
+            Text(modbus['register_name'], style: context.h5),
             AppSpacing.xs,
-            Text(
-              'Address : ${modbus['address']}',
-              style: context.bodySmall,
-            ),
-            AppSpacing.xs,
-            Text(
-              'Function : ${modbus['function_code']}',
-              style: context.bodySmall,
-            ),
+            Text('Address : ${modbus['address']}', style: context.bodySmall),
             AppSpacing.xs,
             Text(
               'Data Type : ${modbus['data_type']}',
@@ -277,7 +328,12 @@ class _ModbusScreenState extends State<ModbusScreen> {
                   child: Button(
                     width: double.infinity,
                     height: 32,
-                    onPressed: () => _deleteConfigModbus(modbus['id']),
+                    onPressed: selectedDevice != null
+                        ? () => _deleteDataModbus(
+                            selectedDevice!.value,
+                            modbus['register_id'],
+                          )
+                        : null,
                     icons: const Icon(
                       Icons.delete,
                       size: 18,
@@ -293,7 +349,9 @@ class _ModbusScreenState extends State<ModbusScreen> {
                     width: double.infinity,
                     height: 32,
                     onPressed: () {
-                      Get.to(() => FormModbusConfigScreen(id: modbus['id']));
+                      context.push(
+                        '/devices/modbus-config/edit?d=${widget.model.device.remoteId}&device_id=${selectedDevice!.value}&register_id=${modbus['register_id']}',
+                      );
                     },
                     icons: const Icon(
                       Icons.edit,
@@ -301,9 +359,9 @@ class _ModbusScreenState extends State<ModbusScreen> {
                       color: AppColor.whiteColor,
                     ),
                   ),
-                )
+                ),
               ],
-            )
+            ),
           ],
         ),
       ),

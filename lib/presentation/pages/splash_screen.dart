@@ -1,13 +1,12 @@
 // ignore_for_file: use_build_context_synchronously
 
-import 'dart:async';
-
 import 'package:flutter/material.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_gap.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_image_assets.dart';
-import 'package:suriota_mobile_gateway/core/utils/extensions.dart';
-import 'package:suriota_mobile_gateway/presentation/pages/home/home_screen.dart';
-import 'package:suriota_mobile_gateway/core/services/bluetooth/bluetooth_permission_service.dart';
+import 'package:flutter/services.dart';
+import 'package:gateway_config/core/constants/app_gap.dart';
+import 'package:gateway_config/core/constants/app_image_assets.dart';
+import 'package:gateway_config/core/services/bluetooth/bluetooth_permission_service.dart';
+import 'package:gateway_config/core/utils/extensions.dart';
+import 'package:go_router/go_router.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -26,23 +25,33 @@ class _SplashScreenState extends State<SplashScreen> {
 
   Future<void> _handleStartup() async {
     await Future.delayed(const Duration(seconds: 3));
+    if (!mounted) return;
 
     bool permissionGranted =
         await BluetoothPermissionService.checkAndRequestPermissions(context);
 
-    if (permissionGranted && context.mounted) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
-      );
+    if (mounted) {
+      if (permissionGranted) {
+        context.go('/');
+      } else {
+        context.go('/permission-denied');
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(children: [
-        Center(
+      body: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle(
+          statusBarColor: Colors.white, // Latar belakang status bar transparan
+          statusBarIconBrightness:
+              Brightness.dark, // Warna ikon status bar (misal: putih)
+          statusBarBrightness: Brightness.dark, // Kecerahan status bar
+          systemNavigationBarColor: Colors.black, // Warna navigasi bar
+          systemNavigationBarIconBrightness: Brightness.dark,
+        ),
+        child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -54,15 +63,12 @@ class _SplashScreenState extends State<SplashScreen> {
                   height: 200,
                 ),
               ),
-              Text(
-                "v1.0.0",
-                style: context.bodySmall,
-              ),
+              Text("v1.0.0", style: context.bodySmall),
               AppSpacing.lg,
             ],
           ),
         ),
-      ]),
+      ),
     );
   }
 }

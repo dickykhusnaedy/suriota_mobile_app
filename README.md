@@ -49,12 +49,16 @@ Gateway Config App is a **mobile** application built with Flutter, designed to h
 
 ```
 lib/
-├─ controller/                  # Logic controllers
-├─ core/                        # Constants, helpers, etc.
-├─ models/                      # Data models
-├─ presentation/                # UI and navigation
+├─ core/                            # Constants, controller, etc.
+|  ├─ constants
+|  ├─ controller
+|  ├─ router
+|  ├─ services
+|  └─ utils
+├─ models/                          # Data models
+├─ presentation/                    # UI and navigation
 │  ├─ pages/
-│  │  ├─ devices/               # Device configuration screens
+│  │  ├─ devices/                   # Device configuration screens
 │  │  │  ├─ device_communication/
 │  │  │  ├─ logging_config/
 │  │  │  ├─ modbus_config/
@@ -66,19 +70,24 @@ lib/
 │  ├─ main_screen.dart
 │  ├─ splash_screen.dart
 ├─ providers/
-├─ widgets/                    # Reusable UI components
+├─ widgets/                         # Reusable UI components
 │  ├─ common/
 │  └─ spesific/
-├─ main.dart                   # Entry point
+├─ main.dart                        # Entry point
 ```
 
-## Contribution
+### Handling Response from Gateway
 
-We welcome contributions! Feel free to open an _issue_ or submit a _pull request_.
+This response is from the app after handling the response from the Modbus Gateway.
 
-1. Fork the repository & create your feature branch (`git checkout -b your-feature`)
-2. Commit your changes (`git commit -m 'Add feature X'`)
-3. Push to your branch (`git push origin your-feature`) and open a PR
+```
+{
+  "status" : "ok",
+  "message": "Successfully get data",
+  "type"   : device,
+  "config" : []
+}
+```
 
 ## License
 

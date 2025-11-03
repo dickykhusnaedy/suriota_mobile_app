@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:suriota_mobile_gateway/core/constants/app_gap.dart';
-import 'package:suriota_mobile_gateway/core/utils/extensions.dart';
+import 'package:gateway_config/core/constants/app_gap.dart';
+import 'package:gateway_config/core/utils/extensions.dart';
 
 import '../../../core/constants/app_color.dart';
 
@@ -27,39 +27,31 @@ class DetailDeviceInfoScreen extends StatelessWidget {
       children: [
         AppSpacing.md,
         ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: 5,
-            separatorBuilder: (context, index) => AppSpacing.sm,
-            itemBuilder: (BuildContext context, int index) {
-              return Card(
-                color: AppColor.cardColor,
-                margin: EdgeInsets.zero,
-                elevation: 0.0,
-                child: Padding(
-                  padding: AppPadding.medium,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Generic Attribute',
-                        style: context.h5,
-                      ),
-                      AppSpacing.xs,
-                      Text(
-                        'UUID : 0X1801',
-                        style: context.bodySmall,
-                      ),
-                      AppSpacing.xs,
-                      Text(
-                        'PRIMARY ACCESS',
-                        style: context.bodySmall,
-                      ),
-                    ],
-                  ),
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: 5,
+          separatorBuilder: (context, index) => AppSpacing.sm,
+          itemBuilder: (BuildContext context, int index) {
+            return Card(
+              color: AppColor.cardColor,
+              margin: EdgeInsets.zero,
+              elevation: 0.0,
+              child: Padding(
+                padding: AppPadding.medium,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Generic Attribute', style: context.h5),
+                    AppSpacing.xs,
+                    Text('UUID : 0X1801', style: context.bodySmall),
+                    AppSpacing.xs,
+                    Text('PRIMARY ACCESS', style: context.bodySmall),
+                  ],
                 ),
-              );
-            }),
+              ),
+            );
+          },
+        ),
         AppSpacing.md,
       ],
     );
