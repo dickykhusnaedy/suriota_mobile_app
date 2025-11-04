@@ -97,8 +97,8 @@ class CardMenu extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Container(
-                  width: 80,
-                  height: 80,
+                  width: 100,
+                  height: 100,
                   decoration: BoxDecoration(
                     color: AppColor.lightPrimaryColor.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(12),
@@ -107,9 +107,10 @@ class CardMenu extends StatelessWidget {
                   child: Image.asset(
                     imagePath!,
                     fit: BoxFit.contain,
+                    cacheWidth: 500,
                   ),
                 ),
-                const SizedBox(height: 12),
+                AppSpacing.sm,
                 Text(
                   text,
                   style: context.body.copyWith(
