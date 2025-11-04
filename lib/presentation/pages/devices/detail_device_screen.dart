@@ -173,7 +173,7 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
                       fit: BoxFit.contain,
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  AppSpacing.md,
                   Flexible(
                     flex: 1,
                     child: Column(
@@ -292,8 +292,8 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
             double cardWidth = (constraints.maxWidth / 2) - 8;
 
             return Wrap(
-              spacing: 10,
-              runSpacing: 10,
+              spacing: 16,
+              runSpacing: 16,
               alignment: WrapAlignment.spaceBetween,
               children: menuItems
                   .map(
