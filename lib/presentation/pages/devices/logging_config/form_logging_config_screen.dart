@@ -8,10 +8,8 @@ import 'package:gateway_config/core/utils/extensions.dart';
 import 'package:gateway_config/core/utils/snackbar_custom.dart';
 import 'package:gateway_config/models/device_model.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_alert_dialog.dart';
-import 'package:gateway_config/presentation/widgets/common/custom_button.dart';
-import 'package:gateway_config/presentation/widgets/common/custom_radiotile.dart';
 import 'package:gateway_config/presentation/widgets/common/loading_overlay.dart';
-import 'package:gateway_config/presentation/widgets/spesific/title_tile.dart';
+import 'package:gateway_config/presentation/widgets/common/reusable_widgets.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
 
@@ -200,86 +198,92 @@ class _FormLoggingConfigScreenState extends State<FormLoggingConfigScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.max,
                 children: [
-                  // AppSpacing.md,
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const TitleTile(
-                        title: 'Choose Logging Retention (w: week, m: month)',
+                  SectionDivider(
+                    title: 'Logging Retention',
+                    icon: Icons.storage,
+                  ),
+                  AppSpacing.xs,
+                  Text(
+                    'w: week, m: month',
+                    style: context.bodySmall.copyWith(color: AppColor.grey),
+                  ),
+                  AppSpacing.sm,
+                  SelectionCard<String>(
+                    items: const [
+                      SelectionCardItem(
+                        value: '1w',
+                        title: '1 Week',
+                        subtitle: 'Keep logs for 1 week',
+                        icon: Icons.calendar_today,
                       ),
-                      AppSpacing.sm,
-                      CustomRadioTile(
-                        value: "1w",
-                        grupValue: loggingRetentionSelected,
-                        onChanges: () {
-                          setState(() {
-                            loggingRetentionSelected = "1w";
-                          });
-                        },
+                      SelectionCardItem(
+                        value: '1m',
+                        title: '1 Month',
+                        subtitle: 'Keep logs for 1 month',
+                        icon: Icons.calendar_month,
                       ),
-                      CustomRadioTile(
-                        value: "1m",
-                        grupValue: loggingRetentionSelected,
-                        onChanges: () {
-                          setState(() {
-                            loggingRetentionSelected = "1m";
-                          });
-                        },
-                      ),
-                      CustomRadioTile(
-                        value: "3m",
-                        grupValue: loggingRetentionSelected,
-                        onChanges: () {
-                          setState(() {
-                            loggingRetentionSelected = "3m";
-                          });
-                        },
+                      SelectionCardItem(
+                        value: '3m',
+                        title: '3 Months',
+                        subtitle: 'Keep logs for 3 months',
+                        icon: Icons.date_range,
                       ),
                     ],
+                    selectedValue: loggingRetentionSelected.isEmpty
+                        ? null
+                        : loggingRetentionSelected,
+                    onChanged: (value) {
+                      setState(() {
+                        loggingRetentionSelected = value;
+                      });
+                    },
                   ),
                   AppSpacing.md,
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const TitleTile(
-                        title: 'Choose Logging Interval (m: minute)',
+                  SectionDivider(
+                    title: 'Logging Interval',
+                    icon: Icons.timer,
+                  ),
+                  AppSpacing.xs,
+                  Text(
+                    'm: minute',
+                    style: context.bodySmall.copyWith(color: AppColor.grey),
+                  ),
+                  AppSpacing.sm,
+                  SelectionCard<String>(
+                    items: const [
+                      SelectionCardItem(
+                        value: '5m',
+                        title: '5 Minutes',
+                        subtitle: 'Log every 5 minutes',
+                        icon: Icons.access_time,
                       ),
-                      AppSpacing.sm,
-                      CustomRadioTile(
-                        value: "5m",
-                        grupValue: loggingIntervalSelected,
-                        onChanges: () {
-                          setState(() {
-                            loggingIntervalSelected = "5m";
-                          });
-                        },
+                      SelectionCardItem(
+                        value: '10m',
+                        title: '10 Minutes',
+                        subtitle: 'Log every 10 minutes',
+                        icon: Icons.schedule,
                       ),
-                      CustomRadioTile(
-                        value: "10m",
-                        grupValue: loggingIntervalSelected,
-                        onChanges: () {
-                          setState(() {
-                            loggingIntervalSelected = "10m";
-                          });
-                        },
-                      ),
-                      CustomRadioTile(
-                        value: "30m",
-                        grupValue: loggingIntervalSelected,
-                        onChanges: () {
-                          setState(() {
-                            loggingIntervalSelected = "30m";
-                          });
-                        },
+                      SelectionCardItem(
+                        value: '30m',
+                        title: '30 Minutes',
+                        subtitle: 'Log every 30 minutes',
+                        icon: Icons.av_timer,
                       ),
                     ],
+                    selectedValue: loggingIntervalSelected.isEmpty
+                        ? null
+                        : loggingIntervalSelected,
+                    onChanged: (value) {
+                      setState(() {
+                        loggingIntervalSelected = value;
+                      });
+                    },
                   ),
                   AppSpacing.lg,
-                  Button(
-                    width: MediaQuery.of(context).size.width,
+                  GradientButton(
+                    text: 'Update Logging Configuration',
+                    icon: Icons.update,
                     onPressed: _submit,
-                    text: 'Update Data',
-                    height: 50,
                   ),
                   AppSpacing.lg,
                 ],

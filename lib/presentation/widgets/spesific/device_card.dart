@@ -75,32 +75,52 @@ class CardMenu extends StatelessWidget {
         onTap: () {
           context.push(page);
         },
-        child: Card(
-          color: AppColor.cardColor,
-          elevation: 0.0,
-          margin: EdgeInsets.zero,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColor.whiteColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: AppColor.primaryColor.withValues(alpha: 0.2),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
           child: Padding(
-            padding: AppPadding.medium,
-            child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SizedBox(
-                    width: 100,
-                    height: 100,
-                    child: Image.asset(
-                      imagePath!,
-                      width: 100,
-                      fit: BoxFit.contain,
-                    ),
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: AppColor.lightPrimaryColor.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  AppSpacing.xs,
-                  Text(text, style: context.body, textAlign: TextAlign.center),
-                ],
-              ),
+                  padding: const EdgeInsets.all(12),
+                  child: Image.asset(
+                    imagePath!,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  text,
+                  style: context.body.copyWith(
+                    color: AppColor.primaryColor,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
           ),
         ),
@@ -129,12 +149,25 @@ class DeviceCard extends StatelessWidget {
   Widget build(BuildContext context) {
     double screenWidth = MediaQuery.of(context).size.width;
 
-    return Card(
-      color: AppColor.lightPrimaryColor,
-      margin: EdgeInsets.zero,
-      elevation: 0.0,
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: AppColor.whiteColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppColor.primaryColor.withValues(alpha: 0.2),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       child: Padding(
-        padding: AppPadding.medium,
+        padding: const EdgeInsets.all(12),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -143,11 +176,18 @@ class DeviceCard extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.start,
                 children: [
-                  Image.asset(
-                    ImageAsset.iconBluetooth,
-                    width: 40,
-                    height: 40,
-                    fit: BoxFit.contain,
+                  Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: AppColor.lightPrimaryColor.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    padding: const EdgeInsets.all(8),
+                    child: Image.asset(
+                      ImageAsset.iconBluetooth,
+                      fit: BoxFit.contain,
+                    ),
                   ),
                   AppSpacing.sm,
                   Flexible(
@@ -157,14 +197,32 @@ class DeviceCard extends StatelessWidget {
                       children: [
                         Text(
                           deviceTitle!,
-                          style: context.h6,
+                          style: context.h6.copyWith(
+                            color: AppColor.primaryColor,
+                            fontWeight: FontWeight.bold,
+                          ),
                           overflow: TextOverflow.ellipsis,
                         ),
                         AppSpacing.xs,
-                        Text(
-                          deviceAddress!,
-                          style: context.bodySmall,
-                          overflow: TextOverflow.ellipsis,
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.fingerprint,
+                              size: 14,
+                              color: AppColor.grey,
+                            ),
+                            AppSpacing.xs,
+                            Expanded(
+                              child: Text(
+                                'ID: $deviceAddress',
+                                style: context.bodySmall.copyWith(
+                                  color: AppColor.grey,
+                                  fontSize: 11,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -182,7 +240,10 @@ class DeviceCard extends StatelessWidget {
                   onPressed: onPressed,
                   text: buttonTitle ?? '',
                   btnColor: colorButton,
-                  customStyle: context.buttonTextSmallest,
+                  customStyle: context.buttonTextSmallest.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: AppColor.whiteColor,
+                  ),
                 ),
               ),
             ),

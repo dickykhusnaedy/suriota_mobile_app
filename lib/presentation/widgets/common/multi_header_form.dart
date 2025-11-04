@@ -3,8 +3,8 @@ import 'package:gateway_config/core/constants/app_color.dart';
 import 'package:gateway_config/core/constants/app_gap.dart';
 import 'package:gateway_config/core/utils/extensions.dart';
 import 'package:gateway_config/core/utils/snackbar_custom.dart';
-import 'package:gateway_config/presentation/widgets/common/custom_button.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_textfield.dart';
+import 'package:gateway_config/presentation/widgets/common/reusable_widgets.dart';
 
 /// Model controller untuk tiap baris header
 class HeaderFieldController {
@@ -106,17 +106,15 @@ class _MultiHeaderFormState extends State<MultiHeaderForm> {
               widget.title,
               style: context.h6.copyWith(fontWeight: FontWeight.w600),
             ),
-            Button(
-              width: 90,
+            CompactIconButton(
+              icon: Icons.add,
+              color: AppColor.primaryColor,
               onPressed: _addRow,
-              text: 'Add Row',
-              height: 30,
-              btnColor: AppColor.primaryColor,
             ),
+            
           ],
         ),
-        const SizedBox(height: 8),
-
+        AppSpacing.xs,
         // Daftar kolom header
         Column(
           children: [
@@ -126,7 +124,7 @@ class _MultiHeaderFormState extends State<MultiHeaderForm> {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // kolom key
+                    // Key column
                     Expanded(
                       flex: 4,
                       child: CustomTextFormField(
@@ -140,7 +138,6 @@ class _MultiHeaderFormState extends State<MultiHeaderForm> {
                             ? 'Column must not empty'
                             : null,
                         onChanges: (_) {
-                          // langsung trigger update biar sinkron
                           setState(() {});
                           widget.onChanged?.call();
                         },
@@ -148,7 +145,7 @@ class _MultiHeaderFormState extends State<MultiHeaderForm> {
                     ),
                     AppSpacing.sm,
 
-                    // kolom value
+                    // Value column
                     Expanded(
                       flex: 5,
                       child: CustomTextFormField(
@@ -169,7 +166,7 @@ class _MultiHeaderFormState extends State<MultiHeaderForm> {
                     ),
                     AppSpacing.sm,
 
-                    // tombol hapus
+                    // Delete button
                     IconButton.filled(
                       style: IconButton.styleFrom(
                         backgroundColor: Colors.red,

@@ -16,7 +16,6 @@ import 'package:gateway_config/presentation/widgets/common/loading_overlay.dart'
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
 
-// ignore: must_be_immutable
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -27,7 +26,10 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final controller = Get.put(BleController());
 
-  bool isLoading = false;
+  @override
+  void dispose() {
+    super.dispose();
+  }
 
   void disconnect(DeviceModel deviceModel) async {
     CustomAlertDialog.show(
@@ -40,24 +42,16 @@ class _HomeScreenState extends State<HomeScreen> {
         Get.back();
         await Future.delayed(Duration.zero);
 
-        setState(() {
-          isLoading = true;
-        });
-
         try {
           await controller.disconnectFromDevice(deviceModel);
         } catch (e) {
           AppHelpers.debugLog('Error disconnecting from device: $e');
-          Get.snackbar(
+          SnackbarCustom.showSnackbar(
             'Error',
             'Failed to disconnect from device',
-            backgroundColor: AppColor.redColor,
-            colorText: AppColor.whiteColor,
+            AppColor.redColor,
+            AppColor.whiteColor,
           );
-        } finally {
-          setState(() {
-            isLoading = false;
-          });
         }
       },
       barrierDismissible: false,
@@ -71,11 +65,11 @@ class _HomeScreenState extends State<HomeScreen> {
     return Stack(
       children: [
         Scaffold(
-          appBar: _appBar(screenWidth),
+          appBar: _buildAppBar(screenWidth),
           body: SafeArea(
             child: SingleChildScrollView(
               padding: AppPadding.screenPadding,
-              child: _homeContent(context),
+              child: _buildHomeContent(),
             ),
           ),
           endDrawer: const SideBarMenu(),
@@ -84,7 +78,7 @@ class _HomeScreenState extends State<HomeScreen> {
               visible: !controller.errorMessage.value.contains(
                 'Bluetooth has been turned off',
               ),
-              child: _floatingButtonCustom(context),
+              child: _buildFloatingButton(),
             );
           }),
         ),
@@ -100,9 +94,9 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  AppBar _appBar(double screenWidth) {
+  AppBar _buildAppBar(double screenWidth) {
     return AppBar(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColor.whiteColor,
       title: SizedBox(
         width: screenWidth * (screenWidth <= 600 ? 0.4 : 0.2),
         child: AspectRatio(
@@ -113,7 +107,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Column _homeContent(BuildContext context) {
+  Widget _buildHomeContent() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -139,73 +133,63 @@ class _HomeScreenState extends State<HomeScreen> {
             return Container(
               height: MediaQuery.of(context).size.height * 0.55,
               alignment: Alignment.center,
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'Bluetooth has been turned off. \nPlease turn it back on to connect to devices.',
-                      textAlign: TextAlign.center,
-                      style: context.body.copyWith(color: AppColor.grey),
-                    ),
-                    AppSpacing.md,
-                    Button(
-                      onPressed: () async {
-                        try {
-                          await AppSettings.openAppSettings(
-                            type: AppSettingsType.bluetooth,
-                          );
-                        } catch (e) {
-                          AppHelpers.debugLog(
-                            'Error opening Bluetooth settings: $e',
-                          );
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Bluetooth has been turned off. \nPlease turn it back on to connect to devices.',
+                    textAlign: TextAlign.center,
+                    style: context.body.copyWith(color: AppColor.grey),
+                  ),
+                  AppSpacing.md,
+                  Button(
+                    onPressed: () async {
+                      try {
+                        await AppSettings.openAppSettings(
+                          type: AppSettingsType.bluetooth,
+                        );
+                      } catch (e) {
+                        AppHelpers.debugLog(
+                          'Error opening Bluetooth settings: $e',
+                        );
 
-                          SnackbarCustom.showSnackbar(
-                            '',
-                            'Could not open settings Bluetooth',
-                            AppColor.redColor,
-                            AppColor.whiteColor,
-                          );
-                        }
-                      },
-                      text: 'Open Settings',
-                      icons: const Icon(
-                        Icons.settings,
-                        color: AppColor.whiteColor,
-                        size: 23,
-                      ),
-                      height: 42,
-                      width: MediaQuery.of(context).size.width * 0.4,
+                        SnackbarCustom.showSnackbar(
+                          '',
+                          'Could not open settings Bluetooth',
+                          AppColor.redColor,
+                          AppColor.whiteColor,
+                        );
+                      }
+                    },
+                    text: 'Open Settings',
+                    icons: const Icon(
+                      Icons.settings,
+                      color: AppColor.whiteColor,
+                      size: 23,
                     ),
-                  ],
-                ),
+                    height: 42,
+                    width: MediaQuery.of(context).size.width * 0.4,
+                  ),
+                ],
               ),
             );
           }
-          // ignore: prefer_is_empty
+
           if (controller.scannedDevices.isEmpty) {
             return Container(
               height: MediaQuery.of(context).size.height * 0.55,
               alignment: Alignment.center,
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'No device found.\nFind devices near you by clicking the (+) button.',
-                      textAlign: TextAlign.center,
-                      style: context.body.copyWith(color: AppColor.grey),
-                    ),
-                  ],
-                ),
+              child: Text(
+                'No device found.\nFind devices near you by clicking the (+) button.',
+                textAlign: TextAlign.center,
+                style: context.body.copyWith(color: AppColor.grey),
               ),
             );
           }
 
-          return ListView.separated(
+          return ListView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            separatorBuilder: (context, index) => AppSpacing.sm,
             itemCount: controller.scannedDevices.length,
             itemBuilder: (context, index) {
               final deviceModel = controller.scannedDevices[index];
@@ -217,9 +201,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   isLoadingConnection: deviceModel.isLoadingConnection.value,
                   onConnect: () async {
                     if (!deviceModel.isConnected.value) {
-                      await controller.connectToDevice(
-                        deviceModel,
-                      ); // Call connectToDevice from BleController
+                      await controller.connectToDevice(deviceModel);
                     }
                   },
                   onDisconnect: () async {
@@ -236,19 +218,19 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Container _floatingButtonCustom(BuildContext context) {
-    return Container(
-      width: 50,
-      height: 50,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppColor.primaryColor,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: InkWell(
-        onTap: () async {
-          context.pushNamed('add-device');
-        },
+  Widget _buildFloatingButton() {
+    return InkWell(
+      onTap: () {
+        context.pushNamed('add-device');
+      },
+      child: Container(
+        width: 50,
+        height: 50,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+        decoration: BoxDecoration(
+          color: AppColor.primaryColor,
+          borderRadius: BorderRadius.circular(10),
+        ),
         child: const Icon(
           Icons.add_circle,
           size: 20,

@@ -11,10 +11,10 @@ import 'package:gateway_config/core/utils/snackbar_custom.dart';
 import 'package:gateway_config/models/device_model.dart';
 import 'package:gateway_config/models/dropdown_items.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_alert_dialog.dart';
-import 'package:gateway_config/presentation/widgets/common/custom_button.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_textfield.dart';
 import 'package:gateway_config/presentation/widgets/common/dropdown.dart';
 import 'package:gateway_config/presentation/widgets/common/loading_overlay.dart';
+import 'package:gateway_config/presentation/widgets/common/reusable_widgets.dart';
 import 'package:get/get.dart';
 
 class FormModbusConfigScreen extends StatefulWidget {
@@ -243,6 +243,11 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               AppSpacing.md,
+              SectionDivider(
+                title: 'Register Information',
+                icon: Icons.info_outline,
+              ),
+              AppSpacing.md,
               CustomTextFormField(
                 controller: deviceNameController,
                 labelTxt: "Data Name",
@@ -273,6 +278,24 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
                 },
                 isRequired: true,
                 isDisabled: widget.registerId != null,
+              ),
+              AppSpacing.md,
+              CustomTextFormField(
+                controller: descriptionController,
+                labelTxt: "Description",
+                hintTxt: "ex. Main Temperature",
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Description is required';
+                  }
+                  return null;
+                },
+                isRequired: true,
+              ),
+              AppSpacing.md,
+              SectionDivider(
+                title: 'Modbus Configuration',
+                icon: Icons.settings_input_component,
               ),
               AppSpacing.md,
               Dropdown(
@@ -329,17 +352,9 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
                 isRequired: true,
               ),
               AppSpacing.md,
-              CustomTextFormField(
-                controller: descriptionController,
-                labelTxt: "Description",
-                hintTxt: "ex. Main Temperature",
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Address Modbus is required';
-                  }
-                  return null;
-                },
-                isRequired: true,
+              SectionDivider(
+                title: 'Polling Settings',
+                icon: Icons.refresh,
               ),
               AppSpacing.md,
               CustomTextFormField(
@@ -369,13 +384,14 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
                 isRequired: true,
               ),
               AppSpacing.lg,
-              Button(
-                width: MediaQuery.of(context).size.width,
-                onPressed: _submit,
+              GradientButton(
                 text: widget.deviceId != null && widget.registerId != null
-                    ? 'Update Data'
-                    : 'Save Data',
-                height: 50,
+                    ? 'Update Register Configuration'
+                    : 'Save Register Configuration',
+                icon: widget.deviceId != null && widget.registerId != null
+                    ? Icons.update
+                    : Icons.save,
+                onPressed: _submit,
               ),
               AppSpacing.lg,
             ],

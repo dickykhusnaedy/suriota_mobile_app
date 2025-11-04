@@ -342,6 +342,10 @@ class BleController extends GetxController {
     commandLoading.value = true;
     commandProgress.value = 0.0;
     lastCommand.value = command; // Cache last command
+
+    // Detect stop command untuk special handling
+    final isStopCommand = command['device_id'] == 'stop';
+
     String jsonStr = jsonEncode(command);
     AppHelpers.debugLog('Full command JSON: $jsonStr');
 
@@ -384,11 +388,35 @@ class BleController extends GetxController {
               final parts = bufferStr.split('<END>');
 
               // Process only FIRST complete segment (before first <END>)
-              if (parts.isNotEmpty && parts[0].trim().isNotEmpty) {
+              if (parts.isNotEmpty) {
                 final firstSegment = parts[0]
                     .replaceAll(RegExp(r'[\x00-\x1F\x7F]'), '')
                     .trim();
 
+                // Special handling untuk stop command - lebih lenient
+                if (isStopCommand) {
+                  // Untuk stop command, accept empty/simple response
+                  if (firstSegment.isEmpty ||
+                      !firstSegment.startsWith('{') &&
+                          !firstSegment.startsWith('[')) {
+                    AppHelpers.debugLog(
+                      'Stop command: accepting simple/empty response',
+                    );
+                    if (!responseCompleter.isCompleted) {
+                      responseCompleter.complete(
+                        CommandResponse(
+                          status: 'ok',
+                          message: 'Stream stopped successfully',
+                          type: command['type'] ?? 'device',
+                        ),
+                      );
+                    }
+                    responseBuffer.clear();
+                    return;
+                  }
+                }
+
+                // Normal validation untuk non-stop command
                 if (firstSegment.isEmpty) {
                   throw Exception('Empty buffer');
                 }
@@ -503,11 +531,25 @@ class BleController extends GetxController {
       currentChunk++;
       commandProgress.value = 1.0;
 
-      // Tunggu response via completer (timeout 15s)
+      // Tunggu response via completer dengan timeout berbeda untuk stop command
+      final timeoutDuration = isStopCommand
+          ? const Duration(seconds: 5)
+          : const Duration(seconds: 15);
+
       final response = await responseCompleter.future.timeout(
-        const Duration(seconds: 15),
+        timeoutDuration,
         onTimeout: () {
-          AppHelpers.debugLog('Response timeout');
+          AppHelpers.debugLog(
+            'Response timeout${isStopCommand ? ' (stop command)' : ''}',
+          );
+          // Untuk stop command, timeout tidak dianggap error
+          if (isStopCommand) {
+            return CommandResponse(
+              status: 'ok',
+              message: 'Stream stopped successfully',
+              type: command['type'] ?? 'device',
+            );
+          }
           return CommandResponse(
             status: 'error',
             message: 'Response timeout',
@@ -517,6 +559,15 @@ class BleController extends GetxController {
       );
 
       if (response == null) {
+        // Untuk stop command, null response dianggap success
+        if (isStopCommand) {
+          AppHelpers.debugLog('Stop command: null response treated as success');
+          return CommandResponse(
+            status: 'ok',
+            message: 'Stream stopped successfully',
+            type: command['type'] ?? 'device',
+          );
+        }
         throw Exception('No response received');
       }
 
@@ -528,6 +579,7 @@ class BleController extends GetxController {
         AppHelpers.debugLog('Empty devices_summary in response');
       }
 
+      AppHelpers.debugLog('Error message.value all: ${response.message}');
       // Save response if success
       if (response.status == 'success' || response.status == 'ok') {
         gatewayDeviceResponses.add(response);
@@ -536,10 +588,11 @@ class BleController extends GetxController {
         );
       } else {
         errorMessage.value = response.message ?? 'Failed to save configuration';
+        AppHelpers.debugLog('Error message.value: ${response.message}');
       }
 
-      // Show feedback
-      if (command['op'] != 'delete') {
+      // Show feedback (skip untuk delete dan stop command)
+      if (command['op'] != 'delete' && !isStopCommand) {
         SnackbarCustom.showSnackbar(
           '',
           response.status == 'success' || response.status == 'ok'
@@ -561,12 +614,27 @@ class BleController extends GetxController {
       errorMessage.value = 'Error sending command: $e';
       commandProgress.value = 0.0;
       AppHelpers.debugLog('Error sending command: $e');
-      SnackbarCustom.showSnackbar(
-        '',
-        errorMessage.value,
-        Colors.red,
-        AppColor.whiteColor,
-      );
+
+      // Skip snackbar error untuk stop command
+      if (!isStopCommand) {
+        SnackbarCustom.showSnackbar(
+          '',
+          errorMessage.value,
+          Colors.red,
+          AppColor.whiteColor,
+        );
+      }
+
+      // Untuk stop command, return success meskipun ada error
+      if (isStopCommand) {
+        AppHelpers.debugLog('Stop command: error ignored, returning success');
+        return CommandResponse(
+          status: 'ok',
+          message: 'Stream stopped successfully',
+          type: command['type'] ?? 'device',
+        );
+      }
+
       return CommandResponse(
         status: 'error',
         message: errorMessage.value,
@@ -1201,11 +1269,18 @@ class BleController extends GetxController {
 
     try {
       await sendCommand(stopCommand);
+
+      // Delay sebelum cancel subscription untuk memastikan device process stop command
+      await Future.delayed(const Duration(milliseconds: 500));
+
       responseSubscription?.cancel();
       streamedData.clear();
       AppHelpers.debugLog('Enhanced streaming stopped');
     } catch (e) {
       AppHelpers.debugLog('Error stopping enhanced stream: $e');
+      // Tetap cancel subscription dan clear data meskipun ada error
+      responseSubscription?.cancel();
+      streamedData.clear();
     }
   }
 

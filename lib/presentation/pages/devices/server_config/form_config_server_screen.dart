@@ -12,12 +12,11 @@ import 'package:gateway_config/core/utils/snackbar_custom.dart';
 import 'package:gateway_config/models/device_model.dart';
 import 'package:gateway_config/models/dropdown_items.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_alert_dialog.dart';
-import 'package:gateway_config/presentation/widgets/common/custom_button.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_textfield.dart';
 import 'package:gateway_config/presentation/widgets/common/dropdown.dart';
 import 'package:gateway_config/presentation/widgets/common/loading_overlay.dart';
 import 'package:gateway_config/presentation/widgets/common/multi_header_form.dart';
-import 'package:gateway_config/presentation/widgets/spesific/title_tile.dart';
+import 'package:gateway_config/presentation/widgets/common/reusable_widgets.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
 
@@ -362,11 +361,10 @@ class _FormConfigServerState extends State<FormConfigServer> {
               AppSpacing.md,
               _httpWrapper(),
               AppSpacing.md,
-              Button(
-                width: MediaQuery.of(context).size.width,
+              GradientButton(
+                text: 'Save Server Configuration',
+                icon: Icons.save,
                 onPressed: _submit,
-                text: 'Save',
-                height: 50,
               ),
               AppSpacing.lg,
             ],
@@ -392,11 +390,7 @@ class _FormConfigServerState extends State<FormConfigServer> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const TitleTile(
-          title: 'Internet',
-          subTitle: 'Configure server connection settings',
-          bgColor: AppColor.lightPrimaryColor,
-        ),
+        SectionDivider(title: 'Internet settings', icon: Icons.info_outline),
         AppSpacing.md,
         Dropdown(
           items: [
@@ -557,10 +551,9 @@ class _FormConfigServerState extends State<FormConfigServer> {
   Column _mqttWrapper() {
     return Column(
       children: [
-        const TitleTile(
-          title: 'Telemetry – MQTT',
-          subTitle: 'Send data using MQTT protocol',
-          bgColor: AppColor.lightPrimaryColor,
+        SectionDivider(
+          title: 'MQTT protocol settings',
+          icon: Icons.info_outline,
         ),
         AppSpacing.md,
         Dropdown(
@@ -671,10 +664,9 @@ class _FormConfigServerState extends State<FormConfigServer> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const TitleTile(
-          title: 'Telemetry – HTTP',
-          subTitle: 'Send data using HTTP protocol',
-          bgColor: AppColor.lightPrimaryColor,
+        SectionDivider(
+          title: 'HTTP protocol settings',
+          icon: Icons.info_outline,
         ),
         AppSpacing.md,
         Dropdown(

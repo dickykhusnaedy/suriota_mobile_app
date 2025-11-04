@@ -5,6 +5,7 @@ import 'package:gateway_config/core/constants/app_image_assets.dart';
 import 'package:gateway_config/core/controllers/ble_controller.dart';
 import 'package:gateway_config/core/utils/app_helpers.dart';
 import 'package:gateway_config/core/utils/extensions.dart';
+import 'package:gateway_config/core/utils/snackbar_custom.dart';
 import 'package:gateway_config/models/device_model.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_alert_dialog.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_button.dart';
@@ -24,8 +25,6 @@ class DetailDeviceScreen extends StatefulWidget {
 class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
   final controller = Get.put(BleController());
 
-  bool isLoading = false;
-
   @override
   void initState() {
     super.initState();
@@ -40,6 +39,11 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
     }
   }
 
+  @override
+  void dispose() {
+    super.dispose();
+  }
+
   void disconnect() async {
     CustomAlertDialog.show(
       title: "Disconnect Device",
@@ -49,9 +53,6 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
       secondaryButtonText: 'No',
       onPrimaryPressed: () async {
         Get.back();
-        setState(() {
-          isLoading = true;
-        });
 
         try {
           await controller.disconnectFromDevice(widget.model);
@@ -70,16 +71,12 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
         } catch (e) {
           AppHelpers.debugLog('Error disconnecting from device: $e');
 
-          Get.snackbar(
+          SnackbarCustom.showSnackbar(
             'Error',
             'Failed to disconnect from device',
-            backgroundColor: AppColor.redColor,
-            colorText: AppColor.whiteColor,
+            AppColor.redColor,
+            AppColor.whiteColor,
           );
-        } finally {
-          setState(() {
-            isLoading = false;
-          });
         }
       },
       barrierDismissible: false,
@@ -91,11 +88,11 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
     return Stack(
       children: [
         Scaffold(
-          appBar: _appBar(context, widget.model.device.platformName),
+          appBar: _buildAppBar(widget.model.device.platformName),
           body: SafeArea(
             child: SingleChildScrollView(
               padding: AppPadding.horizontalMedium,
-              child: _bodyContent(context),
+              child: _buildBodyContent(),
             ),
           ),
         ),
@@ -111,7 +108,7 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
     );
   }
 
-  Column _bodyContent(BuildContext context) {
+  Widget _buildBodyContent() {
     double screenWidth = MediaQuery.of(context).size.width;
 
     final List<Map<String, dynamic>> menuItems = [
@@ -144,42 +141,112 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
         AppSpacing.md,
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Flexible(
               flex: screenWidth <= 600 ? 2 : 3,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Image.asset(
-                    ImageAsset.iconBluetooth,
-                    width: 45,
-                    height: 45,
-                    fit: BoxFit.contain,
+                  Container(
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          AppColor.primaryColor.withValues(alpha: 0.15),
+                          AppColor.lightPrimaryColor.withValues(alpha: 0.25),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: AppColor.primaryColor.withValues(alpha: 0.2),
+                        width: 1.5,
+                      ),
+                    ),
+                    padding: const EdgeInsets.all(12),
+                    child: Image.asset(
+                      ImageAsset.iconBluetooth,
+                      fit: BoxFit.contain,
+                    ),
                   ),
-                  AppSpacing.md,
+                  const SizedBox(width: 16),
                   Flexible(
                     flex: 1,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
                           widget.model.device.platformName.isNotEmpty
                               ? widget.model.device.platformName
                               : 'N/A',
-                          style: context.h4,
+                          style: context.h4.copyWith(
+                            color: AppColor.blackColor,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: -0.5,
+                          ),
                           overflow: TextOverflow.ellipsis,
                         ),
-                        AppSpacing.xs,
-                        Text(
-                          widget.model.device.remoteId.toString(),
-                          style: context.bodySmall,
-                          overflow: TextOverflow.ellipsis,
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.green.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.check_circle,
+                                    size: 12,
+                                    color: Colors.green.shade700,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'BONDED',
+                                    style: context.bodySmall.copyWith(
+                                      color: Colors.green.shade700,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
-                        AppSpacing.xs,
-                        Text(
-                          'BONDED',
-                          style: context.bodySmall,
-                          overflow: TextOverflow.ellipsis,
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.fingerprint,
+                              size: 13,
+                              color: AppColor.grey.withValues(alpha: 0.8),
+                            ),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                widget.model.device.remoteId.toString(),
+                                style: context.bodySmall.copyWith(
+                                  color: AppColor.grey,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -187,12 +254,12 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
                 ],
               ),
             ),
-            AppSpacing.sm,
+            const SizedBox(width: 12),
             Obx(() {
               return Flexible(
                 flex: 1,
                 child: SizedBox(
-                  height: 30,
+                  height: 34,
                   child: Button(
                     width: double.infinity,
                     onPressed: disconnect,
@@ -202,14 +269,22 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
                     btnColor: widget.model.isConnected.value
                         ? AppColor.redColor
                         : AppColor.primaryColor,
-                    customStyle: context.buttonTextSmallest,
+                    customStyle: context.buttonTextSmallest.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               );
             }),
           ],
         ),
-        AppSpacing.xl,
+        AppSpacing.md,
+        Divider(
+          color: AppColor.grey.withValues(alpha: 0.2),
+          thickness: 1,
+          height: 1,
+        ),
+        AppSpacing.md,
         Text('CONFIGURATION MENU', style: context.h4),
         AppSpacing.md,
         LayoutBuilder(
@@ -217,8 +292,8 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
             double cardWidth = (constraints.maxWidth / 2) - 8;
 
             return Wrap(
-              spacing: 16,
-              runSpacing: 16,
+              spacing: 10,
+              runSpacing: 10,
               alignment: WrapAlignment.spaceBetween,
               children: menuItems
                   .map(
@@ -238,7 +313,7 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
     );
   }
 
-  AppBar _appBar(BuildContext context, String title) {
+  AppBar _buildAppBar(String title) {
     return AppBar(
       title: Text(
         'Detail Device',
@@ -247,14 +322,6 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
       backgroundColor: AppColor.primaryColor,
       iconTheme: const IconThemeData(color: AppColor.whiteColor),
       centerTitle: true,
-      actions: [
-        IconButton(
-          onPressed: () {
-            context.push('/devices/info?name=$title');
-          },
-          icon: const Icon(Icons.info),
-        ),
-      ],
     );
   }
 }
