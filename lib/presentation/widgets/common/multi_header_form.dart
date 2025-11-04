@@ -111,6 +111,7 @@ class _MultiHeaderFormState extends State<MultiHeaderForm> {
               color: AppColor.primaryColor,
               onPressed: _addRow,
             ),
+            
           ],
         ),
         AppSpacing.xs,

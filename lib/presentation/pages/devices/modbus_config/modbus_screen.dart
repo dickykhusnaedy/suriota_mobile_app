@@ -363,7 +363,7 @@ class _ModbusScreenState extends State<ModbusScreen> {
                   // Register Name
                   Text(
                     modbus['register_name'] ?? 'Unknown Register',
-                    style: context.h5.copyWith(
+                    style: context.h6.copyWith(
                       color: AppColor.blackColor,
                       fontWeight: FontWeight.bold,
                     ),
