@@ -53,6 +53,12 @@ class _FormConfigServerState extends State<FormConfigServer> {
   String cleanSessionSelected = 'true';
   String useTlsSelected = 'false';
 
+  // MQTT Mode: 'default' or 'customize'
+  String mqttPublishMode = 'default';
+
+  // Custom topics for customize mode
+  List<Map<String, dynamic>> customTopics = [];
+
   // TextEditingControllers
   final ipAddressController = TextEditingController();
   final gatewayController = TextEditingController();
@@ -123,14 +129,24 @@ class _FormConfigServerState extends State<FormConfigServer> {
     clientIdController.text = config['mqtt_config']?['client_id'] ?? '';
     usernameController.text = config['mqtt_config']?['username'] ?? '';
     passwordController.text = config['mqtt_config']?['password'] ?? '';
-    publishTopicController.text = config['mqtt_config']?['topic_publish'] ?? '';
-    subscribeTopicController.text =
-        config['mqtt_config']?['topic_subscribe'] ?? '';
     keepAliveController.text =
         config['mqtt_config']?['keep_alive']?.toString() ?? '';
     cleanSessionSelected = (config['mqtt_config']?['clean_session'] ?? '')
         .toString();
     useTlsSelected = (config['mqtt_config']?['use_tls'] ?? '').toString();
+
+    // MQTT Publish Mode
+    mqttPublishMode = config['mqtt_config']?['publish_mode'] ?? 'default';
+    publishTopicController.text = config['mqtt_config']?['topic_publish'] ?? '';
+    subscribeTopicController.text =
+        config['mqtt_config']?['topic_subscribe'] ?? '';
+
+    // Customize Mode
+    if (config['mqtt_config']?['custom_topics'] != null) {
+      customTopics = List<Map<String, dynamic>>.from(
+        config['mqtt_config']?['custom_topics'] ?? [],
+      );
+    }
 
     // HTTP
     isEnabledHttp = (config['http_config']?['enabled'] ?? '').toString();
@@ -203,7 +219,7 @@ class _FormConfigServerState extends State<FormConfigServer> {
           "unit": selectedIntervalType,
         };
 
-        // MQTT Config
+        // MQTT Config with publish mode
         var mqttConfig = {
           "enabled": isEnabledMqtt == 'true',
           "broker_address": _sanitizeInput(serverNameController.text),
@@ -211,11 +227,21 @@ class _FormConfigServerState extends State<FormConfigServer> {
           "client_id": _sanitizeInput(clientIdController.text),
           "username": _sanitizeInput(usernameController.text),
           "password": _sanitizeInput(passwordController.text),
-          "topic_publish": _sanitizeInput(publishTopicController.text),
-          "topic_subscribe": _sanitizeInput(subscribeTopicController.text),
           "keep_alive": _tryParseInt(keepAliveController.text) ?? 60,
           "clean_session": cleanSessionSelected == 'true',
           "use_tls": useTlsSelected == 'true',
+          "publish_mode": mqttPublishMode,
+          "topic_publish": _sanitizeInput(publishTopicController.text),
+          "topic_subscribe": _sanitizeInput(subscribeTopicController.text),
+          if (mqttPublishMode == 'customize')
+            "custom_topics": customTopics.map((topic) {
+              return {
+                "topic": topic['topic'] ?? '',
+                "registers": topic['registers'] ?? [],
+                "interval": topic['interval'] ?? 5,
+                "interval_unit": topic['interval_unit'] ?? 's',
+              };
+            }).toList(),
         };
 
         var httpConfig = {
@@ -361,6 +387,8 @@ class _FormConfigServerState extends State<FormConfigServer> {
               AppSpacing.md,
               _httpWrapper(),
               AppSpacing.md,
+              _dataInterval(context),
+              AppSpacing.md,
               GradientButton(
                 text: 'Save Server Configuration',
                 icon: Icons.save,
@@ -371,6 +399,37 @@ class _FormConfigServerState extends State<FormConfigServer> {
           ),
         ),
       ),
+    );
+  }
+
+  Column _dataInterval(BuildContext context) {
+    return Column(
+      children: [
+        SectionDivider(title: 'Data Interval Config', icon: Icons.info_outline),
+        AppSpacing.md,
+        CustomTextFormField(
+          controller: intervalTimeController,
+          labelTxt: "Data Interval - Value",
+          hintTxt: "5000",
+          keyboardType: TextInputType.number,
+          validator: (value) =>
+              value == null || value.isEmpty ? 'Value is required' : null,
+        ),
+        AppSpacing.md,
+        Dropdown(
+          label: 'Data Interval - Unit',
+          items: typeInterval,
+          selectedValue: selectedIntervalType,
+          onChanged: (item) =>
+              setState(() => selectedIntervalType = item!.value),
+          isRequired: true,
+        ),
+        AppSpacing.sm,
+        Text(
+          's: seconds, m: minutes, ms: milliseconds',
+          style: context.bodySmall.copyWith(color: AppColor.grey),
+        ),
+      ],
     );
   }
 
@@ -618,20 +677,6 @@ class _FormConfigServerState extends State<FormConfigServer> {
           ),
           AppSpacing.md,
           CustomTextFormField(
-            controller: publishTopicController,
-            labelTxt: "Publish Topic",
-            hintTxt: "data/topic",
-            isRequired: true,
-          ),
-          AppSpacing.md,
-          CustomTextFormField(
-            controller: subscribeTopicController,
-            labelTxt: "Subscribe Topic",
-            hintTxt: "control/topic",
-            isRequired: true,
-          ),
-          AppSpacing.md,
-          CustomTextFormField(
             controller: keepAliveController,
             labelTxt: "Keep Alive (s)",
             hintTxt: "60",
@@ -655,9 +700,352 @@ class _FormConfigServerState extends State<FormConfigServer> {
             onChanged: (item) => setState(() => useTlsSelected = item!.value),
             isRequired: true,
           ),
+          AppSpacing.md,
+          // MQTT Publish Mode Selection
+          _mqttModeSelectionSection(),
+          AppSpacing.sm,
+          // Default Mode Fields
+          if (mqttPublishMode == 'default') _defaultModeFields(),
+          // Customize Mode Fields
+          if (mqttPublishMode == 'customize') _customizeModeFields(),
         ],
       ],
     );
+  }
+
+  // MQTT Mode Selection - Compact Tab Style
+  Widget _mqttModeSelectionSection() {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColor.grey.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      padding: const EdgeInsets.all(4),
+      child: Row(
+        children: [
+          Expanded(
+            child: _compactModeTab(
+              label: 'Default',
+              icon: Icons.layers_outlined,
+              isSelected: mqttPublishMode == 'default',
+              onTap: () => setState(() => mqttPublishMode = 'default'),
+            ),
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: _compactModeTab(
+              label: 'Custom',
+              icon: Icons.tune,
+              isSelected: mqttPublishMode == 'customize',
+              onTap: () => setState(() => mqttPublishMode = 'customize'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _compactModeTab({
+    required String label,
+    required IconData icon,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColor.primaryColor : Colors.transparent,
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 18,
+              color: isSelected ? AppColor.whiteColor : AppColor.grey,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: context.bodySmall.copyWith(
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                color: isSelected ? AppColor.whiteColor : AppColor.grey,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Default Mode Fields - Redesigned
+  Widget _defaultModeFields() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        CustomTextFormField(
+          controller: publishTopicController,
+          labelTxt: "Publish Topic",
+          hintTxt: "v1/devices/me/telemetry",
+          isRequired: true,
+        ),
+        AppSpacing.md,
+        CustomTextFormField(
+          controller: subscribeTopicController,
+          labelTxt: "Subscribe Topic",
+          hintTxt: "device/control (optional)",
+        ),
+      ],
+    );
+  }
+
+  // Customize Mode Fields - Compact
+  Widget _customizeModeFields() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Topics',
+              style: context.body.copyWith(
+                fontWeight: FontWeight.bold,
+                color: AppColor.blackColor,
+              ),
+            ),
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: _addCustomTopic,
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColor.primaryColor,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.add,
+                        size: 16,
+                        color: AppColor.whiteColor,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Add',
+                        style: context.bodySmall.copyWith(
+                          color: AppColor.whiteColor,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        if (customTopics.isEmpty) ...[
+          AppSpacing.sm,
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColor.grey.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: AppColor.grey.withValues(alpha: 0.2),
+                style: BorderStyle.solid,
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline, size: 16, color: AppColor.grey),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'No topics yet. Tap "Add" to create one.',
+                    style: context.bodySmall.copyWith(
+                      color: AppColor.grey,
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+        if (customTopics.isNotEmpty) ...[
+          AppSpacing.sm,
+          ...customTopics.asMap().entries.map((entry) {
+            final index = entry.key;
+            final topic = entry.value;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _customTopicCard(index, topic),
+            );
+          }),
+        ],
+      ],
+    );
+  }
+
+  // Custom Topic Card - Compact
+  Widget _customTopicCard(int index, Map<String, dynamic> topic) {
+    final topicController = TextEditingController(text: topic['topic'] ?? '');
+    final selectedRegisters = List<int>.from(topic['registers'] ?? []);
+
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppColor.whiteColor,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColor.grey.withValues(alpha: 0.25)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Compact Header
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppColor.primaryColor,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  '#${index + 1}',
+                  style: context.bodySmall.copyWith(
+                    color: AppColor.whiteColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 11,
+                  ),
+                ),
+              ),
+              const Spacer(),
+              InkWell(
+                onTap: () => _removeCustomTopic(index),
+                borderRadius: BorderRadius.circular(4),
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: Icon(Icons.close, size: 16, color: AppColor.grey),
+                ),
+              ),
+            ],
+          ),
+          AppSpacing.sm,
+          // Compact Topic Field
+          CustomTextFormField(
+            controller: topicController,
+            labelTxt: "Topic",
+            hintTxt: "e.g., sensor/temp",
+            onChanges: (value) {
+              topic['topic'] = value;
+            },
+          ),
+          AppSpacing.sm,
+          // Compact Register Selection
+          Text(
+            'Registers',
+            style: context.bodySmall.copyWith(
+              fontWeight: FontWeight.w600,
+              fontSize: 11,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 4,
+            runSpacing: 4,
+            children: List.generate(10, (regIndex) {
+              final regNumber = regIndex + 1;
+              final isSelected = selectedRegisters.contains(regNumber);
+              return InkWell(
+                onTap: () {
+                  setState(() {
+                    if (isSelected) {
+                      selectedRegisters.remove(regNumber);
+                    } else {
+                      selectedRegisters.add(regNumber);
+                    }
+                    topic['registers'] = selectedRegisters;
+                  });
+                },
+                borderRadius: BorderRadius.circular(6),
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? AppColor.primaryColor
+                        : AppColor.grey.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: isSelected
+                          ? AppColor.primaryColor
+                          : AppColor.grey.withValues(alpha: 0.25),
+                      width: isSelected ? 1.5 : 1,
+                    ),
+                  ),
+                  child: Center(
+                    child: Text(
+                      '$regNumber',
+                      style: context.bodySmall.copyWith(
+                        color: isSelected
+                            ? AppColor.whiteColor
+                            : AppColor.blackColor,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ),
+          if (selectedRegisters.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              '${selectedRegisters.length} selected',
+              style: context.bodySmall.copyWith(
+                color: AppColor.primaryColor,
+                fontWeight: FontWeight.w600,
+                fontSize: 10,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // Add Custom Topic
+  void _addCustomTopic() {
+    setState(() {
+      customTopics.add({
+        'topic': '',
+        'registers': <int>[],
+        'interval': 5,
+        'interval_unit': 's',
+      });
+    });
+  }
+
+  // Remove Custom Topic
+  void _removeCustomTopic(int index) {
+    setState(() {
+      customTopics.removeAt(index);
+    });
   }
 
   Widget _httpWrapper() {
@@ -681,28 +1069,6 @@ class _FormConfigServerState extends State<FormConfigServer> {
           isRequired: true,
         ),
         AppSpacing.md,
-        CustomTextFormField(
-          controller: intervalTimeController,
-          labelTxt: "Data Interval - Value",
-          hintTxt: "5000",
-          keyboardType: TextInputType.number,
-          validator: (value) =>
-              value == null || value.isEmpty ? 'Value is required' : null,
-        ),
-        AppSpacing.md,
-        Dropdown(
-          label: 'Data Interval - Unit',
-          items: typeInterval,
-          selectedValue: selectedIntervalType,
-          onChanged: (item) =>
-              setState(() => selectedIntervalType = item!.value),
-          isRequired: true,
-        ),
-        AppSpacing.sm,
-        Text(
-          's: seconds, m: minutes, ms: milliseconds',
-          style: context.bodySmall.copyWith(color: AppColor.grey),
-        ),
         if (isEnabledHttp == 'true') ...[
           AppSpacing.md,
           CustomTextFormField(
@@ -752,14 +1118,15 @@ class _FormConfigServerState extends State<FormConfigServer> {
             keyboardType: TextInputType.number,
             hintTxt: "5",
           ),
+          AppSpacing.md,
+          MultiHeaderForm(
+            controllers: headerControllers,
+            title: 'Custom Headers',
+            onChanged: () {
+              setState(() {});
+            },
+          ),
         ],
-        AppSpacing.md,
-        MultiHeaderForm(
-          controllers: headerControllers,
-          onChanged: () {
-            setState(() {});
-          },
-        ),
       ],
     );
   }
