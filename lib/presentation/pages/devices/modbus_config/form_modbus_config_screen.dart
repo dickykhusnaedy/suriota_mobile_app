@@ -51,7 +51,9 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
   final serverPortController = TextEditingController();
   final connectionTimeoutController = TextEditingController();
   final descriptionController = TextEditingController();
-  final refreshRateController = TextEditingController();
+  final scaleController = TextEditingController(text: '1.0');
+  final offsetController = TextEditingController(text: '0.0');
+  final unitController = TextEditingController();
 
   List<DropdownItems> modbusDataTypes = StaticData.dataModbusType
       .map(
@@ -65,7 +67,6 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
 
   String? selectedDevice;
   String? selectedFunction;
-  String? selectedFunctionText;
   String? selectedTypeData;
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
@@ -108,7 +109,9 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
     deviceNameController.text = modbus['register_name'] ?? '';
     addressController.text = modbus['address']?.toString() ?? '';
     descriptionController.text = modbus['description'] ?? '';
-    refreshRateController.text = modbus['refresh_rate_ms']?.toString() ?? '';
+    scaleController.text = modbus['scale']?.toString() ?? '1.0';
+    offsetController.text = modbus['offset']?.toString() ?? '0.0';
+    unitController.text = modbus['unit'] ?? '';
 
     setState(() {});
   }
@@ -116,6 +119,11 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
   int? _tryParseInt(String? value, {int? defaultValue}) {
     if (value == null || value.isEmpty) return defaultValue;
     return int.tryParse(value) ?? defaultValue;
+  }
+
+  double? _tryParseDouble(String? value, {double? defaultValue}) {
+    if (value == null || value.isEmpty) return defaultValue;
+    return double.tryParse(value) ?? defaultValue;
   }
 
   String _sanitizeInput(String input) {
@@ -155,11 +163,15 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
             "config": {
               "address": _tryParseInt(addressController.text),
               "register_name": _sanitizeInput(deviceNameController.text),
-              "type": selectedFunctionText,
               "function_code": _tryParseInt(selectedFunction),
               "data_type": selectedTypeData,
               "description": descriptionController.text,
-              "refresh_rate_ms": _tryParseInt(refreshRateController.text),
+              "scale": _tryParseDouble(scaleController.text, defaultValue: 1.0),
+              "offset": _tryParseDouble(
+                offsetController.text,
+                defaultValue: 0.0,
+              ),
+              "unit": unitController.text.isEmpty ? '' : unitController.text,
             },
           };
 
@@ -191,7 +203,9 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
     deviceNameController.dispose();
     addressController.dispose();
     descriptionController.dispose();
-    refreshRateController.dispose();
+    scaleController.dispose();
+    offsetController.dispose();
+    unitController.dispose();
     isInitialized = false;
     super.dispose();
   }
@@ -290,7 +304,12 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
                   }
                   return null;
                 },
-                isRequired: true,
+              ),
+              AppSpacing.md,
+              CustomTextFormField(
+                controller: unitController,
+                labelTxt: "Unit",
+                hintTxt: "ex. °C, V, A, kW, %, Bar",
               ),
               AppSpacing.md,
               SectionDivider(
@@ -304,8 +323,7 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
                 label: 'Choose Function',
                 onChanged: (item) {
                   setState(() {
-                    selectedFunctionText = item!.text;
-                    selectedFunction = item.value;
+                    selectedFunction = item!.value;
                   });
                 },
                 validator: (value) {
@@ -352,36 +370,76 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
                 isRequired: true,
               ),
               AppSpacing.md,
-              SectionDivider(
-                title: 'Polling Settings',
-                icon: Icons.refresh,
-              ),
+              SectionDivider(title: 'Calibration Settings', icon: Icons.tune),
               AppSpacing.md,
               CustomTextFormField(
-                controller: refreshRateController,
-                labelTxt: 'Refresh Rate',
-                hintTxt: 'ex. 5000',
-                keyboardType: TextInputType.number,
+                controller: scaleController,
+                labelTxt: 'Scale (Multiplier)',
+                hintTxt: 'ex. 1.0',
+                keyboardType: TextInputType.numberWithOptions(decimal: true),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Refresh rate is required';
+                    return 'Scale is required';
                   }
-                  final num = int.tryParse(value);
-                  if (num == null || num <= 0) {
-                    return 'Enter a valid positive number';
+                  final num = double.tryParse(value);
+                  if (num == null) {
+                    return 'Enter a valid number';
                   }
                   return null;
                 },
-                suffixIcon: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      'm/s',
-                      style: context.bodySmall.copyWith(color: AppColor.grey),
-                    ),
-                  ],
+              ),
+              AppSpacing.sm,
+              Padding(
+                padding: AppPadding.horizontalSmall,
+                child: Text(
+                  'Multiplier for calibration (default: 1.0)',
+                  style: context.bodySmall.copyWith(color: AppColor.grey),
                 ),
-                isRequired: true,
+              ),
+              AppSpacing.md,
+              CustomTextFormField(
+                controller: offsetController,
+                labelTxt: 'Offset',
+                hintTxt: 'ex. 0.0',
+                keyboardType: TextInputType.numberWithOptions(decimal: true),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Offset is required';
+                  }
+                  final num = double.tryParse(value);
+                  if (num == null) {
+                    return 'Enter a valid number';
+                  }
+                  return null;
+                },
+              ),
+              AppSpacing.sm,
+              Padding(
+                padding: AppPadding.horizontalSmall,
+                child: Text(
+                  'Offset value after scaling (default: 0.0)',
+                  style: context.bodySmall.copyWith(color: AppColor.grey),
+                ),
+              ),
+              AppSpacing.md,
+              Container(
+                padding: AppPadding.medium,
+                decoration: BoxDecoration(
+                  color: AppColor.primaryColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: AppColor.primaryColor.withValues(alpha: 0.3),
+                    width: 1,
+                  ),
+                ),
+                child: Text(
+                  'final_value = (raw_value × scale) + offset',
+                  style: context.bodySmall.copyWith(
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'monospace',
+                  ),
+                  textAlign: TextAlign.center,
+                ),
               ),
               AppSpacing.lg,
               GradientButton(
