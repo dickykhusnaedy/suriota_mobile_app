@@ -15,11 +15,22 @@ class DevicesController extends GetxController {
 
   final BleController bleController = Get.put(BleController());
 
-  Future<void> fetchDevices(DeviceModel model) async {
+  Future<void> fetchDevices(DeviceModel model, {int retryCount = 0}) async {
     isFetching.value = true;
 
     try {
+      // Retry logic untuk handle timing issue (max 3 retry dengan 500ms delay)
       if (!model.isConnected.value) {
+        if (retryCount < 3) {
+          AppHelpers.debugLog(
+            'Device not connected yet, retrying... (attempt ${retryCount + 1}/3)',
+          );
+          isFetching.value = false;
+          await Future.delayed(const Duration(milliseconds: 500));
+          return fetchDevices(model, retryCount: retryCount + 1);
+        }
+
+        // Setelah 3 retry tetap gagal, tampilkan error
         SnackbarCustom.showSnackbar(
           '',
           'Device not connected',
@@ -28,6 +39,10 @@ class DevicesController extends GetxController {
         );
         return;
       }
+
+      AppHelpers.debugLog(
+        'Fetching devices for ${model.device.remoteId}, isConnected: ${model.isConnected.value}',
+      );
 
       final response = await bleController.readCommandResponse(
         model,
@@ -38,6 +53,10 @@ class DevicesController extends GetxController {
         dataDevices.assignAll(
           (response.config as List<dynamic>?)?.cast<Map<String, dynamic>>() ??
               [],
+        );
+
+        AppHelpers.debugLog(
+          'Devices fetched successfully: ${dataDevices.length} devices found',
         );
       } else {
         SnackbarCustom.showSnackbar(
@@ -63,11 +82,26 @@ class DevicesController extends GetxController {
     }
   }
 
-  Future<void> getDeviceById(DeviceModel model, String deviceId) async {
+  Future<void> getDeviceById(
+    DeviceModel model,
+    String deviceId, {
+    int retryCount = 0,
+  }) async {
     isFetching.value = true;
 
     try {
+      // Retry logic untuk handle timing issue (max 3 retry dengan 500ms delay)
       if (!model.isConnected.value) {
+        if (retryCount < 3) {
+          AppHelpers.debugLog(
+            'Device not connected yet, retrying getDeviceById... (attempt ${retryCount + 1}/3)',
+          );
+          isFetching.value = false;
+          await Future.delayed(const Duration(milliseconds: 500));
+          return getDeviceById(model, deviceId, retryCount: retryCount + 1);
+        }
+
+        // Setelah 3 retry tetap gagal, tampilkan error
         SnackbarCustom.showSnackbar(
           '',
           'Device not connected',
@@ -76,6 +110,10 @@ class DevicesController extends GetxController {
         );
         return;
       }
+
+      AppHelpers.debugLog(
+        'Getting device by ID: $deviceId, isConnected: ${model.isConnected.value}',
+      );
 
       final response = await bleController.readCommandResponse(
         model,
@@ -88,10 +126,19 @@ class DevicesController extends GetxController {
 
         if (config is List) {
           selectedDevice.assignAll(config.cast<Map<String, dynamic>>());
+          AppHelpers.debugLog(
+            'Device fetched successfully: $deviceId (${selectedDevice.length} items)',
+          );
         } else if (config is Map) {
           selectedDevice.assignAll([config.cast<String, dynamic>()]);
+          AppHelpers.debugLog(
+            'Device fetched successfully: $deviceId (1 item)',
+          );
         } else {
           selectedDevice.clear();
+          AppHelpers.debugLog(
+            'Invalid config format for device: $deviceId, type: ${config.runtimeType}',
+          );
           SnackbarCustom.showSnackbar(
             '',
             'Invalid config format',
