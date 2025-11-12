@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:gateway_config/core/constants/app_color.dart';
@@ -9,6 +11,7 @@ import 'package:gateway_config/core/utils/snackbar_custom.dart';
 import 'package:gateway_config/models/device_model.dart';
 import 'package:gateway_config/presentation/pages/devices/widgets/device_list_widget.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_alert_dialog.dart';
+import 'package:gateway_config/presentation/widgets/common/custom_textfield.dart';
 import 'package:gateway_config/presentation/widgets/common/loading_overlay.dart';
 import 'package:gateway_config/presentation/widgets/common/reusable_widgets.dart';
 import 'package:get/get.dart';
@@ -24,15 +27,57 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
   final controller = Get.put(BleController());
   bool isBluetoothOn = false;
 
+  // Search functionality
+  final TextEditingController searchController = TextEditingController();
+  Timer? _searchDebounceTimer;
+
   @override
   void initState() {
     super.initState();
     _checkBluetoothStatus();
+
+    // IMPORTANT: Clear search state saat page dibuka
+    // Ini mencegah search sebelumnya masih tersimpan
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _clearSearch();
+    });
   }
 
   @override
   void dispose() {
+    // Clear search state di controller saat leaving page
+    _clearSearch();
+
+    searchController.dispose();
+    _searchDebounceTimer?.cancel();
     super.dispose();
+  }
+
+  // Debounced search dengan delay 300ms untuk performance
+  void _onSearchChanged(String query) {
+    // Cancel timer sebelumnya jika ada
+    _searchDebounceTimer?.cancel();
+
+    // Buat timer baru dengan delay 300ms
+    _searchDebounceTimer = Timer(const Duration(milliseconds: 300), () {
+      // Jalankan filter setelah delay
+      controller.filterDevices(query);
+      AppHelpers.debugLog('Search executed: "$query"');
+    });
+  }
+
+  // Clear search field dan reset filter
+  void _clearSearch() {
+    // Cancel any pending search debounce
+    _searchDebounceTimer?.cancel();
+
+    // Clear UI controller
+    searchController.clear();
+
+    // Clear BleController search state
+    controller.clearSearch();
+
+    AppHelpers.debugLog('Search cleared');
   }
 
   Future<void> _checkBluetoothStatus() async {
@@ -45,6 +90,8 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
 
   Future<void> _checkBluetoothDevice() async {
     if (isBluetoothOn) {
+      // Clear search saat scan baru dimulai
+      _clearSearch();
       controller.startScan();
     } else {
       SnackbarCustom.showSnackbar(
@@ -199,6 +246,24 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
           AppSpacing.sm,
           Text('Device List', style: context.h4),
           AppSpacing.md,
+          // Search field dengan debouncing
+          CustomTextFormField(
+            controller: searchController,
+            hintTxt: 'Search device by name...',
+            prefixIcon: const Icon(Icons.search, color: AppColor.primaryColor),
+            suffixIcon: Obx(() {
+              // Tampilkan clear button jika ada input
+              if (controller.searchQuery.value.isNotEmpty) {
+                return IconButton(
+                  icon: const Icon(Icons.clear, color: AppColor.grey),
+                  onPressed: _clearSearch,
+                );
+              }
+              return const SizedBox.shrink();
+            }),
+            onChanges: _onSearchChanged,
+          ),
+          AppSpacing.md,
           Obx(() {
             if (controller.scannedDevices.isEmpty) {
               return Container(
@@ -212,12 +277,42 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
               );
             }
 
+            // Gunakan filteredDevices jika ada search query, otherwise gunakan scannedDevices
+            final devicesToShow = controller.searchQuery.value.isEmpty
+                ? controller.scannedDevices
+                : controller.filteredDevices;
+
+            // Tampilkan pesan jika hasil search kosong
+            if (devicesToShow.isEmpty &&
+                controller.searchQuery.value.isNotEmpty) {
+              return Container(
+                height: MediaQuery.of(context).size.height * 0.55,
+                alignment: Alignment.center,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.search_off,
+                      size: 64,
+                      color: AppColor.grey,
+                    ),
+                    AppSpacing.md,
+                    Text(
+                      'No device found for "${controller.searchQuery.value}"',
+                      textAlign: TextAlign.center,
+                      style: context.body.copyWith(color: AppColor.grey),
+                    ),
+                  ],
+                ),
+              );
+            }
+
             return ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: controller.scannedDevices.length,
+              itemCount: devicesToShow.length,
               itemBuilder: (context, index) {
-                final deviceModel = controller.scannedDevices[index];
+                final deviceModel = devicesToShow[index];
 
                 return Obx(() {
                   return DeviceListWidget(
@@ -241,9 +336,23 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
           }),
           AppSpacing.md,
           Obx(() {
+            final totalDevices = controller.scannedDevices.length;
+            final filteredCount = controller.filteredDevices.length;
+            final hasSearchQuery = controller.searchQuery.value.isNotEmpty;
+
+            String message;
+            if (hasSearchQuery && filteredCount > 0) {
+              message = 'Showing $filteredCount of $totalDevices devices';
+            } else if (hasSearchQuery && filteredCount == 0) {
+              message = 'No matches found from $totalDevices devices';
+            } else {
+              message =
+                  'A total of $totalDevices devices were successfully discovered.';
+            }
+
             return Center(
               child: Text(
-                'A total of ${controller.scannedDevices.length} devices were successfully discovered.',
+                message,
                 style: context.bodySmall.copyWith(color: AppColor.grey),
               ),
             );

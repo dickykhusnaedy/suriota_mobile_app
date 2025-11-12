@@ -88,9 +88,10 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
       }
     });
 
-    // Fetch data after widget build
+    // Fetch data after widget build - already using async callback
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await controller.fetchDevices(widget.model);
+      // Use smart cache instead of always fetching
+      await controller.fetchDevicesIfNeeded(widget.model);
 
       if (widget.deviceId != null && widget.registerId != null) {
         await modbusController.getDeviceById(

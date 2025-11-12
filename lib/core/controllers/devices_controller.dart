@@ -13,7 +13,42 @@ class DevicesController extends GetxController {
 
   final RxBool isFetching = false.obs;
 
+  // Search functionality
+  var searchQuery = ''.obs;
+  var filteredDataDevices = <Map<String, dynamic>>[].obs;
+
+  // Protocol filter functionality
+  var selectedProtocol = 'All'.obs; // 'All', 'RTU', 'TCP'
+
+  // Smart cache functionality
+  var lastFetchTime = Rxn<DateTime>();
+  final cacheDuration = const Duration(minutes: 5);
+
   final BleController bleController = Get.put(BleController());
+
+  // Smart cache: Check if cached data is still fresh
+  bool get isDataFresh {
+    if (lastFetchTime.value == null) return false;
+    return DateTime.now().difference(lastFetchTime.value!) < cacheDuration;
+  }
+
+  // Smart fetch: Only fetch if cache is empty or stale
+  Future<void> fetchDevicesIfNeeded(DeviceModel model) async {
+    if (dataDevices.isEmpty || !isDataFresh) {
+      AppHelpers.debugLog(
+        'Cache is ${dataDevices.isEmpty ? "empty" : "stale"}, fetching fresh data...',
+      );
+      await fetchDevices(model);
+    } else {
+      final cacheAge = DateTime.now().difference(lastFetchTime.value!);
+      AppHelpers.debugLog(
+        'Using cached devices data (${dataDevices.length} devices, age: ${cacheAge.inMinutes}m ${cacheAge.inSeconds % 60}s)',
+      );
+
+      // Still update filtered list in case filters changed
+      filterDevices(searchQuery.value);
+    }
+  }
 
   Future<void> fetchDevices(DeviceModel model, {int retryCount = 0}) async {
     isFetching.value = true;
@@ -54,6 +89,12 @@ class DevicesController extends GetxController {
           (response.config as List<dynamic>?)?.cast<Map<String, dynamic>>() ??
               [],
         );
+
+        // Update filtered list setelah fetch
+        filterDevices(searchQuery.value);
+
+        // Update cache timestamp
+        lastFetchTime.value = DateTime.now();
 
         AppHelpers.debugLog(
           'Devices fetched successfully: ${dataDevices.length} devices found',
@@ -205,5 +246,56 @@ class DevicesController extends GetxController {
     } finally {
       isFetching.value = false;
     }
+  }
+
+  // SEARCH FUNCTIONALITY: Filter devices berdasarkan nama, device_id, dan protocol
+  void filterDevices(String query) {
+    searchQuery.value = query.toLowerCase().trim();
+    _applyFilters();
+  }
+
+  // PROTOCOL FILTER: Set protocol filter dan apply
+  void setProtocolFilter(String protocol) {
+    selectedProtocol.value = protocol;
+    _applyFilters();
+  }
+
+  // Internal method untuk apply kombinasi search dan protocol filter
+  void _applyFilters() {
+    var result = dataDevices.toList();
+
+    // Apply protocol filter first
+    if (selectedProtocol.value != 'All') {
+      result = result.where((device) {
+        final protocol = (device['protocol'] ?? '').toString();
+        return protocol == selectedProtocol.value;
+      }).toList();
+    }
+
+    // Then apply search query filter
+    if (searchQuery.value.isNotEmpty) {
+      result = result.where((device) {
+        final deviceName = (device['device_name'] ?? '').toString().toLowerCase();
+        final deviceId = (device['device_id'] ?? '').toString().toLowerCase();
+        final protocol = (device['protocol'] ?? '').toString().toLowerCase();
+
+        return deviceName.contains(searchQuery.value) ||
+            deviceId.contains(searchQuery.value) ||
+            protocol.contains(searchQuery.value);
+      }).toList();
+    }
+
+    filteredDataDevices.assignAll(result);
+
+    AppHelpers.debugLog(
+      'Filter applied - Query: "${searchQuery.value}", Protocol: ${selectedProtocol.value}, Found: ${filteredDataDevices.length} devices',
+    );
+  }
+
+  // Clear search and reset to show all devices
+  void clearSearch() {
+    searchQuery.value = '';
+    selectedProtocol.value = 'All';
+    filteredDataDevices.assignAll(dataDevices);
   }
 }

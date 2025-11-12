@@ -1,14 +1,18 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:gateway_config/core/constants/app_color.dart';
 import 'package:gateway_config/core/constants/app_gap.dart';
 import 'package:gateway_config/core/constants/app_image_assets.dart';
 import 'package:gateway_config/core/controllers/ble_controller.dart';
 import 'package:gateway_config/core/controllers/devices_controller.dart';
+import 'package:gateway_config/core/utils/app_helpers.dart';
 import 'package:gateway_config/core/utils/extensions.dart';
 import 'package:gateway_config/core/utils/loading_progress.dart';
 import 'package:gateway_config/core/utils/snackbar_custom.dart';
 import 'package:gateway_config/models/device_model.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_alert_dialog.dart';
+import 'package:gateway_config/presentation/widgets/common/custom_textfield.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
 
@@ -31,6 +35,10 @@ class _DeviceCommunicationsScreenState
   bool isLoading = false;
   bool isInitialized = false;
 
+  // Search functionality
+  final TextEditingController searchController = TextEditingController();
+  Timer? _searchDebounceTimer;
+
   _DeviceCommunicationsScreenState()
     : bleController = Get.put(BleController(), permanent: true),
       controller = Get.put(DevicesController(), permanent: true) {
@@ -40,14 +48,21 @@ class _DeviceCommunicationsScreenState
   @override
   void initState() {
     super.initState();
+
+    // IMPORTANT: Clear search state saat page dibuka
+    // Ini mencegah search sebelumnya masih tersimpan
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _clearSearch();
+    });
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (!isInitialized) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        controller.fetchDevices(widget.model);
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        // Use smart cache instead of always fetching
+        await controller.fetchDevicesIfNeeded(widget.model);
         isInitialized = true;
       });
     }
@@ -55,8 +70,40 @@ class _DeviceCommunicationsScreenState
 
   @override
   void dispose() {
+    // Clear search state di controller saat leaving page
+    _clearSearch();
+
+    searchController.dispose();
+    _searchDebounceTimer?.cancel();
     isInitialized = false;
     super.dispose();
+  }
+
+  // Debounced search dengan delay 300ms untuk performance
+  void _onSearchChanged(String query) {
+    // Cancel timer sebelumnya jika ada
+    _searchDebounceTimer?.cancel();
+
+    // Buat timer baru dengan delay 300ms
+    _searchDebounceTimer = Timer(const Duration(milliseconds: 300), () {
+      // Jalankan filter setelah delay
+      controller.filterDevices(query);
+      AppHelpers.debugLog('Device search executed: "$query"');
+    });
+  }
+
+  // Clear search field dan reset filter
+  void _clearSearch() {
+    // Cancel any pending search debounce
+    _searchDebounceTimer?.cancel();
+
+    // Clear UI controller
+    searchController.clear();
+
+    // Clear DevicesController search state
+    controller.clearSearch();
+
+    AppHelpers.debugLog('Device search cleared');
   }
 
   void _deleteDevice(String deviceId) async {
@@ -163,6 +210,8 @@ class _DeviceCommunicationsScreenState
             ),
             TextButton.icon(
               onPressed: () async {
+                // Clear search saat refresh data
+                _clearSearch();
                 await controller.fetchDevices(widget.model);
               },
               label: const Icon(Icons.rotate_left, size: 20),
@@ -176,6 +225,38 @@ class _DeviceCommunicationsScreenState
           ],
         ),
         AppSpacing.sm,
+        // Search field dan protocol filter
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Search field
+            Expanded(
+              child: CustomTextFormField(
+                controller: searchController,
+                hintTxt: 'Search by name, ID...',
+                prefixIcon: const Icon(
+                  Icons.search,
+                  color: AppColor.primaryColor,
+                ),
+                suffixIcon: Obx(() {
+                  // Tampilkan clear button jika ada input
+                  if (controller.searchQuery.value.isNotEmpty) {
+                    return IconButton(
+                      icon: const Icon(Icons.clear, color: AppColor.grey),
+                      onPressed: _clearSearch,
+                    );
+                  }
+                  return const SizedBox.shrink();
+                }),
+                onChanges: _onSearchChanged,
+              ),
+            ),
+            AppSpacing.sm,
+            // Protocol filter dropdown
+            _buildProtocolFilter(),
+          ],
+        ),
+        AppSpacing.md,
         Obx(() {
           if (controller.isFetching.value) {
             return LoadingProgress();
@@ -185,13 +266,60 @@ class _DeviceCommunicationsScreenState
             return _emptyView(context);
           }
 
+          // Gunakan filteredDataDevices jika ada search query atau protocol filter
+          final devicesToShow =
+              (controller.searchQuery.value.isEmpty &&
+                  controller.selectedProtocol.value == 'All')
+              ? controller.dataDevices
+              : controller.filteredDataDevices;
+
+          // Tampilkan pesan jika hasil search/filter kosong
+          if (devicesToShow.isEmpty &&
+              (controller.searchQuery.value.isNotEmpty ||
+                  controller.selectedProtocol.value != 'All')) {
+            String emptyMessage = 'No device found';
+            if (controller.searchQuery.value.isNotEmpty) {
+              emptyMessage += ' for "${controller.searchQuery.value}"';
+            }
+            if (controller.selectedProtocol.value != 'All') {
+              emptyMessage +=
+                  ' with protocol ${controller.selectedProtocol.value}';
+            }
+
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.55,
+              alignment: Alignment.center,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.search_off, size: 64, color: AppColor.grey),
+                  AppSpacing.md,
+                  Text(
+                    emptyMessage,
+                    textAlign: TextAlign.center,
+                    style: context.body.copyWith(color: AppColor.grey),
+                  ),
+                  AppSpacing.sm,
+                  TextButton.icon(
+                    onPressed: _clearSearch,
+                    icon: const Icon(Icons.clear, size: 18),
+                    label: const Text('Clear Filters'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColor.primaryColor,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+
           return ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            itemCount: controller.dataDevices.length,
+            itemCount: devicesToShow.length,
             separatorBuilder: (context, index) => AppSpacing.sm,
             itemBuilder: (context, index) {
-              final device = controller.dataDevices[index];
+              final device = devicesToShow[index];
 
               return InkWell(
                 onTap: () {
@@ -213,12 +341,28 @@ class _DeviceCommunicationsScreenState
         Obx(() {
           if (controller.dataDevices.isNotEmpty &&
               !controller.isFetching.value) {
-            return Center(
-              child: Text(
-                'Showing ${controller.dataDevices.length} entries',
-                style: context.bodySmall,
-              ),
-            );
+            final totalDevices = controller.dataDevices.length;
+            final filteredCount = controller.filteredDataDevices.length;
+            final hasSearchQuery = controller.searchQuery.value.isNotEmpty;
+            final hasProtocolFilter =
+                controller.selectedProtocol.value != 'All';
+
+            String message;
+            if ((hasSearchQuery || hasProtocolFilter) && filteredCount > 0) {
+              String filterInfo = '';
+              if (hasProtocolFilter) {
+                filterInfo = ' (${controller.selectedProtocol.value})';
+              }
+              message =
+                  'Showing $filteredCount of $totalDevices entries$filterInfo';
+            } else if ((hasSearchQuery || hasProtocolFilter) &&
+                filteredCount == 0) {
+              message = 'No matches found from $totalDevices entries';
+            } else {
+              message = 'Showing $totalDevices entries';
+            }
+
+            return Center(child: Text(message, style: context.bodySmall));
           }
           return const SizedBox.shrink();
         }),
@@ -411,6 +555,148 @@ class _DeviceCommunicationsScreenState
         ],
       ),
     );
+  }
+
+  Widget _buildProtocolFilter() {
+    return Obx(() {
+      final isFiltered = controller.selectedProtocol.value != 'All';
+
+      return Container(
+        height: 50,
+        decoration: BoxDecoration(
+          color: AppColor.whiteColor,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isFiltered
+                ? AppColor.primaryColor.withValues(alpha: 0.4)
+                : AppColor.lightGrey,
+            width: isFiltered ? 1.5 : 1,
+          ),
+          boxShadow: isFiltered
+              ? [
+                  BoxShadow(
+                    color: AppColor.primaryColor.withValues(alpha: 0.15),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 2,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
+        ),
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<String>(
+            value: controller.selectedProtocol.value,
+            icon: Icon(
+              Icons.filter_list,
+              size: 18,
+              color: isFiltered ? AppColor.primaryColor : AppColor.grey,
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            borderRadius: BorderRadius.circular(12),
+            dropdownColor: AppColor.whiteColor,
+            elevation: 8,
+            style: context.body.copyWith(
+              color: AppColor.blackColor,
+              fontWeight: isFiltered ? FontWeight.w600 : FontWeight.normal,
+            ),
+            items: [
+              DropdownMenuItem(
+                value: 'All',
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: AppColor.grey.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Icon(
+                        Icons.apps,
+                        size: 14,
+                        color: AppColor.grey,
+                      ),
+                    ),
+                    AppSpacing.xs,
+                    Text(
+                      'All',
+                      style: context.body.copyWith(fontWeight: FontWeight.w500),
+                    ),
+                  ],
+                ),
+              ),
+              DropdownMenuItem(
+                value: 'RTU',
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: AppColor.primaryColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Icon(
+                        Icons.settings_input_component,
+                        size: 14,
+                        color: AppColor.primaryColor,
+                      ),
+                    ),
+                    AppSpacing.xs,
+                    Text(
+                      'RTU',
+                      style: context.body.copyWith(
+                        color: AppColor.primaryColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              DropdownMenuItem(
+                value: 'TCP',
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: AppColor.primaryColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Icon(
+                        Icons.wifi,
+                        size: 14,
+                        color: AppColor.primaryColor,
+                      ),
+                    ),
+                    AppSpacing.xs,
+                    Text(
+                      'TCP',
+                      style: context.body.copyWith(
+                        color: AppColor.primaryColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            onChanged: (String? newValue) {
+              if (newValue != null) {
+                controller.setProtocolFilter(newValue);
+                AppHelpers.debugLog('Protocol filter changed to: $newValue');
+              }
+            },
+          ),
+        ),
+      );
+    });
   }
 
   Widget _buildIconButton({

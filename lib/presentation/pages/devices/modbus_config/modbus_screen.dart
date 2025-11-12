@@ -52,10 +52,11 @@ class _ModbusScreenState extends State<ModbusScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (!isInitialized) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
         modbusController.dataModbus.clear();
 
-        controller.fetchDevices(widget.model);
+        // Use smart cache instead of always fetching
+        await controller.fetchDevicesIfNeeded(widget.model);
         isInitialized = true;
       });
     }
@@ -171,15 +172,6 @@ class _ModbusScreenState extends State<ModbusScreen> {
 
   @override
   Widget build(BuildContext context) {
-    List<DropdownItems> deviceItem = controller.dataDevices
-        .map(
-          (data) => DropdownItems(
-            text: data['device_name'],
-            value: data['device_id'],
-          ),
-        )
-        .toList();
-
     return Scaffold(
       appBar: _appBar(context),
       body: SafeArea(
@@ -218,6 +210,16 @@ class _ModbusScreenState extends State<ModbusScreen> {
                 if (controller.dataDevices.isEmpty) {
                   return _emptyView(context);
                 }
+
+                // Buat deviceItem di dalam Obx agar reactive terhadap perubahan dataDevices
+                final deviceItem = controller.dataDevices
+                    .map(
+                      (data) => DropdownItems(
+                        text: data['device_name'],
+                        value: data['device_id'],
+                      ),
+                    )
+                    .toList();
 
                 return Dropdown(
                   items: deviceItem,
