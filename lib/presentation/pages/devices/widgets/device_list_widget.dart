@@ -11,6 +11,7 @@ class DeviceListWidget extends StatelessWidget {
   final bool isLoadingConnection;
   final VoidCallback onDisconnect;
   final VoidCallback onConnect;
+  final String? lastConnectionTime;
 
   const DeviceListWidget({
     super.key,
@@ -19,6 +20,7 @@ class DeviceListWidget extends StatelessWidget {
     required this.isLoadingConnection,
     required this.onConnect,
     required this.onDisconnect,
+    this.lastConnectionTime,
   });
 
   @override
@@ -48,6 +50,7 @@ class DeviceListWidget extends StatelessWidget {
             : 'Connect',
         colorButton: isConnected ? AppColor.redColor : AppColor.primaryColor,
         onPressed: isConnected ? onDisconnect : onConnect,
+        lastConnectionTime: lastConnectionTime,
       ),
     );
   }

@@ -12,7 +12,7 @@ class ServerConfigController extends GetxController {
 
   bool _isMounted = true;
 
-  final BleController bleController = Get.put(BleController());
+  final BleController bleController = Get.find<BleController>();
 
   Future<void> fetchData(DeviceModel model) async {
     if (!_isMounted) return;

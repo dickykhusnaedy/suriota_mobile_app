@@ -12,7 +12,6 @@ import 'package:gateway_config/presentation/widgets/common/custom_button.dart';
 import 'package:gateway_config/presentation/widgets/common/loading_overlay.dart';
 import 'package:gateway_config/presentation/widgets/spesific/device_card.dart';
 import 'package:get/get.dart';
-import 'package:go_router/go_router.dart';
 
 class DetailDeviceScreen extends StatefulWidget {
   const DetailDeviceScreen({super.key, required this.model});
@@ -23,7 +22,7 @@ class DetailDeviceScreen extends StatefulWidget {
 }
 
 class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
-  final controller = Get.put(BleController());
+  final controller = Get.find<BleController>();
 
   @override
   void initState() {
@@ -53,6 +52,7 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
       secondaryButtonText: 'No',
       onPrimaryPressed: () async {
         Get.back();
+        await Future.delayed(Duration.zero);
 
         try {
           await controller.disconnectFromDevice(widget.model);
@@ -61,13 +61,9 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
             'Successfully disconnected from ${widget.model.device.platformName}',
           );
 
-          if (Get.context != null) {
-            GoRouter.of(Get.context!).go('/');
-          } else {
-            AppHelpers.debugLog(
-              'Warning: Get.context is null, cannot navigate',
-            );
-          }
+          // Navigation is handled automatically by BLE controller
+          // via disconnectFromDevice() fallback navigation after 3 second delay
+          // No manual navigation needed here
         } catch (e) {
           AppHelpers.debugLog('Error disconnecting from device: $e');
 

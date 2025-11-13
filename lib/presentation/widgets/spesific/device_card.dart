@@ -136,6 +136,7 @@ class DeviceCard extends StatelessWidget {
   final String? buttonTitle;
   final Color? colorButton;
   final VoidCallback? onPressed;
+  final String? lastConnectionTime;
 
   const DeviceCard({
     super.key,
@@ -144,6 +145,7 @@ class DeviceCard extends StatelessWidget {
     this.buttonTitle,
     this.colorButton,
     this.onPressed,
+    this.lastConnectionTime,
   });
 
   @override
@@ -151,7 +153,7 @@ class DeviceCard extends StatelessWidget {
     double screenWidth = MediaQuery.of(context).size.width;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
         color: AppColor.whiteColor,
         borderRadius: BorderRadius.circular(12),
@@ -225,6 +227,29 @@ class DeviceCard extends StatelessWidget {
                             ),
                           ],
                         ),
+                        if (lastConnectionTime != null) ...[
+                          AppSpacing.xs,
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.access_time,
+                                size: 14,
+                                color: AppColor.grey,
+                              ),
+                              AppSpacing.xs,
+                              Expanded(
+                                child: Text(
+                                  lastConnectionTime!,
+                                  style: context.bodySmall.copyWith(
+                                    color: AppColor.grey,
+                                    fontSize: 11,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ],
                     ),
                   ),

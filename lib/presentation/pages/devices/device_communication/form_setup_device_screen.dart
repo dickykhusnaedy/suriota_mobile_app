@@ -26,8 +26,8 @@ class FormSetupDeviceScreen extends StatefulWidget {
 }
 
 class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
-  final controller = Get.put(BleController());
-  final devicesController = Get.put(DevicesController());
+  final controller = Get.find<BleController>();
+  final devicesController = Get.find<DevicesController>();
 
   late Worker _worker;
 

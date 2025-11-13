@@ -13,13 +13,59 @@ class DevicesController extends GetxController {
 
   final RxBool isFetching = false.obs;
 
-  final BleController bleController = Get.put(BleController());
+  // Search functionality
+  var searchQuery = ''.obs;
+  var filteredDataDevices = <Map<String, dynamic>>[].obs;
 
-  Future<void> fetchDevices(DeviceModel model) async {
+  // Protocol filter functionality
+  var selectedProtocol = 'All'.obs; // 'All', 'RTU', 'TCP'
+
+  // Smart cache functionality
+  var lastFetchTime = Rxn<DateTime>();
+  final cacheDuration = const Duration(minutes: 5);
+
+  final BleController bleController = Get.find<BleController>();
+
+  // Smart cache: Check if cached data is still fresh
+  bool get isDataFresh {
+    if (lastFetchTime.value == null) return false;
+    return DateTime.now().difference(lastFetchTime.value!) < cacheDuration;
+  }
+
+  // Smart fetch: Only fetch if cache is empty or stale
+  Future<void> fetchDevicesIfNeeded(DeviceModel model) async {
+    if (dataDevices.isEmpty || !isDataFresh) {
+      AppHelpers.debugLog(
+        'Cache is ${dataDevices.isEmpty ? "empty" : "stale"}, fetching fresh data...',
+      );
+      await fetchDevices(model);
+    } else {
+      final cacheAge = DateTime.now().difference(lastFetchTime.value!);
+      AppHelpers.debugLog(
+        'Using cached devices data (${dataDevices.length} devices, age: ${cacheAge.inMinutes}m ${cacheAge.inSeconds % 60}s)',
+      );
+
+      // Still update filtered list in case filters changed
+      filterDevices(searchQuery.value);
+    }
+  }
+
+  Future<void> fetchDevices(DeviceModel model, {int retryCount = 0}) async {
     isFetching.value = true;
 
     try {
+      // Retry logic untuk handle timing issue (max 3 retry dengan 500ms delay)
       if (!model.isConnected.value) {
+        if (retryCount < 3) {
+          AppHelpers.debugLog(
+            'Device not connected yet, retrying... (attempt ${retryCount + 1}/3)',
+          );
+          isFetching.value = false;
+          await Future.delayed(const Duration(milliseconds: 500));
+          return fetchDevices(model, retryCount: retryCount + 1);
+        }
+
+        // Setelah 3 retry tetap gagal, tampilkan error
         SnackbarCustom.showSnackbar(
           '',
           'Device not connected',
@@ -28,6 +74,10 @@ class DevicesController extends GetxController {
         );
         return;
       }
+
+      AppHelpers.debugLog(
+        'Fetching devices for ${model.device.remoteId}, isConnected: ${model.isConnected.value}',
+      );
 
       final response = await bleController.readCommandResponse(
         model,
@@ -38,6 +88,16 @@ class DevicesController extends GetxController {
         dataDevices.assignAll(
           (response.config as List<dynamic>?)?.cast<Map<String, dynamic>>() ??
               [],
+        );
+
+        // Update filtered list setelah fetch
+        filterDevices(searchQuery.value);
+
+        // Update cache timestamp
+        lastFetchTime.value = DateTime.now();
+
+        AppHelpers.debugLog(
+          'Devices fetched successfully: ${dataDevices.length} devices found',
         );
       } else {
         SnackbarCustom.showSnackbar(
@@ -63,11 +123,26 @@ class DevicesController extends GetxController {
     }
   }
 
-  Future<void> getDeviceById(DeviceModel model, String deviceId) async {
+  Future<void> getDeviceById(
+    DeviceModel model,
+    String deviceId, {
+    int retryCount = 0,
+  }) async {
     isFetching.value = true;
 
     try {
+      // Retry logic untuk handle timing issue (max 3 retry dengan 500ms delay)
       if (!model.isConnected.value) {
+        if (retryCount < 3) {
+          AppHelpers.debugLog(
+            'Device not connected yet, retrying getDeviceById... (attempt ${retryCount + 1}/3)',
+          );
+          isFetching.value = false;
+          await Future.delayed(const Duration(milliseconds: 500));
+          return getDeviceById(model, deviceId, retryCount: retryCount + 1);
+        }
+
+        // Setelah 3 retry tetap gagal, tampilkan error
         SnackbarCustom.showSnackbar(
           '',
           'Device not connected',
@@ -76,6 +151,10 @@ class DevicesController extends GetxController {
         );
         return;
       }
+
+      AppHelpers.debugLog(
+        'Getting device by ID: $deviceId, isConnected: ${model.isConnected.value}',
+      );
 
       final response = await bleController.readCommandResponse(
         model,
@@ -88,10 +167,19 @@ class DevicesController extends GetxController {
 
         if (config is List) {
           selectedDevice.assignAll(config.cast<Map<String, dynamic>>());
+          AppHelpers.debugLog(
+            'Device fetched successfully: $deviceId (${selectedDevice.length} items)',
+          );
         } else if (config is Map) {
           selectedDevice.assignAll([config.cast<String, dynamic>()]);
+          AppHelpers.debugLog(
+            'Device fetched successfully: $deviceId (1 item)',
+          );
         } else {
           selectedDevice.clear();
+          AppHelpers.debugLog(
+            'Invalid config format for device: $deviceId, type: ${config.runtimeType}',
+          );
           SnackbarCustom.showSnackbar(
             '',
             'Invalid config format',
@@ -158,5 +246,56 @@ class DevicesController extends GetxController {
     } finally {
       isFetching.value = false;
     }
+  }
+
+  // SEARCH FUNCTIONALITY: Filter devices berdasarkan nama, device_id, dan protocol
+  void filterDevices(String query) {
+    searchQuery.value = query.toLowerCase().trim();
+    _applyFilters();
+  }
+
+  // PROTOCOL FILTER: Set protocol filter dan apply
+  void setProtocolFilter(String protocol) {
+    selectedProtocol.value = protocol;
+    _applyFilters();
+  }
+
+  // Internal method untuk apply kombinasi search dan protocol filter
+  void _applyFilters() {
+    var result = dataDevices.toList();
+
+    // Apply protocol filter first
+    if (selectedProtocol.value != 'All') {
+      result = result.where((device) {
+        final protocol = (device['protocol'] ?? '').toString();
+        return protocol == selectedProtocol.value;
+      }).toList();
+    }
+
+    // Then apply search query filter
+    if (searchQuery.value.isNotEmpty) {
+      result = result.where((device) {
+        final deviceName = (device['device_name'] ?? '').toString().toLowerCase();
+        final deviceId = (device['device_id'] ?? '').toString().toLowerCase();
+        final protocol = (device['protocol'] ?? '').toString().toLowerCase();
+
+        return deviceName.contains(searchQuery.value) ||
+            deviceId.contains(searchQuery.value) ||
+            protocol.contains(searchQuery.value);
+      }).toList();
+    }
+
+    filteredDataDevices.assignAll(result);
+
+    AppHelpers.debugLog(
+      'Filter applied - Query: "${searchQuery.value}", Protocol: ${selectedProtocol.value}, Found: ${filteredDataDevices.length} devices',
+    );
+  }
+
+  // Clear search and reset to show all devices
+  void clearSearch() {
+    searchQuery.value = '';
+    selectedProtocol.value = 'All';
+    filteredDataDevices.assignAll(dataDevices);
   }
 }

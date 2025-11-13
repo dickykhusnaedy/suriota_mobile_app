@@ -32,9 +32,23 @@ class BleController extends GetxController {
   final RxMap<String, String> streamedData = <String, String>{}.obs;
 
   final _deviceCache = <String, DeviceModel>{}.obs;
+  final _connectionSubscriptions =
+      <String, StreamSubscription<BluetoothConnectionState>>{};
+
+  // Optimization: Batch processing untuk scan results
+  final _scanBatchQueue = <BluetoothDevice>[];
+  Timer? _batchProcessTimer;
+  Timer? _uiUpdateDebounceTimer;
 
   // List for scanned devices as DeviceModel
   var scannedDevices = <DeviceModel>[].obs;
+
+  // List for connection history (devices that have been connected before)
+  var connectedHistory = <DeviceModel>[].obs;
+
+  // Search functionality
+  var searchQuery = ''.obs;
+  var filteredDevices = <DeviceModel>[].obs;
 
   BluetoothCharacteristic? commandChar;
   BluetoothCharacteristic? responseChar;
@@ -52,30 +66,39 @@ class BleController extends GetxController {
 
     // Listen perubahan koneksi global
     ever(connectedDevice, (device) {
-      if (device == null && !isNavigatingHome.value) {
-        isNavigatingHome.value = true;
-        AppHelpers.debugLog('connectedDevice null → redirect home');
+      if (device == null && isNavigatingHome.value) {
+        // Snackbar dan delay sudah ditangani di auto disconnect listener
+        // Di sini langsung navigate saja
+        AppHelpers.debugLog('connectedDevice null → executing navigation');
 
-        SnackbarCustom.showSnackbar(
-          '',
-          'Device disconnect, will be redirect to home in 3 seconds.',
-          AppColor.labelColor,
-          AppColor.whiteColor,
-        );
-
-        Future.delayed(const Duration(seconds: 3), () {
-          AppHelpers.debugLog('connectedDevice null → redirect home duration');
+        try {
+          // Try GoRouter first
           if (Get.context != null) {
+            AppHelpers.debugLog('Attempting navigation with GoRouter');
             GoRouter.of(Get.context!).go('/');
+            AppHelpers.debugLog('GoRouter navigation successful');
           } else {
+            // Fallback to GetX navigation
+            AppHelpers.debugLog('Get.context is null, using GetX navigation');
             Get.offAllNamed('/');
+            AppHelpers.debugLog('GetX navigation executed');
           }
-
-          // reset flag setelah navigasi selesai
-          Future.delayed(const Duration(seconds: 1), () {
-            isNavigatingHome.value = false;
-          });
-        });
+        } catch (e) {
+          // If GoRouter fails, fallback to GetX
+          AppHelpers.debugLog('GoRouter navigation failed: $e');
+          AppHelpers.debugLog('Falling back to GetX navigation');
+          try {
+            Get.offAllNamed('/');
+            AppHelpers.debugLog('GetX fallback navigation successful');
+          } catch (e2) {
+            AppHelpers.debugLog('GetX fallback also failed: $e2');
+          }
+        } finally {
+          // Reset flag immediately after navigation attempt
+          // Fallback in disconnectFromDevice will handle reset if this fails
+          isNavigatingHome.value = false;
+          AppHelpers.debugLog('isNavigatingHome flag reset to false by ever()');
+        }
       }
     });
 
@@ -92,14 +115,17 @@ class BleController extends GetxController {
     isScanning.value = true;
     errorMessage.value = '';
     scannedDevices.clear(); // Clear old response
+    _deviceCache.clear(); // Clear device cache for consistency
+    _scanBatchQueue.clear(); // Clear batch queue
+    clearSearch(); // Clear search state
 
     try {
       await FlutterBluePlus.startScan(timeout: const Duration(seconds: 10));
 
-      // Listen from scan result
+      // OPTIMIZATION: Batch processing - kumpulkan devices dulu, process nanti
       FlutterBluePlus.scanResults.listen((results) {
         for (ScanResult r in results) {
-          handleScannedDevice(r.device);
+          _addDeviceToBatch(r.device);
         }
       });
     } catch (e) {
@@ -112,16 +138,72 @@ class BleController extends GetxController {
     }
   }
 
-  // Function to handle scanned device data
-  void handleScannedDevice(BluetoothDevice device) {
-    // Check for duplicate device
+  // OPTIMIZATION: Batch processing methods untuk mengurangi UI stuttering
+  void _addDeviceToBatch(BluetoothDevice device) {
     final deviceId = device.remoteId.toString();
+
+    // Skip jika sudah ada di cache (menghindari duplicate processing)
     if (_deviceCache.containsKey(deviceId)) {
-      AppHelpers.debugLog('Device $deviceId already in cache');
       return;
     }
 
-    // Create DeviceModel with info from BluetoothDevice
+    // Skip jika sudah ada di batch queue
+    if (_scanBatchQueue.any((d) => d.remoteId.toString() == deviceId)) {
+      return;
+    }
+
+    _scanBatchQueue.add(device);
+
+    // Cancel existing timer
+    _batchProcessTimer?.cancel();
+
+    // Process batch setelah 300ms (debounce)
+    // Ini membuat multiple devices diproses sekaligus, bukan satu-satu
+    _batchProcessTimer = Timer(const Duration(milliseconds: 300), () {
+      _processBatch();
+    });
+  }
+
+  void _processBatch() {
+    if (_scanBatchQueue.isEmpty) return;
+
+    AppHelpers.debugLog(
+      'Processing batch of ${_scanBatchQueue.length} devices',
+    );
+
+    // Process semua devices dalam batch
+    for (final device in _scanBatchQueue) {
+      _processScannedDevice(device);
+    }
+
+    // Clear batch setelah diproses
+    _scanBatchQueue.clear();
+
+    // Update filtered devices setelah batch processing
+    // Ini akan mempertahankan search query jika ada
+    filterDevices(searchQuery.value);
+
+    // Debounced UI update - hanya update sekali untuk semua devices
+    _scheduleUIUpdate();
+  }
+
+  void _scheduleUIUpdate() {
+    _uiUpdateDebounceTimer?.cancel();
+    _uiUpdateDebounceTimer = Timer(const Duration(milliseconds: 100), () {
+      update(); // Single update call untuk semua devices
+    });
+  }
+
+  // Internal processing method (dipanggil dari batch processor)
+  void _processScannedDevice(BluetoothDevice device) {
+    final deviceId = device.remoteId.toString();
+
+    // Double-check duplicate (safety)
+    if (_deviceCache.containsKey(deviceId)) {
+      return;
+    }
+
+    // Create DeviceModel
     final deviceModel = DeviceModel(
       device: device,
       onConnect: () {},
@@ -131,39 +213,153 @@ class BleController extends GetxController {
     deviceModel.onConnect = () => connectToDevice(deviceModel);
     deviceModel.onDisconnect = () => disconnectFromDevice(deviceModel);
 
-    // Add to scannedDevices list
+    // Add to list dan cache
     scannedDevices.add(deviceModel);
     _deviceCache[deviceId] = deviceModel;
 
+    // OPTIMIZATION: Lazy initialization - hanya setup subscription saat connect
+    // Tidak perlu setup connection listener untuk semua devices saat scan
+    // Ini akan dipindahkan ke connectToDevice() method
+  }
+
+  // OPTIMIZATION: Setup connection state listener (dipanggil saat connect)
+  void _setupConnectionStateListener(DeviceModel deviceModel) {
+    final deviceId = deviceModel.device.remoteId.toString();
+
+    // Cancel existing subscription if any
+    _connectionSubscriptions[deviceId]?.cancel();
+
     // Listen to connection state to update isConnected
-    // ignore: unused_local_variable
-    StreamSubscription<BluetoothConnectionState>? connectionSubscription;
-    connectionSubscription = device.connectionState.listen((
-      BluetoothConnectionState state,
-    ) {
-      deviceModel.isConnected.value =
-          (state == BluetoothConnectionState.connected);
-      update();
+    _connectionSubscriptions[deviceId] = deviceModel.device.connectionState
+        .listen((BluetoothConnectionState state) {
+          deviceModel.isConnected.value =
+              (state == BluetoothConnectionState.connected);
+          update();
 
-      if (state == BluetoothConnectionState.disconnected) {
-        AppHelpers.debugLog('Device auto disconnected');
+          if (state == BluetoothConnectionState.disconnected) {
+            AppHelpers.debugLog('Device auto disconnected');
 
-        // Reset state BLE hanya untuk device yang sedang terhubung
-        if (connectedDevice.value?.remoteId == device.remoteId) {
-          commandChar = null;
-          responseChar = null;
-          responseSubscription?.cancel();
-          response.value = '';
-          connectedDevice.value = null;
-        }
-      }
-    });
+            // Reset state BLE hanya untuk device yang sedang terhubung
+            if (connectedDevice.value?.remoteId ==
+                deviceModel.device.remoteId) {
+              // Don't nullify characteristics if streaming is active
+              // This prevents killing active streaming sessions
+              if (streamedData.isEmpty) {
+                commandChar = null;
+                responseChar = null;
+                responseSubscription?.cancel();
+                AppHelpers.debugLog(
+                  'Cleared BLE characteristics (no active streaming)',
+                );
+              } else {
+                // Keep characteristics alive for streaming
+                AppHelpers.debugLog(
+                  'Keeping BLE characteristics alive (streaming active)',
+                );
+              }
+
+              response.value = '';
+
+              // Clear gateway device responses to avoid stale data
+              gatewayDeviceResponses.clear();
+
+              // Show snackbar SEBELUM trigger navigation
+              if (!isNavigatingHome.value) {
+                isNavigatingHome.value = true;
+                SnackbarCustom.showSnackbar(
+                  '',
+                  'Device disconnect, will be redirect to home in 3 seconds.',
+                  AppColor.labelColor,
+                  AppColor.whiteColor,
+                );
+
+                // Delay SEBELUM set connectedDevice = null (yang trigger ever)
+                Future.delayed(const Duration(seconds: 3), () {
+                  connectedDevice.value =
+                      null; // Ini akan trigger ever() untuk navigate
+                });
+              }
+            }
+          }
+        });
+  }
+
+  // Function to handle scanned device data (backward compatibility)
+  // DEPRECATED: Gunakan _addDeviceToBatch untuk scanning otomatis
+  void handleScannedDevice(BluetoothDevice device) {
+    // Untuk backward compatibility, langsung process tanpa batching
+    _processScannedDevice(device);
+    update(); // Manual update karena tidak melalui batch processor
   }
 
   // Function to stop scan
   Future<void> stopScan() async {
+    // Cancel batch timers
+    _batchProcessTimer?.cancel();
+    _uiUpdateDebounceTimer?.cancel();
+
+    // Process remaining devices in batch before stopping
+    if (_scanBatchQueue.isNotEmpty) {
+      _processBatch();
+    }
+
     await FlutterBluePlus.stopScan();
     isScanning.value = false;
+  }
+
+  // SEARCH FUNCTIONALITY: Filter devices berdasarkan nama
+  void filterDevices(String query) {
+    searchQuery.value = query.toLowerCase().trim();
+
+    if (searchQuery.value.isEmpty) {
+      // Jika search kosong, tampilkan semua devices
+      filteredDevices.value = scannedDevices.toList();
+    } else {
+      // Filter berdasarkan device name (platformName atau remoteId)
+      filteredDevices.value = scannedDevices.where((deviceModel) {
+        final deviceName = deviceModel.device.platformName.toLowerCase();
+        final deviceId = deviceModel.device.remoteId.toString().toLowerCase();
+
+        return deviceName.contains(searchQuery.value) ||
+            deviceId.contains(searchQuery.value);
+      }).toList();
+    }
+
+    AppHelpers.debugLog(
+      'Search query: "${searchQuery.value}", Found: ${filteredDevices.length} devices',
+    );
+  }
+
+  // Clear search and reset to show all devices
+  void clearSearch() {
+    searchQuery.value = '';
+    filteredDevices.value = scannedDevices.toList();
+  }
+
+  // Add or update device in connection history
+  void addOrUpdateHistory(DeviceModel deviceModel) {
+    // Update timestamp
+    deviceModel.lastConnectionTime.value = DateTime.now();
+
+    // Find if device already exists in history (by remoteId)
+    final index = connectedHistory.indexWhere(
+      (d) => d.device.remoteId == deviceModel.device.remoteId,
+    );
+
+    if (index >= 0) {
+      // Device exists: remove from old position and add to front (most recent)
+      connectedHistory.removeAt(index);
+      connectedHistory.insert(0, deviceModel);
+      AppHelpers.debugLog(
+        'Updated device in history: ${deviceModel.device.remoteId}',
+      );
+    } else {
+      // New device: add to front
+      connectedHistory.insert(0, deviceModel);
+      AppHelpers.debugLog(
+        'Added new device to history: ${deviceModel.device.remoteId}',
+      );
+    }
   }
 
   void _handleAdapterStateChange(BluetoothAdapterState state) {
@@ -185,9 +381,27 @@ class BleController extends GetxController {
     errorMessage.value = '';
     message.value = 'Connecting device...';
 
+    // OPTIMIZATION: Lazy initialization - setup connection listener saat connect
+    // Bukan saat scan, ini mengurangi overhead saat scanning banyak devices
+    _setupConnectionStateListener(deviceModel);
+
     try {
       await deviceModel.device.connect();
       connectedDevice.value = deviceModel.device;
+      deviceModel.isConnected.value = true;
+
+      // Add to connection history
+      addOrUpdateHistory(deviceModel);
+
+      // FIX: Re-add device to cache after successful connection
+      // Ini mencegah device null setelah disconnect-reconnect
+      final deviceId = deviceModel.device.remoteId.toString();
+      _deviceCache[deviceId] = deviceModel;
+      AppHelpers.debugLog('Device re-added to cache: $deviceId');
+
+      AppHelpers.debugLog(
+        'Device connected successfully: ${deviceModel.device.remoteId}, isConnected: ${deviceModel.isConnected.value}',
+      );
 
       // Discover services
       List<BluetoothService> services = await deviceModel.device
@@ -220,6 +434,11 @@ class BleController extends GetxController {
 
       // Subscribe to response
       await responseChar?.setNotifyValue(true);
+
+      AppHelpers.debugLog(
+        'Connection setup completed for ${deviceModel.device.remoteId}, final isConnected: ${deviceModel.isConnected.value}',
+      );
+
       BLEUtils.showConnectedBottomSheet(deviceModel);
     } catch (e) {
       errorMessage.value = 'Error connecting';
@@ -234,35 +453,192 @@ class BleController extends GetxController {
 
   // Function to disconnect
   Future<void> disconnectFromDevice(DeviceModel deviceModel) async {
-    isLoadingConnectionGlobal.value = true; // Set global loading
-    message.value = 'Disconnecting...';
-
-    _deviceCache.remove(deviceModel.device.remoteId.toString());
+    // LOG PALING AWAL untuk memastikan method dipanggil
+    AppHelpers.debugLog(
+      '=== disconnectFromDevice() CALLED ===',
+    );
 
     try {
-      await Future.delayed(const Duration(seconds: 3));
+      isLoadingConnectionGlobal.value = true; // Set global loading
+      message.value = 'Disconnecting...';
 
-      responseSubscription?.cancel();
+      AppHelpers.debugLog(
+        'Getting device ID from deviceModel...',
+      );
+
+      final deviceId = deviceModel.device.remoteId.toString();
+
+      AppHelpers.debugLog(
+        'Disconnecting device: $deviceId',
+      );
+
+      // Remove from cache (device tetap di scannedDevices untuk reconnection)
+      // Device akan di-add kembali ke cache saat reconnect (di connectToDevice)
+      _deviceCache.remove(deviceId);
+      AppHelpers.debugLog('Device removed from cache: $deviceId');
+
+      // Cancel connection subscription
+      _connectionSubscriptions[deviceId]?.cancel();
+      _connectionSubscriptions.remove(deviceId);
+
+      AppHelpers.debugLog('Connection subscriptions cancelled for: $deviceId');
+      // Manual disconnect: show snackbar and delay before triggering navigation
+      // Don't clear BLE resources if streaming is active
+      if (streamedData.isEmpty) {
+        responseSubscription?.cancel();
+        AppHelpers.debugLog(
+          'Manual disconnect: Cleared responseSubscription (no active streaming)',
+        );
+      } else {
+        AppHelpers.debugLog(
+          'Manual disconnect: Keeping responseSubscription alive (streaming active)',
+        );
+      }
+
       await deviceModel.device.disconnect();
-      commandChar = null;
-      responseChar = null;
+
+      // Don't nullify characteristics if streaming is active
+      if (streamedData.isEmpty) {
+        commandChar = null;
+        responseChar = null;
+        AppHelpers.debugLog(
+          'Manual disconnect: Cleared BLE characteristics (no active streaming)',
+        );
+      } else {
+        AppHelpers.debugLog(
+          'Manual disconnect: Keeping BLE characteristics alive (streaming active)',
+        );
+      }
       response.value = '';
-      connectedDevice.value = null;
       deviceModel.isConnected.value = false;
 
+      // Update connection history with disconnect timestamp
+      addOrUpdateHistory(deviceModel);
+
+      AppHelpers.debugLog('Device state set to disconnected');
+
+      // Show snackbar for manual disconnect
+      if (!isNavigatingHome.value) {
+        AppHelpers.debugLog(
+          'isNavigatingHome = false, setting to true and showing snackbar',
+        );
+        isNavigatingHome.value = true;
+        SnackbarCustom.showSnackbar(
+          '',
+          'Device disconnect, will be redirect to home in 3 seconds.',
+          AppColor.labelColor,
+          AppColor.whiteColor,
+        );
+
+        AppHelpers.debugLog('Starting 3 second delay before navigation...');
+        // Delay before triggering navigation
+        await Future.delayed(const Duration(seconds: 3));
+        AppHelpers.debugLog('3 second delay completed');
+      } else {
+        AppHelpers.debugLog(
+          'isNavigatingHome already true, skipping snackbar and delay',
+        );
+      }
+
+      // Capture flag state BEFORE triggering ever()
+      // This prevents race condition with ever() callback
+      final shouldNavigate = isNavigatingHome.value;
+
+      AppHelpers.debugLog(
+        'Captured shouldNavigate = $shouldNavigate, setting connectedDevice to null',
+      );
+
+      connectedDevice.value = null; // Trigger ever() untuk navigate
+
+      AppHelpers.debugLog('connectedDevice set to null, ever() should trigger now');
+
+      // Clear gateway device responses to avoid stale data
+      gatewayDeviceResponses.clear();
+
+      // Fallback navigation if ever() doesn't trigger (e.g., context issues)
+      // Wait for ever() to potentially execute first
+      AppHelpers.debugLog('Waiting 500ms for ever() callback...');
+      await Future.delayed(const Duration(milliseconds: 500));
+      AppHelpers.debugLog('500ms delay completed, checking fallback...');
+
+      // Fallback navigation: if shouldNavigate is true, ALWAYS navigate
+      // Don't check isNavigatingHome.value because ever() might reset it
+      // but fail to navigate (silent failure due to context issues)
+      AppHelpers.debugLog(
+        'Fallback check: shouldNavigate=$shouldNavigate, isNavigatingHome.value=${isNavigatingHome.value}',
+      );
+
+      if (shouldNavigate) {
+        AppHelpers.debugLog(
+          'shouldNavigate=true, executing fallback navigation (regardless of flag state)',
+        );
+        try {
+          if (Get.context != null) {
+            AppHelpers.debugLog('Navigating with GoRouter.go("/")');
+            GoRouter.of(Get.context!).go('/');
+            AppHelpers.debugLog('Fallback GoRouter navigation successful');
+          } else {
+            AppHelpers.debugLog('Get.context is null, using Get.offAllNamed("/")');
+            Get.offAllNamed('/');
+            AppHelpers.debugLog('Fallback GetX navigation successful');
+          }
+        } catch (e) {
+          AppHelpers.debugLog('Fallback navigation error: $e');
+          try {
+            AppHelpers.debugLog('Retrying with Get.offAllNamed("/")');
+            Get.offAllNamed('/');
+            AppHelpers.debugLog(
+              'Fallback GetX navigation successful (2nd try)',
+            );
+          } catch (e2) {
+            AppHelpers.debugLog('All fallback navigation failed: $e2');
+          }
+        } finally {
+          // Ensure flag is reset even if ever() already did it
+          isNavigatingHome.value = false;
+          AppHelpers.debugLog('isNavigatingHome flag ensured reset to false');
+        }
+      } else {
+        AppHelpers.debugLog(
+          'shouldNavigate = false, no navigation needed',
+        );
+      }
+
+      AppHelpers.debugLog(
+        'Device disconnected: ${deviceModel.device.remoteId}, isConnected: ${deviceModel.isConnected.value}',
+      );
+
+      AppHelpers.debugLog('Checking final connection state...');
       final currentState = await deviceModel.device.connectionState.first;
       if (currentState == BluetoothConnectionState.connected) {
         deviceModel.isConnected.value = true;
+        AppHelpers.debugLog('Device still connected (unexpected)');
       } else {
         deviceModel.isConnected.value = false;
+        AppHelpers.debugLog('Device confirmed disconnected');
       }
       update();
-    } catch (e) {
+
+      AppHelpers.debugLog(
+        '=== disconnectFromDevice() COMPLETED SUCCESSFULLY ===',
+      );
+    } catch (e, stackTrace) {
       errorMessage.value = 'Error disconnecting';
-      AppHelpers.debugLog('Disconnecting error: $e');
+      AppHelpers.debugLog('=== DISCONNECTING ERROR ===');
+      AppHelpers.debugLog('Error: $e');
+      AppHelpers.debugLog('StackTrace: $stackTrace');
+
+      // Show error to user
+      SnackbarCustom.showSnackbar(
+        'Error',
+        'Failed to disconnect: $e',
+        AppColor.redColor,
+        AppColor.whiteColor,
+      );
     } finally {
       isLoadingConnectionGlobal.value = false; // Reset global loading
       message.value = 'Success disconnected...';
+      AppHelpers.debugLog('disconnectFromDevice() finally block executed');
     }
   }
 
@@ -271,6 +647,12 @@ class BleController extends GetxController {
 
     errorMessage.value =
         'Bluetooth has been turned off. Please turn it back on to connect to devices.';
+
+    // Cancel all connection subscriptions
+    for (var subscription in _connectionSubscriptions.values) {
+      subscription.cancel();
+    }
+    _connectionSubscriptions.clear();
 
     // Disconnect all connected devices
     for (var deviceModel in scannedDevices.toList()) {
@@ -282,6 +664,9 @@ class BleController extends GetxController {
       }
     }
 
+    // Clear all caches
+    gatewayDeviceResponses.clear();
+
     SnackbarCustom.showSnackbar(
       'Bluetooth Turned Off',
       'Bluetooth has been disabled. Enable it to connect to devices.',
@@ -290,10 +675,29 @@ class BleController extends GetxController {
     );
 
     // Redirect to home
-    if (Get.context != null) {
-      GoRouter.of(Get.context!).go('/');
-    } else {
-      AppHelpers.debugLog('Warning: Get.context is null, cannot redirect');
+    try {
+      if (Get.context != null) {
+        AppHelpers.debugLog(
+          'Attempting navigation with GoRouter (Bluetooth OFF)',
+        );
+        GoRouter.of(Get.context!).go('/');
+        AppHelpers.debugLog('GoRouter navigation successful (Bluetooth OFF)');
+      } else {
+        AppHelpers.debugLog('Get.context is null, using GetX navigation');
+        Get.offAllNamed('/');
+        AppHelpers.debugLog('GetX navigation executed (Bluetooth OFF)');
+      }
+    } catch (e) {
+      AppHelpers.debugLog('GoRouter navigation failed: $e');
+      AppHelpers.debugLog('Falling back to GetX navigation');
+      try {
+        Get.offAllNamed('/');
+        AppHelpers.debugLog(
+          'GetX fallback navigation successful (Bluetooth OFF)',
+        );
+      } catch (e2) {
+        AppHelpers.debugLog('GetX fallback also failed: $e2');
+      }
     }
   }
 
@@ -968,11 +1372,13 @@ class BleController extends GetxController {
                   final value = dataMap['value']?.toString();
                   if (address != null && value != null) {
                     streamedData[address] = value;
+                    streamedData.refresh(); // Trigger reactive update
                     AppHelpers.debugLog(
                       'Updated streamedData: $address -> $value',
                     );
                   }
                 } else if (decoded is List) {
+                  bool updated = false;
                   for (var item in decoded) {
                     if (item is Map<String, dynamic>) {
                       final itemData =
@@ -981,8 +1387,12 @@ class BleController extends GetxController {
                       final value = itemData['value']?.toString();
                       if (address != null && value != null) {
                         streamedData[address] = value;
+                        updated = true;
                       }
                     }
+                  }
+                  if (updated) {
+                    streamedData.refresh(); // Trigger reactive update
                   }
                 }
               } catch (e) {
@@ -1159,6 +1569,7 @@ class BleController extends GetxController {
                   final address = dataMap['address']?.toString();
                   final value = dataMap['value']?.toString();
                   final name = dataMap['name']?.toString();
+                  final unit = dataMap['unit']?.toString();
 
                   if (address != null && value != null) {
                     // Store as JSON string to include name and value
@@ -1166,13 +1577,16 @@ class BleController extends GetxController {
                       'name': name ?? 'Unknown Sensor',
                       'value': value,
                       'address': address,
+                      'unit': unit,
                     });
                     streamedData[address] = dataJson;
+                    streamedData.refresh(); // Trigger reactive update
                     AppHelpers.debugLog(
                       'Enhanced stream update: $address -> name: $name, value: $value',
                     );
                   }
                 } else if (decoded is List) {
+                  bool updated = false;
                   for (var item in decoded) {
                     if (item is Map<String, dynamic>) {
                       final itemData =
@@ -1180,6 +1594,7 @@ class BleController extends GetxController {
                       final address = itemData['address']?.toString();
                       final value = itemData['value']?.toString();
                       final name = itemData['name']?.toString();
+                      final unit = itemData['unit']?.toString();
 
                       if (address != null && value != null) {
                         // Store as JSON string to include name and value
@@ -1187,13 +1602,18 @@ class BleController extends GetxController {
                           'name': name ?? 'Unknown Sensor',
                           'value': value,
                           'address': address,
+                          'unit': unit,
                         });
                         streamedData[address] = dataJson;
+                        updated = true;
                         AppHelpers.debugLog(
                           'Enhanced stream batch update: $address -> name: $name, value: $value',
                         );
                       }
                     }
+                  }
+                  if (updated) {
+                    streamedData.refresh(); // Trigger reactive update
                   }
                 }
               } catch (e) {
@@ -1303,9 +1723,20 @@ class BleController extends GetxController {
 
   @override
   void onClose() {
+    // OPTIMIZATION: Cancel batch processing timers
+    _batchProcessTimer?.cancel();
+    _uiUpdateDebounceTimer?.cancel();
+    _scanBatchQueue.clear();
+
     _deviceCache.clear();
     streamedData.clear();
     gatewayDeviceResponses.clear();
+
+    // Cancel all connection subscriptions
+    for (var subscription in _connectionSubscriptions.values) {
+      subscription.cancel();
+    }
+    _connectionSubscriptions.clear();
 
     adapterStateSubscription?.cancel();
     clearCommandCache();

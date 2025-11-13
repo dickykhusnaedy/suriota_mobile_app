@@ -36,7 +36,7 @@ class FormModbusConfigScreen extends StatefulWidget {
 class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
   final BleController bleController;
   final DevicesController controller;
-  final ModbusController modbusController = Get.put(ModbusController());
+  final ModbusController modbusController = Get.find<ModbusController>();
 
   late Worker _worker;
 
@@ -72,10 +72,8 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
   _FormModbusConfigScreenState()
-    : bleController = Get.put(BleController(), permanent: true),
-      controller = Get.put(DevicesController(), permanent: true) {
-    debugPrint('Initialized BleController and DeviceController with Get.put');
-  }
+    : bleController = Get.find<BleController>(),
+      controller = Get.find<DevicesController>();
 
   @override
   void initState() {
@@ -88,9 +86,10 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
       }
     });
 
-    // Fetch data after widget build
+    // Fetch data after widget build - already using async callback
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await controller.fetchDevices(widget.model);
+      // Use smart cache instead of always fetching
+      await controller.fetchDevicesIfNeeded(widget.model);
 
       if (widget.deviceId != null && widget.registerId != null) {
         await modbusController.getDeviceById(

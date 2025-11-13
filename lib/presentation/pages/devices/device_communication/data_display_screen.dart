@@ -29,8 +29,8 @@ class DisplayDataPage extends StatefulWidget {
 }
 
 class _DisplayDataPageState extends State<DisplayDataPage> {
-  final controller = Get.put(BleController());
-  final devicesController = Get.put(DevicesController());
+  final controller = Get.find<BleController>();
+  final devicesController = Get.find<DevicesController>();
   Map<String, dynamic> dataDevice = {};
 
   late Worker _worker;
@@ -51,6 +51,10 @@ class _DisplayDataPageState extends State<DisplayDataPage> {
 
   // Timer untuk clear recent updates
   Timer? _updateIndicatorTimer;
+
+  // Tracking untuk invalid data (missing address)
+  final RxInt invalidDataCount = 0.obs;
+  final RxList<String> invalidDataReasons = <String>[].obs;
 
   @override
   void initState() {
@@ -114,7 +118,14 @@ class _DisplayDataPageState extends State<DisplayDataPage> {
   }
 
   void _handleStreamingData(Map<String, String> dataMap) {
-    if (dataMap.isEmpty) return;
+    AppHelpers.debugLog(
+      '_handleStreamingData called with ${dataMap.length} items',
+    );
+
+    if (dataMap.isEmpty) {
+      AppHelpers.debugLog('dataMap is empty, returning');
+      return;
+    }
 
     final currentTime = DateTime.now();
     final timeString =
@@ -136,7 +147,14 @@ class _DisplayDataPageState extends State<DisplayDataPage> {
       (device) => device['device_id'] == widget.deviceId,
     );
 
+    AppHelpers.debugLog(
+      'Checking device ${widget.deviceId}, existingIndex: $existingDeviceIndex, streamingDevicesData.length: ${streamingDevicesData.length}',
+    );
+
     if (existingDeviceIndex != -1) {
+      AppHelpers.debugLog(
+        'Updating existing device at index $existingDeviceIndex',
+      );
       // Update data existing device
       final existingDevice = streamingDevicesData[existingDeviceIndex];
 
@@ -151,41 +169,117 @@ class _DisplayDataPageState extends State<DisplayDataPage> {
       final Map<String, Map<String, String>> updatedValues = Map.from(
         existingDevice['values'] ?? {},
       );
+      int invalidCount = 0;
       dataMap.forEach((address, jsonString) {
+        AppHelpers.debugLog(
+          'Updating address: $address, jsonString: $jsonString',
+        );
         try {
           final parsed = jsonDecode(jsonString) as Map<String, dynamic>;
-          updatedValues[address] = {
+          final parsedAddress = parsed['address']?.toString();
+
+          // Check if address is missing or invalid
+          if (parsedAddress == null || parsedAddress.isEmpty) {
+            invalidCount++;
+            final reason =
+                'Data received without valid address (name: ${parsed['name'] ?? 'Unknown'})';
+            if (!invalidDataReasons.contains(reason)) {
+              invalidDataReasons.add(reason);
+            }
+            AppHelpers.debugLog('Invalid data: address is null or empty');
+            return; // Skip this data
+          }
+
+          updatedValues[parsedAddress] = {
             'name': parsed['name']?.toString() ?? 'Unknown Sensor',
             'value': parsed['value']?.toString() ?? '0',
-            'address': parsed['address']?.toString() ?? address,
+            'address': parsedAddress,
+            'unit': parsed['unit']?.toString() ?? '',
           };
           AppHelpers.debugLog(
             'Updated device ${widget.deviceId} - ${parsed['name']}: ${parsed['value']}',
           );
         } catch (e) {
-          AppHelpers.debugLog('Error parsing stream data: $e');
+          invalidCount++;
+          final reason = 'Parse error: ${e.toString().substring(0, 50)}...';
+          if (!invalidDataReasons.contains(reason)) {
+            invalidDataReasons.add(reason);
+          }
+          AppHelpers.debugLog(
+            'Error parsing stream data for address $address: $e, jsonString: $jsonString',
+          );
         }
       });
+
+      invalidDataCount.value += invalidCount;
+
+      // Stop streaming jika ada invalid data
+      if (invalidCount > 0 && isStreaming.value) {
+        AppHelpers.debugLog(
+          'Stopping streaming due to invalid data (missing address) - existing device',
+        );
+        _streamData(shouldStart: false);
+      }
+
       existingDevice['values'] = updatedValues;
 
       // Trigger update
       streamingDevicesData[existingDeviceIndex] = existingDevice;
       streamingDevicesData.refresh();
+      AppHelpers.debugLog('Device updated and refreshed');
     } else {
+      AppHelpers.debugLog('Adding new device to streamingDevicesData');
       // Tambah device baru (parse JSON string to get name and value)
       final Map<String, Map<String, String>> parsedValues = {};
+      int invalidCount = 0;
       dataMap.forEach((address, jsonString) {
+        AppHelpers.debugLog(
+          'Parsing address: $address, jsonString: $jsonString',
+        );
         try {
           final parsed = jsonDecode(jsonString) as Map<String, dynamic>;
-          parsedValues[address] = {
+          final parsedAddress = parsed['address']?.toString();
+
+          // Check if address is missing or invalid
+          if (parsedAddress == null || parsedAddress.isEmpty) {
+            invalidCount++;
+            final reason =
+                'Data received without valid address (name: ${parsed['name'] ?? 'Unknown'})';
+            if (!invalidDataReasons.contains(reason)) {
+              invalidDataReasons.add(reason);
+            }
+            AppHelpers.debugLog('Invalid data: address is null or empty');
+            return; // Skip this data
+          }
+
+          parsedValues[parsedAddress] = {
             'name': parsed['name']?.toString() ?? 'Unknown Sensor',
             'value': parsed['value']?.toString() ?? '0',
-            'address': parsed['address']?.toString() ?? address,
+            'address': parsedAddress,
+            'unit': parsed['unit']?.toString() ?? '',
           };
+          AppHelpers.debugLog('Successfully parsed sensor: ${parsed['name']}');
         } catch (e) {
-          AppHelpers.debugLog('Error parsing stream data: $e');
+          invalidCount++;
+          final reason = 'Parse error: ${e.toString().substring(0, 50)}...';
+          if (!invalidDataReasons.contains(reason)) {
+            invalidDataReasons.add(reason);
+          }
+          AppHelpers.debugLog(
+            'Error parsing stream data for address $address: $e, jsonString: $jsonString',
+          );
         }
       });
+
+      invalidDataCount.value += invalidCount;
+
+      // Stop streaming jika ada invalid data
+      if (invalidCount > 0 && isStreaming.value) {
+        AppHelpers.debugLog(
+          'Stopping streaming due to invalid data (missing address)',
+        );
+        _streamData(shouldStart: false);
+      }
 
       final newDeviceData = {
         'device_id': widget.deviceId,
@@ -197,8 +291,14 @@ class _DisplayDataPageState extends State<DisplayDataPage> {
       };
 
       streamingDevicesData.add(newDeviceData);
-      AppHelpers.debugLog('Added new streaming device: ${widget.deviceId}');
+      AppHelpers.debugLog(
+        'Added new streaming device: ${widget.deviceId}, parsedValues: ${parsedValues.length} sensors, streamingDevicesData.length now: ${streamingDevicesData.length}',
+      );
     }
+
+    AppHelpers.debugLog(
+      'Final streamingDevicesData.length: ${streamingDevicesData.length}, isEmpty: ${streamingDevicesData.isEmpty}',
+    );
   }
 
   String _getMonthName(int month) {
@@ -279,6 +379,7 @@ class _DisplayDataPageState extends State<DisplayDataPage> {
               _buildControlButtons(),
               AppSpacing.md,
               _buildStreamingStatus(),
+              _buildInvalidDataWarning(),
               _buildStreamingData(),
               AppSpacing.md,
             ],
@@ -445,6 +546,53 @@ class _DisplayDataPageState extends State<DisplayDataPage> {
     );
   }
 
+  Widget _buildInvalidDataWarning() {
+    return Obx(() {
+      if (invalidDataCount.value == 0) {
+        return const SizedBox.shrink();
+      }
+
+      return Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.red.withValues(alpha: 0.1),
+                  Colors.red.withValues(alpha: 0.15),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: Colors.red.withValues(alpha: 0.4),
+                width: 1.5,
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.error_outline, color: Colors.red.shade800, size: 16),
+                AppSpacing.sm,
+                Expanded(
+                  child: Text(
+                    'Address property not found - Streaming stopped',
+                    style: context.bodySmall.copyWith(
+                      color: Colors.red.shade800,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          AppSpacing.md,
+        ],
+      );
+    });
+  }
+
   Widget _buildStreamingData() {
     return Obx(
       () => streamingDevicesData.isEmpty
@@ -545,6 +693,7 @@ class _DisplayDataPageState extends State<DisplayDataPage> {
     final sensorName = sensorData['name'] ?? 'Unknown Sensor';
     final sensorValue = sensorData['value'] ?? '0';
     final address = sensorData['address'] ?? sensorAddress;
+    final unit = sensorData['unit'] ?? '';
 
     return Obx(() {
       final isUpdating = _isRecentlyUpdated(address);
@@ -580,7 +729,7 @@ class _DisplayDataPageState extends State<DisplayDataPage> {
               const SizedBox(height: 8),
               _buildSensorAddress(address),
               const SizedBox(height: 10),
-              _buildSensorValue(sensorValue),
+              _buildSensorValue(sensorValue, unit),
               const SizedBox(height: 8),
               _buildLastUpdate(lastUpdate),
             ],
@@ -682,7 +831,7 @@ class _DisplayDataPageState extends State<DisplayDataPage> {
     );
   }
 
-  Widget _buildSensorValue(String value) {
+  Widget _buildSensorValue(String value, String unit) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
@@ -705,7 +854,10 @@ class _DisplayDataPageState extends State<DisplayDataPage> {
               fontSize: 12,
             ),
           ),
-          Text(value, style: context.h4.copyWith(color: AppColor.blackColor)),
+          Text(
+            '$value $unit',
+            style: context.h4.copyWith(color: AppColor.blackColor),
+          ),
         ],
       ),
     );
