@@ -17,6 +17,8 @@ import 'package:gateway_config/presentation/widgets/common/dropdown.dart';
 import 'package:gateway_config/presentation/widgets/common/loading_overlay.dart';
 import 'package:gateway_config/presentation/widgets/common/multi_header_form.dart';
 import 'package:gateway_config/presentation/widgets/common/reusable_widgets.dart';
+import 'package:gateway_config/presentation/widgets/server_config/mqtt_mode_toggle_card.dart';
+import 'package:gateway_config/presentation/widgets/server_config/custom_topic_card.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
 
@@ -59,6 +61,10 @@ class _FormConfigServerState extends State<FormConfigServer> {
   // Custom topics for customize mode
   List<Map<String, dynamic>> customTopics = [];
 
+  // Devices data from API (for customize mode)
+  List<Map<String, dynamic>> devicesWithRegisters = [];
+  bool isLoadingDevices = false;
+
   // TextEditingControllers
   final ipAddressController = TextEditingController();
   final gatewayController = TextEditingController();
@@ -96,6 +102,7 @@ class _FormConfigServerState extends State<FormConfigServer> {
     // Fetch data after widget build
     WidgetsBinding.instance.addPostFrameCallback((_) {
       controller.fetchData(widget.model);
+      // Don't fetch devices here - will fetch when user switches to customize mode
     });
   }
 
@@ -141,11 +148,41 @@ class _FormConfigServerState extends State<FormConfigServer> {
     subscribeTopicController.text =
         config['mqtt_config']?['topic_subscribe'] ?? '';
 
-    // Customize Mode
+    // Customize Mode - Handle both old and new format
     if (config['mqtt_config']?['custom_topics'] != null) {
-      customTopics = List<Map<String, dynamic>>.from(
+      final rawTopics = List<Map<String, dynamic>>.from(
         config['mqtt_config']?['custom_topics'] ?? [],
       );
+
+      // Convert to new format if needed
+      customTopics = rawTopics.map((topic) {
+        // Check if already in new format
+        if (topic.containsKey('topicName') &&
+            topic.containsKey('selectedRegisters')) {
+          // Already new format, just ensure proper types
+          return {
+            'topicName': topic['topicName'] ?? '',
+            'selectedRegisters': Map<String, Set<String>>.from(
+              (topic['selectedRegisters'] as Map<String, dynamic>? ?? {}).map(
+                (key, value) =>
+                    MapEntry(key, Set<String>.from(value as List? ?? [])),
+              ),
+            ),
+            'intervalValue': topic['intervalValue'] ?? topic['interval'] ?? 5,
+            'intervalUnit':
+                topic['intervalUnit'] ?? topic['interval_unit'] ?? 's',
+          };
+        } else {
+          // Old format - convert to new format
+          // Old format has 'topic' and 'registers' as a flat list
+          return {
+            'topicName': topic['topic'] ?? '',
+            'selectedRegisters': <String, Set<String>>{},
+            'intervalValue': topic['interval'] ?? 5,
+            'intervalUnit': topic['interval_unit'] ?? 's',
+          };
+        }
+      }).toList();
     }
 
     // HTTP
@@ -171,6 +208,142 @@ class _FormConfigServerState extends State<FormConfigServer> {
 
     // Refresh UI
     setState(() {});
+  }
+
+  // Fetch devices with registers from API
+  Future<void> _fetchDevicesWithRegisters() async {
+    if (isLoadingDevices) return;
+
+    setState(() => isLoadingDevices = true);
+
+    try {
+      // Try the new endpoint first
+      final command = {
+        'op': 'read',
+        'type': 'devices_with_registers',
+        'minimal': true, // Get only register_id + register_name for performance
+      };
+
+      final response = await bleController.sendCommand(command);
+
+      AppHelpers.debugLog('Device fetch response status: ${response.status}');
+      AppHelpers.debugLog('Device fetch response message: ${response.message}');
+
+      // Check for timeout or error
+      if (response.status == 'error') {
+        if (response.message?.toLowerCase().contains('timeout') ?? false) {
+          AppHelpers.debugLog(
+            'Endpoint devices_with_registers timed out - likely not implemented yet',
+          );
+          // Endpoint not ready, try fallback immediately
+          await _fetchDevicesFallback();
+          return;
+        } else {
+          AppHelpers.debugLog('Error response: ${response.message}');
+          await _fetchDevicesFallback();
+          return;
+        }
+      }
+
+      if (response.status == 'ok' || response.status == 'success') {
+        List<Map<String, dynamic>>? devicesList;
+
+        // Try multiple response structures
+        // Structure 1: devices at root level (response.config.devices)
+        if (response.config != null && response.config is Map) {
+          final configMap = response.config as Map<String, dynamic>;
+          if (configMap['devices'] != null) {
+            devicesList = List<Map<String, dynamic>>.from(
+              configMap['devices'] ?? [],
+            );
+          }
+        }
+
+        // Structure 2: Check if response itself has devices key
+        if (devicesList == null && response.config != null) {
+          try {
+            final responseData = response.config;
+            if (responseData is Map && responseData.containsKey('devices')) {
+              devicesList = List<Map<String, dynamic>>.from(
+                responseData['devices'] ?? [],
+              );
+            }
+          } catch (e) {
+            AppHelpers.debugLog('Error parsing response structure 2: $e');
+          }
+        }
+
+        if (devicesList != null && devicesList.isNotEmpty) {
+          setState(() {
+            devicesWithRegisters = devicesList!;
+          });
+          AppHelpers.debugLog(
+            'Successfully fetched ${devicesWithRegisters.length} devices with registers',
+          );
+        } else {
+          AppHelpers.debugLog(
+            'No devices found in response, trying fallback...',
+          );
+          await _fetchDevicesFallback();
+        }
+      } else {
+        // Endpoint not supported or error, try fallback
+        AppHelpers.debugLog(
+          'devices_with_registers endpoint not supported, trying fallback: ${response.message}',
+        );
+        await _fetchDevicesFallback();
+      }
+    } catch (e) {
+      AppHelpers.debugLog('Error fetching devices with registers: $e');
+      // Try fallback on error
+      await _fetchDevicesFallback();
+    } finally {
+      setState(() => isLoadingDevices = false);
+    }
+  }
+
+  // Fallback: Fetch devices list only (without registers)
+  Future<void> _fetchDevicesFallback() async {
+    try {
+      final command = {'op': 'read', 'type': 'devices'};
+
+      final response = await bleController.sendCommand(command);
+
+      if (response.status == 'ok' || response.status == 'success') {
+        if (response.config != null && response.config is List) {
+          final devicesList = List<Map<String, dynamic>>.from(
+            response.config as List,
+          );
+
+          // Convert to devices_with_registers format (with empty registers)
+          setState(() {
+            devicesWithRegisters = devicesList.map((device) {
+              return {
+                'device_id': device['device_id'] ?? '',
+                'device_name': device['device_name'] ?? 'Unknown Device',
+                'registers': <Map<String, dynamic>>[], // Empty for now
+              };
+            }).toList();
+          });
+
+          AppHelpers.debugLog(
+            'Fallback: Fetched ${devicesWithRegisters.length} devices (without registers)',
+          );
+        }
+      } else {
+        AppHelpers.debugLog('Fallback fetch also failed: ${response.message}');
+        // Keep empty list, user can still manually add topics
+        setState(() {
+          devicesWithRegisters = [];
+        });
+      }
+    } catch (e) {
+      AppHelpers.debugLog('Fallback fetch error: $e');
+      // Keep empty list
+      setState(() {
+        devicesWithRegisters = [];
+      });
+    }
   }
 
   void _submit() async {
@@ -235,11 +408,19 @@ class _FormConfigServerState extends State<FormConfigServer> {
           "topic_subscribe": _sanitizeInput(subscribeTopicController.text),
           if (mqttPublishMode == 'customize')
             "custom_topics": customTopics.map((topic) {
+              // Flatten selectedRegisters Map to simple list
+              final selectedRegsMap =
+                  topic['selectedRegisters'] as Map<String, Set<String>>? ?? {};
+              final flattenedRegisters = <String>[];
+              selectedRegsMap.forEach((deviceId, registerIds) {
+                flattenedRegisters.addAll(registerIds);
+              });
+
               return {
-                "topic": topic['topic'] ?? '',
-                "registers": topic['registers'] ?? [],
-                "interval": topic['interval'] ?? 5,
-                "interval_unit": topic['interval_unit'] ?? 's',
+                "topic": topic['topicName'] ?? '',
+                "registers": flattenedRegisters,
+                "interval": topic['intervalValue'] ?? 5,
+                "interval_unit": topic['intervalUnit'] ?? 's',
               };
             }).toList(),
         };
@@ -387,8 +568,12 @@ class _FormConfigServerState extends State<FormConfigServer> {
               AppSpacing.md,
               _httpWrapper(),
               AppSpacing.md,
-              _dataInterval(context),
-              AppSpacing.md,
+              // Hide Data Interval when in customize mode (each topic has its own interval)
+              if (!(isEnabledMqtt == 'true' && mqttPublishMode == 'customize'))
+                _dataInterval(context),
+              // Add spacing only if data interval is shown
+              if (!(isEnabledMqtt == 'true' && mqttPublishMode == 'customize'))
+                AppSpacing.md,
               GradientButton(
                 text: 'Save Server Configuration',
                 icon: Icons.save,
@@ -713,72 +898,39 @@ class _FormConfigServerState extends State<FormConfigServer> {
     );
   }
 
-  // MQTT Mode Selection - Compact Tab Style
+  // MQTT Mode Selection - Enhanced with Toggle Cards
   Widget _mqttModeSelectionSection() {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColor.grey.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      padding: const EdgeInsets.all(4),
-      child: Row(
-        children: [
-          Expanded(
-            child: _compactModeTab(
-              label: 'Default',
-              icon: Icons.layers_outlined,
-              isSelected: mqttPublishMode == 'default',
-              onTap: () => setState(() => mqttPublishMode = 'default'),
-            ),
-          ),
-          const SizedBox(width: 4),
-          Expanded(
-            child: _compactModeTab(
-              label: 'Custom',
-              icon: Icons.tune,
-              isSelected: mqttPublishMode == 'customize',
-              onTap: () => setState(() => mqttPublishMode = 'customize'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _compactModeTab({
-    required String label,
-    required IconData icon,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColor.primaryColor : Colors.transparent,
-          borderRadius: BorderRadius.circular(6),
+    return Column(
+      children: [
+        MqttModeToggleCard(
+          title: 'Default Mode',
+          description: 'Use single topic for all data with standard format',
+          icon: Icons.layers_outlined,
+          isEnabled: mqttPublishMode == 'default',
+          onChanged: (enabled) {
+            if (enabled) {
+              setState(() => mqttPublishMode = 'default');
+            }
+          },
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              size: 18,
-              color: isSelected ? AppColor.whiteColor : AppColor.grey,
-            ),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: context.bodySmall.copyWith(
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                color: isSelected ? AppColor.whiteColor : AppColor.grey,
-              ),
-            ),
-          ],
+        const SizedBox(height: 8),
+        MqttModeToggleCard(
+          title: 'Customize Mode',
+          description:
+              'Create multiple topics with specific devices & registers',
+          icon: Icons.tune,
+          isEnabled: mqttPublishMode == 'customize',
+          onChanged: (enabled) {
+            if (enabled) {
+              setState(() => mqttPublishMode = 'customize');
+              // Lazy load: Only fetch devices when user switches to customize mode
+              if (devicesWithRegisters.isEmpty && !isLoadingDevices) {
+                _fetchDevicesWithRegisters();
+              }
+            }
+          },
         ),
-      ),
+      ],
     );
   }
 
@@ -803,7 +955,7 @@ class _FormConfigServerState extends State<FormConfigServer> {
     );
   }
 
-  // Customize Mode Fields - Compact
+  // Customize Mode Fields - Enhanced with Device Selection
   Widget _customizeModeFields() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -812,7 +964,7 @@ class _FormConfigServerState extends State<FormConfigServer> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Topics',
+              'Custom Topics',
               style: context.body.copyWith(
                 fontWeight: FontWeight.bold,
                 color: AppColor.blackColor,
@@ -825,27 +977,39 @@ class _FormConfigServerState extends State<FormConfigServer> {
                 borderRadius: BorderRadius.circular(8),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
+                    horizontal: 12,
+                    vertical: 8,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColor.primaryColor,
+                    gradient: LinearGradient(
+                      colors: [
+                        AppColor.primaryColor,
+                        AppColor.primaryColor.withValues(alpha: 0.8),
+                      ],
+                    ),
                     borderRadius: BorderRadius.circular(8),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColor.primaryColor.withValues(alpha: 0.3),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const Icon(
-                        Icons.add,
-                        size: 16,
+                        Icons.add_circle_outline,
+                        size: 18,
                         color: AppColor.whiteColor,
                       ),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: 6),
                       Text(
-                        'Add',
+                        'Add Topic',
                         style: context.bodySmall.copyWith(
                           color: AppColor.whiteColor,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.bold,
                           fontSize: 12,
                         ),
                       ),
@@ -856,43 +1020,174 @@ class _FormConfigServerState extends State<FormConfigServer> {
             ),
           ],
         ),
-        if (customTopics.isEmpty) ...[
-          AppSpacing.sm,
+        AppSpacing.md,
+        // Loading State
+        if (isLoadingDevices)
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(24),
+            width: double.infinity,
             decoration: BoxDecoration(
-              color: AppColor.grey.withValues(alpha: 0.05),
-              borderRadius: BorderRadius.circular(8),
+              color: AppColor.primaryColor.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: AppColor.grey.withValues(alpha: 0.2),
-                style: BorderStyle.solid,
+                color: AppColor.primaryColor.withValues(alpha: 0.2),
+                width: 1,
               ),
             ),
-            child: Row(
+            child: Column(
               children: [
-                Icon(Icons.info_outline, size: 16, color: AppColor.grey),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'No topics yet. Tap "Add" to create one.',
-                    style: context.bodySmall.copyWith(
-                      color: AppColor.grey,
-                      fontSize: 11,
-                    ),
+                CircularProgressIndicator(
+                  color: AppColor.primaryColor,
+                  strokeWidth: 2,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Loading devices and registers...',
+                  style: context.bodySmall.copyWith(
+                    color: AppColor.grey,
+                    fontSize: 11,
                   ),
                 ),
               ],
             ),
-          ),
-        ],
-        if (customTopics.isNotEmpty) ...[
-          AppSpacing.sm,
+          )
+        // Empty State - No Topics Yet
+        else if (customTopics.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: AppColor.grey.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: AppColor.grey.withValues(alpha: 0.2),
+                width: 1,
+              ),
+            ),
+            child: Column(
+              children: [
+                Icon(
+                  Icons.topic_outlined,
+                  size: 48,
+                  color: AppColor.grey.withValues(alpha: 0.5),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'No custom topics yet',
+                  style: context.bodySmall.copyWith(
+                    color: AppColor.grey,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Tap "Add Topic" to create your first custom topic',
+                  style: context.bodySmall.copyWith(
+                    color: AppColor.grey,
+                    fontSize: 10,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                // Show retry button if devices fetch failed
+                if (devicesWithRegisters.isEmpty) ...[
+                  const SizedBox(height: 16),
+                  TextButton.icon(
+                    onPressed: _fetchDevicesWithRegisters,
+                    icon: Icon(
+                      Icons.refresh,
+                      size: 16,
+                      color: AppColor.primaryColor,
+                    ),
+                    label: Text(
+                      'Retry Loading Devices',
+                      style: context.bodySmall.copyWith(
+                        color: AppColor.primaryColor,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          )
+        else ...[
+          // Info banner if devices not available
+          if (devicesWithRegisters.isEmpty) ...[
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: Colors.orange.withValues(alpha: 0.3),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, size: 16, color: Colors.orange),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Device list unavailable',
+                          style: context.bodySmall.copyWith(
+                            color: Colors.orange.withValues(alpha: 0.9),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Topics created without device selection. You can retry loading devices.',
+                          style: context.bodySmall.copyWith(
+                            color: Colors.orange.withValues(alpha: 0.8),
+                            fontSize: 10,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  IconButton(
+                    onPressed: _fetchDevicesWithRegisters,
+                    icon: Icon(Icons.refresh, size: 18, color: Colors.orange),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    tooltip: 'Retry',
+                  ),
+                ],
+              ),
+            ),
+            AppSpacing.sm,
+          ],
+          // Topic Cards
           ...customTopics.asMap().entries.map((entry) {
             final index = entry.key;
             final topic = entry.value;
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: _customTopicCard(index, topic),
+
+            return CustomTopicCard(
+              index: index,
+              topicName: topic['topicName'] ?? '',
+              intervalValue: topic['intervalValue'] ?? 5,
+              intervalUnit: topic['intervalUnit'] ?? 's',
+              selectedRegisters: Map<String, Set<String>>.from(
+                (topic['selectedRegisters'] as Map<String, dynamic>? ?? {}).map(
+                  (key, value) =>
+                      MapEntry(key, Set<String>.from(value as List)),
+                ),
+              ),
+              devicesWithRegisters: devicesWithRegisters,
+              onTopicChanged: (updatedData) {
+                setState(() {
+                  customTopics[index] = updatedData;
+                });
+              },
+              onRemove: () => _removeCustomTopic(index),
+              canRemove: customTopics.length > 1 || customTopics.isNotEmpty,
             );
           }),
         ],
@@ -900,143 +1195,14 @@ class _FormConfigServerState extends State<FormConfigServer> {
     );
   }
 
-  // Custom Topic Card - Compact
-  Widget _customTopicCard(int index, Map<String, dynamic> topic) {
-    final topicController = TextEditingController(text: topic['topic'] ?? '');
-    final selectedRegisters = List<int>.from(topic['registers'] ?? []);
-
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: AppColor.whiteColor,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColor.grey.withValues(alpha: 0.25)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Compact Header
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: AppColor.primaryColor,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  '#${index + 1}',
-                  style: context.bodySmall.copyWith(
-                    color: AppColor.whiteColor,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 11,
-                  ),
-                ),
-              ),
-              const Spacer(),
-              InkWell(
-                onTap: () => _removeCustomTopic(index),
-                borderRadius: BorderRadius.circular(4),
-                child: Padding(
-                  padding: const EdgeInsets.all(4),
-                  child: Icon(Icons.close, size: 16, color: AppColor.grey),
-                ),
-              ),
-            ],
-          ),
-          AppSpacing.sm,
-          // Compact Topic Field
-          CustomTextFormField(
-            controller: topicController,
-            labelTxt: "Topic",
-            hintTxt: "e.g., sensor/temp",
-            onChanges: (value) {
-              topic['topic'] = value;
-            },
-          ),
-          AppSpacing.sm,
-          // Compact Register Selection
-          Text(
-            'Registers',
-            style: context.bodySmall.copyWith(
-              fontWeight: FontWeight.w600,
-              fontSize: 11,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Wrap(
-            spacing: 4,
-            runSpacing: 4,
-            children: List.generate(10, (regIndex) {
-              final regNumber = regIndex + 1;
-              final isSelected = selectedRegisters.contains(regNumber);
-              return InkWell(
-                onTap: () {
-                  setState(() {
-                    if (isSelected) {
-                      selectedRegisters.remove(regNumber);
-                    } else {
-                      selectedRegisters.add(regNumber);
-                    }
-                    topic['registers'] = selectedRegisters;
-                  });
-                },
-                borderRadius: BorderRadius.circular(6),
-                child: Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? AppColor.primaryColor
-                        : AppColor.grey.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(
-                      color: isSelected
-                          ? AppColor.primaryColor
-                          : AppColor.grey.withValues(alpha: 0.25),
-                      width: isSelected ? 1.5 : 1,
-                    ),
-                  ),
-                  child: Center(
-                    child: Text(
-                      '$regNumber',
-                      style: context.bodySmall.copyWith(
-                        color: isSelected
-                            ? AppColor.whiteColor
-                            : AppColor.blackColor,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 11,
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            }),
-          ),
-          if (selectedRegisters.isNotEmpty) ...[
-            const SizedBox(height: 6),
-            Text(
-              '${selectedRegisters.length} selected',
-              style: context.bodySmall.copyWith(
-                color: AppColor.primaryColor,
-                fontWeight: FontWeight.w600,
-                fontSize: 10,
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
   // Add Custom Topic
   void _addCustomTopic() {
     setState(() {
       customTopics.add({
-        'topic': '',
-        'registers': <int>[],
-        'interval': 5,
-        'interval_unit': 's',
+        'topicName': '',
+        'selectedRegisters': <String, Set<String>>{},
+        'intervalValue': 5,
+        'intervalUnit': 's',
       });
     });
   }
