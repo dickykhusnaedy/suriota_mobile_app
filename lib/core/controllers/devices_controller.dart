@@ -24,7 +24,7 @@ class DevicesController extends GetxController {
   var lastFetchTime = Rxn<DateTime>();
   final cacheDuration = const Duration(minutes: 5);
 
-  final BleController bleController = Get.put(BleController());
+  final BleController bleController = Get.find<BleController>();
 
   // Smart cache: Check if cached data is still fresh
   bool get isDataFresh {

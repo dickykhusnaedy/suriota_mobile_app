@@ -22,7 +22,7 @@ class DetailDeviceScreen extends StatefulWidget {
 }
 
 class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
-  final controller = Get.put(BleController());
+  final controller = Get.find<BleController>();
 
   @override
   void initState() {

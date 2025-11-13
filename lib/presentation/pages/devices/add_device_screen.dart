@@ -24,7 +24,7 @@ class AddDeviceScreen extends StatefulWidget {
 }
 
 class _AddDeviceScreenState extends State<AddDeviceScreen> {
-  final controller = Get.put(BleController());
+  final controller = Get.find<BleController>();
   bool isBluetoothOn = false;
 
   // Search functionality

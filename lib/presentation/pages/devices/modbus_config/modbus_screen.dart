@@ -38,10 +38,8 @@ class _ModbusScreenState extends State<ModbusScreen> {
   DropdownItems? selectedDevice;
 
   _ModbusScreenState()
-    : bleController = Get.put(BleController(), permanent: true),
-      controller = Get.put(DevicesController(), permanent: true) {
-    debugPrint('Initialized BleController and DeviceController with Get.put');
-  }
+    : bleController = Get.find<BleController>(),
+      controller = Get.find<DevicesController>();
 
   @override
   void initState() {
@@ -66,6 +64,24 @@ class _ModbusScreenState extends State<ModbusScreen> {
   void dispose() {
     isInitialized = false;
     super.dispose();
+  }
+
+  // Format time ago untuk cache status indicator
+  String _formatTimeAgo(DateTime? dateTime) {
+    if (dateTime == null) return 'Never';
+
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+
+    if (difference.inSeconds < 60) {
+      return 'Just now';
+    } else if (difference.inMinutes < 60) {
+      return '${difference.inMinutes}m ago';
+    } else if (difference.inHours < 24) {
+      return '${difference.inHours}h ago';
+    } else {
+      return '${difference.inDays}d ago';
+    }
   }
 
   void _deleteDataModbus(String deviceId, String registerId) async {
@@ -174,31 +190,55 @@ class _ModbusScreenState extends State<ModbusScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: _appBar(context),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: AppPadding.horizontalMedium,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
+      body: RefreshIndicator(
+        onRefresh: () async {
+          // Force fetch fresh data (bypass cache)
+          await controller.fetchDevices(widget.model);
+        },
+        color: AppColor.primaryColor,
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: AppPadding.horizontalMedium,
+            physics: const AlwaysScrollableScrollPhysics(), // Enable pull-to-refresh even when content doesn't scroll
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
               AppSpacing.md,
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     'Choose Device',
                     style: context.h5,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  TextButton.icon(
-                    onPressed: () => controller.fetchDevices(widget.model),
-                    label: const Icon(Icons.rotate_left, size: 20),
-                    style: TextButton.styleFrom(
-                      iconColor: AppColor.primaryColor,
-                      padding: EdgeInsets.zero,
-                      minimumSize: const Size(50, 30),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                  ),
+                  const SizedBox(height: 4),
+                  // Cache status indicator
+                  Obx(() {
+                    final lastUpdate = controller.lastFetchTime.value;
+                    final timeAgo = _formatTimeAgo(lastUpdate);
+                    final isStale = lastUpdate != null &&
+                        DateTime.now().difference(lastUpdate) >
+                            const Duration(minutes: 5);
+
+                    return Row(
+                      children: [
+                        Icon(
+                          Icons.update,
+                          size: 12,
+                          color: isStale ? Colors.orange : AppColor.grey,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Updated $timeAgo',
+                          style: context.bodySmall.copyWith(
+                            color: isStale ? Colors.orange : AppColor.grey,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    );
+                  }),
                 ],
               ),
               AppSpacing.sm,
@@ -279,7 +319,8 @@ class _ModbusScreenState extends State<ModbusScreen> {
                 );
               }),
               AppSpacing.md,
-            ],
+              ],
+            ),
           ),
         ),
       ),

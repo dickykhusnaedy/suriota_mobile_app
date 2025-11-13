@@ -29,8 +29,8 @@ class DisplayDataPage extends StatefulWidget {
 }
 
 class _DisplayDataPageState extends State<DisplayDataPage> {
-  final controller = Get.put(BleController());
-  final devicesController = Get.put(DevicesController());
+  final controller = Get.find<BleController>();
+  final devicesController = Get.find<DevicesController>();
   Map<String, dynamic> dataDevice = {};
 
   late Worker _worker;

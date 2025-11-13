@@ -40,10 +40,8 @@ class _DeviceCommunicationsScreenState
   Timer? _searchDebounceTimer;
 
   _DeviceCommunicationsScreenState()
-    : bleController = Get.put(BleController(), permanent: true),
-      controller = Get.put(DevicesController(), permanent: true) {
-    debugPrint('Initialized BleController and DeviceController with Get.put');
-  }
+    : bleController = Get.find<BleController>(),
+      controller = Get.find<DevicesController>();
 
   @override
   void initState() {
@@ -179,13 +177,15 @@ class _DeviceCommunicationsScreenState
       body: RefreshIndicator(
         onRefresh: () async {
           // Force fetch fresh data (bypass cache)
+          _clearSearch();
           await controller.fetchDevices(widget.model);
         },
         color: AppColor.primaryColor,
         child: SafeArea(
           child: SingleChildScrollView(
             padding: AppPadding.horizontalMedium,
-            physics: const AlwaysScrollableScrollPhysics(), // Enable pull-to-refresh even when content doesn't scroll
+            physics:
+                const AlwaysScrollableScrollPhysics(), // Enable pull-to-refresh even when content doesn't scroll
             child: _bodyContent(context),
           ),
         ),
@@ -243,7 +243,8 @@ class _DeviceCommunicationsScreenState
                   Obx(() {
                     final lastUpdate = controller.lastFetchTime.value;
                     final timeAgo = _formatTimeAgo(lastUpdate);
-                    final isStale = lastUpdate != null &&
+                    final isStale =
+                        lastUpdate != null &&
                         DateTime.now().difference(lastUpdate) >
                             const Duration(minutes: 5);
 
@@ -266,20 +267,6 @@ class _DeviceCommunicationsScreenState
                     );
                   }),
                 ],
-              ),
-            ),
-            TextButton.icon(
-              onPressed: () async {
-                // Clear search saat refresh data
-                _clearSearch();
-                await controller.fetchDevices(widget.model);
-              },
-              label: const Icon(Icons.rotate_left, size: 20),
-              style: TextButton.styleFrom(
-                iconColor: AppColor.primaryColor,
-                padding: EdgeInsets.zero,
-                minimumSize: const Size(50, 30),
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
             ),
           ],

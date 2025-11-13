@@ -12,7 +12,7 @@ class ModbusController extends GetxController {
       <Map<String, dynamic>>[].obs;
   final RxBool isFetching = false.obs;
 
-  final BleController bleController = Get.put(BleController());
+  final BleController bleController = Get.find<BleController>();
 
   Future<void> fetchDevices(DeviceModel model, String deviceId) async {
     isFetching.value = true;
