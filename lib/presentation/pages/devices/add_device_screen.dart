@@ -36,10 +36,12 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
     super.initState();
     _checkBluetoothStatus();
 
-    // IMPORTANT: Clear search state saat page dibuka
+    // IMPORTANT: Clear search state dan scanned devices saat page dibuka
     // Ini mencegah search sebelumnya masih tersimpan
+    // connectedHistory TIDAK akan terhapus (list terpisah)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _clearSearch();
+      controller.scannedDevices.clear();
     });
   }
 

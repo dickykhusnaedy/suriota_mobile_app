@@ -79,6 +79,24 @@ class _DeviceCommunicationsScreenState
     super.dispose();
   }
 
+  // Format time ago untuk cache status indicator
+  String _formatTimeAgo(DateTime? dateTime) {
+    if (dateTime == null) return 'Never';
+
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+
+    if (difference.inSeconds < 60) {
+      return 'Just now';
+    } else if (difference.inMinutes < 60) {
+      return '${difference.inMinutes}m ago';
+    } else if (difference.inHours < 24) {
+      return '${difference.inHours}h ago';
+    } else {
+      return '${difference.inDays}d ago';
+    }
+  }
+
   // Debounced search dengan delay 300ms untuk performance
   void _onSearchChanged(String query) {
     // Cancel timer sebelumnya jika ada
@@ -158,10 +176,18 @@ class _DeviceCommunicationsScreenState
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: _appBar(context),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: AppPadding.horizontalMedium,
-          child: _bodyContent(context),
+      body: RefreshIndicator(
+        onRefresh: () async {
+          // Force fetch fresh data (bypass cache)
+          await controller.fetchDevices(widget.model);
+        },
+        color: AppColor.primaryColor,
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: AppPadding.horizontalMedium,
+            physics: const AlwaysScrollableScrollPhysics(), // Enable pull-to-refresh even when content doesn't scroll
+            child: _bodyContent(context),
+          ),
         ),
       ),
     );
@@ -203,10 +229,44 @@ class _DeviceCommunicationsScreenState
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              'Data Devices',
-              style: context.h5,
-              overflow: TextOverflow.ellipsis,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Data Devices',
+                    style: context.h5,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  // Cache status indicator
+                  Obx(() {
+                    final lastUpdate = controller.lastFetchTime.value;
+                    final timeAgo = _formatTimeAgo(lastUpdate);
+                    final isStale = lastUpdate != null &&
+                        DateTime.now().difference(lastUpdate) >
+                            const Duration(minutes: 5);
+
+                    return Row(
+                      children: [
+                        Icon(
+                          Icons.update,
+                          size: 12,
+                          color: isStale ? Colors.orange : AppColor.grey,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Updated $timeAgo',
+                          style: context.bodySmall.copyWith(
+                            color: isStale ? Colors.orange : AppColor.grey,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    );
+                  }),
+                ],
+              ),
             ),
             TextButton.icon(
               onPressed: () async {
@@ -332,6 +392,7 @@ class _DeviceCommunicationsScreenState
                   device['device_id'] ?? 'No ID',
                   device['device_name'] ?? 'Unknown Device',
                   device['protocol'] ?? 'Unknown',
+                  device['register_count'] ?? '0',
                 ),
               );
             },
@@ -423,6 +484,7 @@ class _DeviceCommunicationsScreenState
     String deviceId,
     String title,
     String modbusType,
+    int registerCount,
   ) {
     return Container(
       decoration: BoxDecoration(
@@ -474,7 +536,17 @@ class _DeviceCommunicationsScreenState
                   ),
                   AppSpacing.xs,
                   // Protocol Badge
-                  _buildProtocolBadge(context, modbusType),
+                  Row(
+                    children: [
+                      _buildProtocolBadge(context, modbusType),
+                      AppSpacing.xs,
+                      if (registerCount != 0)
+                        _buildProtocolBadge(
+                          context,
+                          '$registerCount Registers',
+                        ),
+                    ],
+                  ),
                   AppSpacing.xs,
                   // Device ID
                   Row(

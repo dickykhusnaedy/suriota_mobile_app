@@ -5,6 +5,7 @@ class DeviceModel {
   final BluetoothDevice device;
   final RxBool isConnected;
   final RxBool isLoadingConnection;
+  final Rx<DateTime?> lastConnectionTime;
   void Function() onConnect;
   void Function() onDisconnect;
 
@@ -13,5 +14,6 @@ class DeviceModel {
     required this.onConnect,
     required this.onDisconnect,
   }) : isConnected = RxBool(false),
-       isLoadingConnection = RxBool(false);
+       isLoadingConnection = RxBool(false),
+       lastConnectionTime = Rx<DateTime?>(null);
 }

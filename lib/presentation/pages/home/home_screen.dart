@@ -11,6 +11,7 @@ import 'package:gateway_config/models/device_model.dart';
 import 'package:gateway_config/presentation/pages/devices/widgets/device_list_widget.dart';
 import 'package:gateway_config/presentation/pages/sidebar_menu/sidebar_menu.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_alert_dialog.dart';
+import 'package:gateway_config/presentation/widgets/common/custom_alert_widget.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_button.dart';
 import 'package:gateway_config/presentation/widgets/common/loading_overlay.dart';
 import 'package:get/get.dart';
@@ -29,6 +30,28 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     super.dispose();
+  }
+
+  String _formatLastConnectionTime(DateTime? dateTime) {
+    if (dateTime == null) return '';
+
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+
+    if (difference.inSeconds < 60) {
+      return 'Last seen: Just now';
+    } else if (difference.inMinutes < 60) {
+      return 'Last seen: ${difference.inMinutes}m ago';
+    } else if (difference.inHours < 24) {
+      return 'Last seen: ${difference.inHours}h ago';
+    } else if (difference.inDays < 7) {
+      return 'Last seen: ${difference.inDays}d ago';
+    } else {
+      final month = dateTime.month.toString().padLeft(2, '0');
+      final day = dateTime.day.toString().padLeft(2, '0');
+      final year = dateTime.year;
+      return 'Last seen: $day/$month/$year';
+    }
   }
 
   void disconnect(DeviceModel deviceModel) async {
@@ -122,10 +145,10 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         AppSpacing.xxl,
         Text(
-          'Device List',
+          'Connected Devices',
           style: context.h4.copyWith(color: AppColor.blackColor),
         ),
-        AppSpacing.sm,
+        AppSpacing.md,
         Obx(() {
           if (controller.errorMessage.value.contains(
             'Bluetooth has been turned off',
@@ -175,43 +198,59 @@ class _HomeScreenState extends State<HomeScreen> {
             );
           }
 
-          if (controller.scannedDevices.isEmpty) {
+          if (controller.connectedHistory.isEmpty) {
             return Container(
               height: MediaQuery.of(context).size.height * 0.55,
               alignment: Alignment.center,
               child: Text(
-                'No device found.\nFind devices near you by clicking the (+) button.',
+                'No device history.\nConnect a device to see it here.',
                 textAlign: TextAlign.center,
                 style: context.body.copyWith(color: AppColor.grey),
               ),
             );
           }
 
-          return ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: controller.scannedDevices.length,
-            itemBuilder: (context, index) {
-              final deviceModel = controller.scannedDevices[index];
+          return Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              const CustomAlertWidget(
+                type: AlertType.info,
+                title: 'Temporary Session',
+                description:
+                    'Device connection history will be cleared when the app is closed. Make sure to complete your tasks before exiting.',
+              ),
+              AppSpacing.md,
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: controller.connectedHistory.length,
+                itemBuilder: (context, index) {
+                  final deviceModel = controller.connectedHistory[index];
 
-              return Obx(() {
-                return DeviceListWidget(
-                  device: deviceModel.device,
-                  isConnected: deviceModel.isConnected.value,
-                  isLoadingConnection: deviceModel.isLoadingConnection.value,
-                  onConnect: () async {
-                    if (!deviceModel.isConnected.value) {
-                      await controller.connectToDevice(deviceModel);
-                    }
-                  },
-                  onDisconnect: () async {
-                    if (deviceModel.isConnected.value) {
-                      disconnect(deviceModel);
-                    }
-                  },
-                );
-              });
-            },
+                  return Obx(() {
+                    return DeviceListWidget(
+                      device: deviceModel.device,
+                      isConnected: deviceModel.isConnected.value,
+                      isLoadingConnection:
+                          deviceModel.isLoadingConnection.value,
+                      lastConnectionTime: _formatLastConnectionTime(
+                        deviceModel.lastConnectionTime.value,
+                      ),
+                      onConnect: () async {
+                        if (!deviceModel.isConnected.value) {
+                          await controller.connectToDevice(deviceModel);
+                        }
+                      },
+                      onDisconnect: () async {
+                        if (deviceModel.isConnected.value) {
+                          disconnect(deviceModel);
+                        }
+                      },
+                    );
+                  });
+                },
+              ),
+            ],
           );
         }),
       ],

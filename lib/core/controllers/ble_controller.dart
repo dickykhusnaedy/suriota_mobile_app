@@ -43,6 +43,9 @@ class BleController extends GetxController {
   // List for scanned devices as DeviceModel
   var scannedDevices = <DeviceModel>[].obs;
 
+  // List for connection history (devices that have been connected before)
+  var connectedHistory = <DeviceModel>[].obs;
+
   // Search functionality
   var searchQuery = ''.obs;
   var filteredDevices = <DeviceModel>[].obs;
@@ -333,6 +336,32 @@ class BleController extends GetxController {
     filteredDevices.value = scannedDevices.toList();
   }
 
+  // Add or update device in connection history
+  void addOrUpdateHistory(DeviceModel deviceModel) {
+    // Update timestamp
+    deviceModel.lastConnectionTime.value = DateTime.now();
+
+    // Find if device already exists in history (by remoteId)
+    final index = connectedHistory.indexWhere(
+      (d) => d.device.remoteId == deviceModel.device.remoteId,
+    );
+
+    if (index >= 0) {
+      // Device exists: remove from old position and add to front (most recent)
+      connectedHistory.removeAt(index);
+      connectedHistory.insert(0, deviceModel);
+      AppHelpers.debugLog(
+        'Updated device in history: ${deviceModel.device.remoteId}',
+      );
+    } else {
+      // New device: add to front
+      connectedHistory.insert(0, deviceModel);
+      AppHelpers.debugLog(
+        'Added new device to history: ${deviceModel.device.remoteId}',
+      );
+    }
+  }
+
   void _handleAdapterStateChange(BluetoothAdapterState state) {
     AppHelpers.debugLog('Bluetooth adapter state changed: $state');
     if (state == BluetoothAdapterState.off) {
@@ -360,6 +389,9 @@ class BleController extends GetxController {
       await deviceModel.device.connect();
       connectedDevice.value = deviceModel.device;
       deviceModel.isConnected.value = true;
+
+      // Add to connection history
+      addOrUpdateHistory(deviceModel);
 
       // FIX: Re-add device to cache after successful connection
       // Ini mencegah device null setelah disconnect-reconnect
@@ -479,6 +511,9 @@ class BleController extends GetxController {
       }
       response.value = '';
       deviceModel.isConnected.value = false;
+
+      // Update connection history with disconnect timestamp
+      addOrUpdateHistory(deviceModel);
 
       AppHelpers.debugLog('Device state set to disconnected');
 
