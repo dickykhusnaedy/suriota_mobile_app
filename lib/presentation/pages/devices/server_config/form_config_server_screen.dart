@@ -235,114 +235,48 @@ class _FormConfigServerState extends State<FormConfigServer> {
           AppHelpers.debugLog(
             'Endpoint devices_with_registers timed out - likely not implemented yet',
           );
-          // Endpoint not ready, try fallback immediately
-          await _fetchDevicesFallback();
           return;
         } else {
           AppHelpers.debugLog('Error response: ${response.message}');
-          await _fetchDevicesFallback();
           return;
         }
       }
 
       if (response.status == 'ok' || response.status == 'success') {
-        List<Map<String, dynamic>>? devicesList;
-
-        // Try multiple response structures
-        // Structure 1: devices at root level (response.config.devices)
-        if (response.config != null && response.config is Map) {
-          final configMap = response.config as Map<String, dynamic>;
-          if (configMap['devices'] != null) {
-            devicesList = List<Map<String, dynamic>>.from(
-              configMap['devices'] ?? [],
-            );
-          }
-        }
-
-        // Structure 2: Check if response itself has devices key
-        if (devicesList == null && response.config != null) {
-          try {
-            final responseData = response.config;
-            if (responseData is Map && responseData.containsKey('devices')) {
-              devicesList = List<Map<String, dynamic>>.from(
-                responseData['devices'] ?? [],
-              );
-            }
-          } catch (e) {
-            AppHelpers.debugLog('Error parsing response structure 2: $e');
-          }
-        }
-
-        if (devicesList != null && devicesList.isNotEmpty) {
-          setState(() {
-            devicesWithRegisters = devicesList!;
-          });
-          AppHelpers.debugLog(
-            'Successfully fetched ${devicesWithRegisters.length} devices with registers',
-          );
-        } else {
-          AppHelpers.debugLog(
-            'No devices found in response, trying fallback...',
-          );
-          await _fetchDevicesFallback();
-        }
-      } else {
-        // Endpoint not supported or error, try fallback
-        AppHelpers.debugLog(
-          'devices_with_registers endpoint not supported, trying fallback: ${response.message}',
-        );
-        await _fetchDevicesFallback();
-      }
-    } catch (e) {
-      AppHelpers.debugLog('Error fetching devices with registers: $e');
-      // Try fallback on error
-      await _fetchDevicesFallback();
-    } finally {
-      setState(() => isLoadingDevices = false);
-    }
-  }
-
-  // Fallback: Fetch devices list only (without registers)
-  Future<void> _fetchDevicesFallback() async {
-    try {
-      final command = {'op': 'read', 'type': 'devices'};
-
-      final response = await bleController.sendCommand(command);
-
-      if (response.status == 'ok' || response.status == 'success') {
+        // response.config is now directly a List of devices (thanks to field mapping fix)
         if (response.config != null && response.config is List) {
           final devicesList = List<Map<String, dynamic>>.from(
             response.config as List,
           );
 
-          // Convert to devices_with_registers format (with empty registers)
           setState(() {
-            devicesWithRegisters = devicesList.map((device) {
-              return {
-                'device_id': device['device_id'] ?? '',
-                'device_name': device['device_name'] ?? 'Unknown Device',
-                'registers': <Map<String, dynamic>>[], // Empty for now
-              };
-            }).toList();
+            devicesWithRegisters = devicesList;
           });
 
           AppHelpers.debugLog(
-            'Fallback: Fetched ${devicesWithRegisters.length} devices (without registers)',
+            'Successfully fetched ${devicesWithRegisters.length} devices with registers',
           );
+        } else {
+          AppHelpers.debugLog(
+            'Unexpected response.config format: ${response.config?.runtimeType}',
+          );
+          setState(() {
+            devicesWithRegisters = [];
+          });
         }
       } else {
-        AppHelpers.debugLog('Fallback fetch also failed: ${response.message}');
-        // Keep empty list, user can still manually add topics
+        // Endpoint not supported or error
+        AppHelpers.debugLog(
+          'devices_with_registers endpoint failed: ${response.message}',
+        );
         setState(() {
           devicesWithRegisters = [];
         });
       }
     } catch (e) {
-      AppHelpers.debugLog('Fallback fetch error: $e');
-      // Keep empty list
-      setState(() {
-        devicesWithRegisters = [];
-      });
+      AppHelpers.debugLog('Error fetching devices with registers: $e');
+    } finally {
+      setState(() => isLoadingDevices = false);
     }
   }
 
@@ -386,12 +320,6 @@ class _FormConfigServerState extends State<FormConfigServer> {
           fillProtocol = 'none';
         }
 
-        // Interval
-        var dataInterval = {
-          "value": _tryParseInt(intervalTimeController.text) ?? 0,
-          "unit": selectedIntervalType,
-        };
-
         // MQTT Config with publish mode
         var mqttConfig = {
           "enabled": isEnabledMqtt == 'true',
@@ -404,25 +332,35 @@ class _FormConfigServerState extends State<FormConfigServer> {
           "clean_session": cleanSessionSelected == 'true',
           "use_tls": useTlsSelected == 'true',
           "publish_mode": mqttPublishMode,
-          "topic_publish": _sanitizeInput(publishTopicController.text),
-          "topic_subscribe": _sanitizeInput(subscribeTopicController.text),
-          if (mqttPublishMode == 'customize')
-            "custom_topics": customTopics.map((topic) {
-              // Flatten selectedRegisters Map to simple list
-              final selectedRegsMap =
-                  topic['selectedRegisters'] as Map<String, Set<String>>? ?? {};
-              final flattenedRegisters = <String>[];
-              selectedRegsMap.forEach((deviceId, registerIds) {
-                flattenedRegisters.addAll(registerIds);
-              });
+          "default_mode": {
+            "enabled": mqttPublishMode == 'default',
+            if (mqttPublishMode == 'default')
+              "topic_publish": _sanitizeInput(publishTopicController.text),
+            "topic_subscribe": _sanitizeInput(subscribeTopicController.text),
+            "interval": _tryParseInt(intervalTimeController.text) ?? 0,
+            "interval_unit": selectedIntervalType,
+          },
+          "customize_mode": {
+            "enabled": mqttPublishMode == 'customize',
+            if (mqttPublishMode == 'customize')
+              "custom_topics": customTopics.map((topic) {
+                // Flatten selectedRegisters Map to simple list
+                final selectedRegsMap =
+                    topic['selectedRegisters'] as Map<String, Set<String>>? ??
+                    {};
+                final flattenedRegisters = <String>[];
+                selectedRegsMap.forEach((deviceId, registerIds) {
+                  flattenedRegisters.addAll(registerIds);
+                });
 
-              return {
-                "topic": topic['topicName'] ?? '',
-                "registers": flattenedRegisters,
-                "interval": topic['intervalValue'] ?? 5,
-                "interval_unit": topic['intervalUnit'] ?? 's',
-              };
-            }).toList(),
+                return {
+                  "topic": topic['topicName'] ?? '',
+                  "registers": flattenedRegisters,
+                  "interval": topic['intervalValue'] ?? 5,
+                  "interval_unit": topic['intervalUnit'] ?? 's',
+                };
+              }).toList(),
+          },
         };
 
         var httpConfig = {
@@ -444,7 +382,6 @@ class _FormConfigServerState extends State<FormConfigServer> {
           "wifi": wifi,
           "ethernet": ethernet,
           "protocol": fillProtocol,
-          "data_interval": dataInterval,
           "mqtt_config": mqttConfig,
           "http_config": httpConfig,
         };
@@ -1055,6 +992,7 @@ class _FormConfigServerState extends State<FormConfigServer> {
         else if (customTopics.isEmpty)
           Container(
             padding: const EdgeInsets.all(20),
+            width: double.infinity,
             decoration: BoxDecoration(
               color: AppColor.grey.withValues(alpha: 0.05),
               borderRadius: BorderRadius.circular(12),
@@ -1070,7 +1008,7 @@ class _FormConfigServerState extends State<FormConfigServer> {
                   size: 48,
                   color: AppColor.grey.withValues(alpha: 0.5),
                 ),
-                const SizedBox(height: 12),
+                AppSpacing.sm,
                 Text(
                   'No custom topics yet',
                   style: context.bodySmall.copyWith(
@@ -1079,7 +1017,7 @@ class _FormConfigServerState extends State<FormConfigServer> {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 4),
+                AppSpacing.xs,
                 Text(
                   'Tap "Add Topic" to create your first custom topic',
                   style: context.bodySmall.copyWith(
@@ -1090,7 +1028,7 @@ class _FormConfigServerState extends State<FormConfigServer> {
                 ),
                 // Show retry button if devices fetch failed
                 if (devicesWithRegisters.isEmpty) ...[
-                  const SizedBox(height: 16),
+                  AppSpacing.md,
                   TextButton.icon(
                     onPressed: _fetchDevicesWithRegisters,
                     icon: Icon(
@@ -1176,8 +1114,16 @@ class _FormConfigServerState extends State<FormConfigServer> {
               intervalUnit: topic['intervalUnit'] ?? 's',
               selectedRegisters: Map<String, Set<String>>.from(
                 (topic['selectedRegisters'] as Map<String, dynamic>? ?? {}).map(
-                  (key, value) =>
-                      MapEntry(key, Set<String>.from(value as List)),
+                  (key, value) {
+                    // Handle both Set and List types
+                    if (value is Set<String>) {
+                      return MapEntry(key, value);
+                    } else if (value is Set) {
+                      return MapEntry(key, Set<String>.from(value));
+                    } else {
+                      return MapEntry(key, Set<String>.from(value as List));
+                    }
+                  },
                 ),
               ),
               devicesWithRegisters: devicesWithRegisters,

@@ -835,6 +835,22 @@ class BleController extends GetxController {
 
                 final responseJson =
                     jsonDecode(firstSegment) as Map<String, dynamic>;
+
+                // Inject type from command if not present in response
+                // Device BLE might not send 'type' field, so we inject it manually
+                responseJson['type'] = responseJson['type'] ?? command['type'] ?? 'device';
+
+                // Map alternate field names to 'config' (mirrors logic in readCommandResponse)
+                // Firmware may send "devices", "data", or type-based field names instead of "config"
+                if (!responseJson.containsKey('config')) {
+                  dynamic configData =
+                      responseJson[command['type']] ??  // Try type as field name (e.g., "devices")
+                      responseJson['data'] ??           // Try 'data'
+                      responseJson['devices'] ??        // Try 'devices'
+                      {};
+                  responseJson['config'] = configData;
+                }
+
                 final cmdResponse = CommandResponse.fromJson(responseJson);
 
                 // Cache dengan ID (ex. from lastCommand)
