@@ -82,6 +82,7 @@ class DevicesController extends GetxController {
       final response = await bleController.readCommandResponse(
         model,
         type: 'devices_summary',
+        additionalParams: {'minimal': true},
       );
 
       if (response.status == 'ok' || response.status == 'success') {
@@ -275,7 +276,9 @@ class DevicesController extends GetxController {
     // Then apply search query filter
     if (searchQuery.value.isNotEmpty) {
       result = result.where((device) {
-        final deviceName = (device['device_name'] ?? '').toString().toLowerCase();
+        final deviceName = (device['device_name'] ?? '')
+            .toString()
+            .toLowerCase();
         final deviceId = (device['device_id'] ?? '').toString().toLowerCase();
         final protocol = (device['protocol'] ?? '').toString().toLowerCase();
 

@@ -31,7 +31,7 @@ class ModbusController extends GetxController {
       final response = await bleController.readCommandResponse(
         model,
         type: 'registers_summary',
-        additionalParams: {'device_id': deviceId},
+        additionalParams: {'device_id': deviceId, 'minimal': true},
       );
 
       if (response.status == 'ok' || response.status == 'success') {

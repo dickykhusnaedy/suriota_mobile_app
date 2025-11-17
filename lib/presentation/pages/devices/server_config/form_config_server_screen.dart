@@ -51,7 +51,6 @@ class _FormConfigServerState extends State<FormConfigServer> {
   String methodRequestSelected = 'POST';
   String bodyFormatRequestSelected = 'json';
 
-  String selectedIntervalType = 'ms';
   String cleanSessionSelected = 'true';
   String useTlsSelected = 'false';
 
@@ -71,16 +70,25 @@ class _FormConfigServerState extends State<FormConfigServer> {
   final subnetMaskController = TextEditingController();
   final wifiSsidController = TextEditingController();
   final wifiPasswordController = TextEditingController();
-  final intervalTimeController = TextEditingController(text: '1000');
+
+  // MQTT Default Mode Interval (v2.2.0)
+  final mqttDefaultIntervalController = TextEditingController(text: '5');
+  String mqttDefaultIntervalUnit = 's';
+
   final serverNameController = TextEditingController();
   final portMqttController = TextEditingController(text: '1883');
   final publishTopicController = TextEditingController();
   final subscribeTopicController = TextEditingController();
   final keepAliveController = TextEditingController(text: '60');
   final clientIdController = TextEditingController();
+
+  // HTTP Config (v2.2.0 - interval moved here)
   final urlLinkController = TextEditingController();
   final timeoutController = TextEditingController(text: '5000');
   final retryController = TextEditingController(text: '3');
+  final httpIntervalController = TextEditingController(text: '5');
+  String httpIntervalUnit = 's';
+
   final usernameController = TextEditingController();
   final passwordController = TextEditingController();
 
@@ -123,11 +131,6 @@ class _FormConfigServerState extends State<FormConfigServer> {
     gatewayController.text = config['ethernet']?['gateway'] ?? '';
     subnetMaskController.text = config['ethernet']?['subnet'] ?? '';
 
-    // Interval
-    intervalTimeController.text =
-        config['data_interval']?['value']?.toString() ?? '';
-    selectedIntervalType = config['data_interval']?['unit'] ?? 'ms';
-
     // MQTT
     isEnabledMqtt = (config['mqtt_config']?['enabled'] ?? '').toString();
     serverNameController.text = config['mqtt_config']?['broker_address'] ?? '';
@@ -144,48 +147,68 @@ class _FormConfigServerState extends State<FormConfigServer> {
 
     // MQTT Publish Mode
     mqttPublishMode = config['mqtt_config']?['publish_mode'] ?? 'default';
-    publishTopicController.text = config['mqtt_config']?['topic_publish'] ?? '';
-    subscribeTopicController.text =
-        config['mqtt_config']?['topic_subscribe'] ?? '';
 
-    // Customize Mode - Handle both old and new format
-    if (config['mqtt_config']?['custom_topics'] != null) {
-      final rawTopics = List<Map<String, dynamic>>.from(
-        config['mqtt_config']?['custom_topics'] ?? [],
-      );
-
-      // Convert to new format if needed
-      customTopics = rawTopics.map((topic) {
-        // Check if already in new format
-        if (topic.containsKey('topicName') &&
-            topic.containsKey('selectedRegisters')) {
-          // Already new format, just ensure proper types
-          return {
-            'topicName': topic['topicName'] ?? '',
-            'selectedRegisters': Map<String, Set<String>>.from(
-              (topic['selectedRegisters'] as Map<String, dynamic>? ?? {}).map(
-                (key, value) =>
-                    MapEntry(key, Set<String>.from(value as List? ?? [])),
-              ),
-            ),
-            'intervalValue': topic['intervalValue'] ?? topic['interval'] ?? 5,
-            'intervalUnit':
-                topic['intervalUnit'] ?? topic['interval_unit'] ?? 's',
-          };
-        } else {
-          // Old format - convert to new format
-          // Old format has 'topic' and 'registers' as a flat list
-          return {
-            'topicName': topic['topic'] ?? '',
-            'selectedRegisters': <String, Set<String>>{},
-            'intervalValue': topic['interval'] ?? 5,
-            'intervalUnit': topic['interval_unit'] ?? 's',
-          };
-        }
-      }).toList();
+    // Load default mode settings
+    if (config['mqtt_config']?['default_mode'] != null) {
+      publishTopicController.text =
+          config['mqtt_config']?['default_mode']?['topic_publish'] ?? '';
+      mqttDefaultIntervalController.text =
+          config['mqtt_config']?['default_mode']?['interval']?.toString() ??
+          '5';
+      mqttDefaultIntervalUnit =
+          config['mqtt_config']?['default_mode']?['interval_unit'] ?? 's';
     }
 
-    // HTTP
+    // Load subscribe topic based on active mode (v2.2.0 structure)
+    if (mqttPublishMode == 'default') {
+      subscribeTopicController.text =
+          config['mqtt_config']?['default_mode']?['topic_subscribe'] ?? '';
+    } else if (mqttPublishMode == 'customize') {
+      subscribeTopicController.text =
+          config['mqtt_config']?['customize_mode']?['topic_subscribe'] ?? '';
+    }
+
+    // Customize Mode - Load from customize_mode.custom_topics (v2.2.0)
+    if (config['mqtt_config']?['customize_mode']?['custom_topics'] != null) {
+      final rawTopics = List<Map<String, dynamic>>.from(
+        config['mqtt_config']?['customize_mode']?['custom_topics'] ?? [],
+      );
+
+      // Convert API format to UI format
+      customTopics = rawTopics.map((topic) {
+        // API format: 'topic', 'registers' (flat list), 'interval', 'interval_unit'
+        final topicName = topic['topic'] ?? topic['topicName'] ?? '';
+        final intervalValue = topic['interval'] ?? topic['intervalValue'] ?? 5;
+        final intervalUnit =
+            topic['interval_unit'] ?? topic['intervalUnit'] ?? 's';
+
+        // Get flat list of register IDs from API
+        final flatRegisters = topic['registers'] != null
+            ? List<String>.from(topic['registers'] as List? ?? [])
+            : [];
+
+        // Store as flat list initially - will be converted to grouped format
+        // when CustomTopicCard renders with devicesWithRegisters data
+        return {
+          'topicName': topicName,
+          'selectedRegisters': <String, Set<String>>{},
+          'flatRegisters': flatRegisters, // Temporary storage for flat list
+          'intervalValue': intervalValue,
+          'intervalUnit': intervalUnit,
+        };
+      }).toList();
+
+      // Fetch devices with registers if in customize mode
+      if (mqttPublishMode == 'customize' &&
+          customTopics.isNotEmpty &&
+          devicesWithRegisters.isEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _fetchDevicesWithRegisters();
+        });
+      }
+    }
+
+    // HTTP (v2.2.0 - interval moved to http_config)
     isEnabledHttp = (config['http_config']?['enabled'] ?? '').toString();
     urlLinkController.text = config['http_config']?['endpoint_url'] ?? '';
     methodRequestSelected = config['http_config']?['method'];
@@ -193,6 +216,9 @@ class _FormConfigServerState extends State<FormConfigServer> {
     timeoutController.text =
         config['http_config']?['timeout']?.toString() ?? '';
     retryController.text = config['http_config']?['retry']?.toString() ?? '';
+    httpIntervalController.text =
+        config['http_config']?['interval']?.toString() ?? '5';
+    httpIntervalUnit = config['http_config']?['interval_unit'] ?? 's';
     headerControllers =
         (config['http_config']?['headers'] as Map<String, dynamic>? ?? {})
             .entries
@@ -208,6 +234,50 @@ class _FormConfigServerState extends State<FormConfigServer> {
 
     // Refresh UI
     setState(() {});
+  }
+
+  // Convert flat register list to grouped by device
+  void _convertFlatRegistersToGrouped() {
+    if (devicesWithRegisters.isEmpty || customTopics.isEmpty) return;
+
+    setState(() {
+      for (int i = 0; i < customTopics.length; i++) {
+        final topic = customTopics[i];
+        final flatRegisters =
+            topic['flatRegisters'] as List<dynamic>? ?? [];
+
+        if (flatRegisters.isEmpty) continue;
+
+        // Group registers by device
+        final grouped = <String, Set<String>>{};
+
+        for (final registerId in flatRegisters) {
+          // Find which device this register belongs to
+          for (final device in devicesWithRegisters) {
+            final deviceId = device['device_id'] as String?;
+            final registers =
+                device['registers'] as List<dynamic>? ?? [];
+
+            // Check if this device has this register
+            final hasRegister = registers.any((reg) =>
+                reg['register_id'] == registerId);
+
+            if (hasRegister && deviceId != null) {
+              grouped.putIfAbsent(deviceId, () => <String>{});
+              grouped[deviceId]!.add(registerId as String);
+              break; // Found the device, move to next register
+            }
+          }
+        }
+
+        // Update the topic with grouped registers
+        customTopics[i]['selectedRegisters'] = grouped;
+
+        AppHelpers.debugLog(
+          'Converted topic "${topic['topicName']}": ${flatRegisters.length} registers grouped into ${grouped.length} devices',
+        );
+      }
+    });
   }
 
   // Fetch devices with registers from API
@@ -256,6 +326,9 @@ class _FormConfigServerState extends State<FormConfigServer> {
           AppHelpers.debugLog(
             'Successfully fetched ${devicesWithRegisters.length} devices with registers',
           );
+
+          // Convert flat registers to grouped format after devices are loaded
+          _convertFlatRegistersToGrouped();
         } else {
           AppHelpers.debugLog(
             'Unexpected response.config format: ${response.config?.runtimeType}',
@@ -320,7 +393,7 @@ class _FormConfigServerState extends State<FormConfigServer> {
           fillProtocol = 'none';
         }
 
-        // MQTT Config with publish mode
+        // MQTT Config with publish mode (v2.2.0 structure)
         var mqttConfig = {
           "enabled": isEnabledMqtt == 'true',
           "broker_address": _sanitizeInput(serverNameController.text),
@@ -334,14 +407,15 @@ class _FormConfigServerState extends State<FormConfigServer> {
           "publish_mode": mqttPublishMode,
           "default_mode": {
             "enabled": mqttPublishMode == 'default',
-            if (mqttPublishMode == 'default')
-              "topic_publish": _sanitizeInput(publishTopicController.text),
+            "topic_publish": _sanitizeInput(publishTopicController.text),
             "topic_subscribe": _sanitizeInput(subscribeTopicController.text),
-            "interval": _tryParseInt(intervalTimeController.text) ?? 0,
-            "interval_unit": selectedIntervalType,
+            "interval": _tryParseInt(mqttDefaultIntervalController.text) ?? 5,
+            "interval_unit": mqttDefaultIntervalUnit,
           },
           "customize_mode": {
             "enabled": mqttPublishMode == 'customize',
+            if (mqttPublishMode == 'customize')
+              "topic_subscribe": _sanitizeInput(subscribeTopicController.text),
             if (mqttPublishMode == 'customize')
               "custom_topics": customTopics.map((topic) {
                 // Flatten selectedRegisters Map to simple list
@@ -359,10 +433,13 @@ class _FormConfigServerState extends State<FormConfigServer> {
                   "interval": topic['intervalValue'] ?? 5,
                   "interval_unit": topic['intervalUnit'] ?? 's',
                 };
-              }).toList(),
+              }).toList()
+            else
+              "custom_topics": [],
           },
         };
 
+        // HTTP Config (v2.2.0 - interval moved here)
         var httpConfig = {
           "enabled": isEnabledHttp == 'true',
           "endpoint_url": _sanitizeInput(urlLinkController.text),
@@ -370,6 +447,8 @@ class _FormConfigServerState extends State<FormConfigServer> {
           "body_format": bodyFormatRequestSelected,
           "timeout": _tryParseInt(timeoutController.text) ?? 0,
           "retry": _tryParseInt(retryController.text) ?? 0,
+          "interval": _tryParseInt(httpIntervalController.text) ?? 5,
+          "interval_unit": httpIntervalUnit,
           "headers": {
             for (final c in headerControllers)
               c.keyController.text.trim(): c.valueController.text.trim(),
@@ -458,7 +537,7 @@ class _FormConfigServerState extends State<FormConfigServer> {
     subnetMaskController.dispose();
     wifiSsidController.dispose();
     wifiPasswordController.dispose();
-    intervalTimeController.dispose();
+    mqttDefaultIntervalController.dispose();
     serverNameController.dispose();
     portMqttController.dispose();
     publishTopicController.dispose();
@@ -469,6 +548,7 @@ class _FormConfigServerState extends State<FormConfigServer> {
     passwordController.dispose();
     timeoutController.dispose();
     retryController.dispose();
+    httpIntervalController.dispose();
     keepAliveController.dispose();
 
     super.dispose();
@@ -505,12 +585,6 @@ class _FormConfigServerState extends State<FormConfigServer> {
               AppSpacing.md,
               _httpWrapper(),
               AppSpacing.md,
-              // Hide Data Interval when in customize mode (each topic has its own interval)
-              if (!(isEnabledMqtt == 'true' && mqttPublishMode == 'customize'))
-                _dataInterval(context),
-              // Add spacing only if data interval is shown
-              if (!(isEnabledMqtt == 'true' && mqttPublishMode == 'customize'))
-                AppSpacing.md,
               GradientButton(
                 text: 'Save Server Configuration',
                 icon: Icons.save,
@@ -521,37 +595,6 @@ class _FormConfigServerState extends State<FormConfigServer> {
           ),
         ),
       ),
-    );
-  }
-
-  Column _dataInterval(BuildContext context) {
-    return Column(
-      children: [
-        SectionDivider(title: 'Data Interval Config', icon: Icons.info_outline),
-        AppSpacing.md,
-        CustomTextFormField(
-          controller: intervalTimeController,
-          labelTxt: "Data Interval - Value",
-          hintTxt: "5000",
-          keyboardType: TextInputType.number,
-          validator: (value) =>
-              value == null || value.isEmpty ? 'Value is required' : null,
-        ),
-        AppSpacing.md,
-        Dropdown(
-          label: 'Data Interval - Unit',
-          items: typeInterval,
-          selectedValue: selectedIntervalType,
-          onChanged: (item) =>
-              setState(() => selectedIntervalType = item!.value),
-          isRequired: true,
-        ),
-        AppSpacing.sm,
-        Text(
-          's: seconds, m: minutes, ms: milliseconds',
-          style: context.bodySmall.copyWith(color: AppColor.grey),
-        ),
-      ],
     );
   }
 
@@ -871,7 +914,7 @@ class _FormConfigServerState extends State<FormConfigServer> {
     );
   }
 
-  // Default Mode Fields - Redesigned
+  // Default Mode Fields - Redesigned (v2.2.0 with interval)
   Widget _defaultModeFields() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -887,6 +930,39 @@ class _FormConfigServerState extends State<FormConfigServer> {
           controller: subscribeTopicController,
           labelTxt: "Subscribe Topic",
           hintTxt: "device/control (optional)",
+        ),
+        AppSpacing.md,
+        // Publish Interval for Default Mode (v2.2.0)
+        Row(
+          children: [
+            Expanded(
+              flex: 2,
+              child: CustomTextFormField(
+                controller: mqttDefaultIntervalController,
+                labelTxt: "Publish Interval - Value",
+                hintTxt: "5",
+                keyboardType: TextInputType.number,
+                validator: (value) =>
+                    value == null || value.isEmpty ? 'Value is required' : null,
+              ),
+            ),
+            AppSpacing.md,
+            Expanded(
+              child: Dropdown(
+                label: 'Unit',
+                items: typeInterval,
+                selectedValue: mqttDefaultIntervalUnit,
+                onChanged: (item) =>
+                    setState(() => mqttDefaultIntervalUnit = item!.value),
+                isRequired: true,
+              ),
+            ),
+          ],
+        ),
+        AppSpacing.sm,
+        Text(
+          '💡 ms: milliseconds, s: seconds, min: minutes',
+          style: context.bodySmall.copyWith(color: AppColor.grey),
         ),
       ],
     );
@@ -1229,6 +1305,40 @@ class _FormConfigServerState extends State<FormConfigServer> {
             labelTxt: "Retry Count",
             keyboardType: TextInputType.number,
             hintTxt: "5",
+          ),
+          AppSpacing.md,
+          // HTTP Publish Interval (v2.2.0 - moved from root data_interval)
+          Row(
+            children: [
+              Expanded(
+                flex: 2,
+                child: CustomTextFormField(
+                  controller: httpIntervalController,
+                  labelTxt: "Publish Interval - Value",
+                  hintTxt: "5",
+                  keyboardType: TextInputType.number,
+                  validator: (value) => value == null || value.isEmpty
+                      ? 'Value is required'
+                      : null,
+                ),
+              ),
+              AppSpacing.md,
+              Expanded(
+                child: Dropdown(
+                  label: 'Unit',
+                  items: typeInterval,
+                  selectedValue: httpIntervalUnit,
+                  onChanged: (item) =>
+                      setState(() => httpIntervalUnit = item!.value),
+                  isRequired: true,
+                ),
+              ),
+            ],
+          ),
+          AppSpacing.sm,
+          Text(
+            '💡 ms: milliseconds, s: seconds, min: minutes',
+            style: context.bodySmall.copyWith(color: AppColor.grey),
           ),
           AppSpacing.md,
           MultiHeaderForm(
