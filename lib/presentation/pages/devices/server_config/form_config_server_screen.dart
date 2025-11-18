@@ -17,8 +17,8 @@ import 'package:gateway_config/presentation/widgets/common/dropdown.dart';
 import 'package:gateway_config/presentation/widgets/common/loading_overlay.dart';
 import 'package:gateway_config/presentation/widgets/common/multi_header_form.dart';
 import 'package:gateway_config/presentation/widgets/common/reusable_widgets.dart';
-import 'package:gateway_config/presentation/widgets/server_config/mqtt_mode_toggle_card.dart';
 import 'package:gateway_config/presentation/widgets/server_config/custom_topic_card.dart';
+import 'package:gateway_config/presentation/widgets/server_config/mqtt_mode_toggle_card.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
 
@@ -100,17 +100,25 @@ class _FormConfigServerState extends State<FormConfigServer> {
   void initState() {
     super.initState();
     // Listen to dataDevice GetX observable, update form when fetch finished
-    _worker = ever(controller.dataServer, (dataList) {
+    _worker = ever(controller.dataServer, (dataList) async {
       if (!mounted) return;
       if (dataList.isNotEmpty) {
         updateFormFields(dataList[0]);
+
+        // Fetch devices after server config loaded (always load to ensure availability)
+        if (devicesWithRegisters.isEmpty && !isLoadingDevices) {
+          await _fetchDevicesWithRegisters();
+          // Convert flat registers to grouped format after devices are loaded
+          if (customTopics.isNotEmpty && devicesWithRegisters.isNotEmpty) {
+            _convertFlatRegistersToGrouped();
+          }
+        }
       }
     });
 
     // Fetch data after widget build
     WidgetsBinding.instance.addPostFrameCallback((_) {
       controller.fetchData(widget.model);
-      // Don't fetch devices here - will fetch when user switches to customize mode
     });
   }
 
@@ -197,15 +205,6 @@ class _FormConfigServerState extends State<FormConfigServer> {
           'intervalUnit': intervalUnit,
         };
       }).toList();
-
-      // Fetch devices with registers if in customize mode
-      if (mqttPublishMode == 'customize' &&
-          customTopics.isNotEmpty &&
-          devicesWithRegisters.isEmpty) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _fetchDevicesWithRegisters();
-        });
-      }
     }
 
     // HTTP (v2.2.0 - interval moved to http_config)
@@ -219,6 +218,11 @@ class _FormConfigServerState extends State<FormConfigServer> {
     httpIntervalController.text =
         config['http_config']?['interval']?.toString() ?? '5';
     httpIntervalUnit = config['http_config']?['interval_unit'] ?? 's';
+
+    for (final controller in headerControllers) {
+      controller.dispose();
+    }
+
     headerControllers =
         (config['http_config']?['headers'] as Map<String, dynamic>? ?? {})
             .entries
@@ -243,8 +247,7 @@ class _FormConfigServerState extends State<FormConfigServer> {
     setState(() {
       for (int i = 0; i < customTopics.length; i++) {
         final topic = customTopics[i];
-        final flatRegisters =
-            topic['flatRegisters'] as List<dynamic>? ?? [];
+        final flatRegisters = topic['flatRegisters'] as List<dynamic>? ?? [];
 
         if (flatRegisters.isEmpty) continue;
 
@@ -255,12 +258,12 @@ class _FormConfigServerState extends State<FormConfigServer> {
           // Find which device this register belongs to
           for (final device in devicesWithRegisters) {
             final deviceId = device['device_id'] as String?;
-            final registers =
-                device['registers'] as List<dynamic>? ?? [];
+            final registers = device['registers'] as List<dynamic>? ?? [];
 
             // Check if this device has this register
-            final hasRegister = registers.any((reg) =>
-                reg['register_id'] == registerId);
+            final hasRegister = registers.any(
+              (reg) => reg['register_id'] == registerId,
+            );
 
             if (hasRegister && deviceId != null) {
               grouped.putIfAbsent(deviceId, () => <String>{});
@@ -355,6 +358,56 @@ class _FormConfigServerState extends State<FormConfigServer> {
 
   void _submit() async {
     if (!_formKey.currentState!.validate()) return;
+
+    // Validate customize mode - check if registers are selected
+    if (isEnabledMqtt == 'true' && mqttPublishMode == 'customize') {
+      // Check if there are any custom topics
+      if (customTopics.isEmpty) {
+        SnackbarCustom.showSnackbar(
+          'Validation Error',
+          'Please add at least one custom topic for customize mode',
+          AppColor.redColor,
+          AppColor.whiteColor,
+        );
+        return;
+      }
+
+      // Check if each topic has registers selected
+      for (int i = 0; i < customTopics.length; i++) {
+        final topic = customTopics[i];
+        final topicName = topic['topicName'] ?? '';
+        final selectedRegisters =
+            topic['selectedRegisters'] as Map<String, Set<String>>? ?? {};
+
+        // Check if topic name is empty
+        if (topicName.trim().isEmpty) {
+          SnackbarCustom.showSnackbar(
+            'Validation Error',
+            'Topic #${i + 1}: Please enter a topic name',
+            AppColor.redColor,
+            AppColor.whiteColor,
+          );
+          return;
+        }
+
+        // Count total selected registers across all devices
+        int totalRegisters = 0;
+        selectedRegisters.forEach((deviceId, registerIds) {
+          totalRegisters += registerIds.length;
+        });
+
+        // If no registers selected for this topic
+        if (totalRegisters == 0) {
+          SnackbarCustom.showSnackbar(
+            'Incomplete Configuration',
+            'Topic "$topicName": Please select at least one register to publish',
+            AppColor.redColor,
+            AppColor.whiteColor,
+          );
+          return;
+        }
+      }
+    }
 
     CustomAlertDialog.show(
       title: "Are you sure?",
@@ -550,6 +603,10 @@ class _FormConfigServerState extends State<FormConfigServer> {
     retryController.dispose();
     httpIntervalController.dispose();
     keepAliveController.dispose();
+
+    for (final controller in headerControllers) {
+      controller.dispose();
+    }
 
     super.dispose();
   }
@@ -1256,7 +1313,6 @@ class _FormConfigServerState extends State<FormConfigServer> {
           },
           isRequired: true,
         ),
-        AppSpacing.md,
         if (isEnabledHttp == 'true') ...[
           AppSpacing.md,
           CustomTextFormField(

@@ -454,23 +454,17 @@ class BleController extends GetxController {
   // Function to disconnect
   Future<void> disconnectFromDevice(DeviceModel deviceModel) async {
     // LOG PALING AWAL untuk memastikan method dipanggil
-    AppHelpers.debugLog(
-      '=== disconnectFromDevice() CALLED ===',
-    );
+    AppHelpers.debugLog('=== disconnectFromDevice() CALLED ===');
 
     try {
       isLoadingConnectionGlobal.value = true; // Set global loading
       message.value = 'Disconnecting...';
 
-      AppHelpers.debugLog(
-        'Getting device ID from deviceModel...',
-      );
+      AppHelpers.debugLog('Getting device ID from deviceModel...');
 
       final deviceId = deviceModel.device.remoteId.toString();
 
-      AppHelpers.debugLog(
-        'Disconnecting device: $deviceId',
-      );
+      AppHelpers.debugLog('Disconnecting device: $deviceId');
 
       // Remove from cache (device tetap di scannedDevices untuk reconnection)
       // Device akan di-add kembali ke cache saat reconnect (di connectToDevice)
@@ -550,7 +544,9 @@ class BleController extends GetxController {
 
       connectedDevice.value = null; // Trigger ever() untuk navigate
 
-      AppHelpers.debugLog('connectedDevice set to null, ever() should trigger now');
+      AppHelpers.debugLog(
+        'connectedDevice set to null, ever() should trigger now',
+      );
 
       // Clear gateway device responses to avoid stale data
       gatewayDeviceResponses.clear();
@@ -578,7 +574,9 @@ class BleController extends GetxController {
             GoRouter.of(Get.context!).go('/');
             AppHelpers.debugLog('Fallback GoRouter navigation successful');
           } else {
-            AppHelpers.debugLog('Get.context is null, using Get.offAllNamed("/")');
+            AppHelpers.debugLog(
+              'Get.context is null, using Get.offAllNamed("/")',
+            );
             Get.offAllNamed('/');
             AppHelpers.debugLog('Fallback GetX navigation successful');
           }
@@ -599,9 +597,7 @@ class BleController extends GetxController {
           AppHelpers.debugLog('isNavigatingHome flag ensured reset to false');
         }
       } else {
-        AppHelpers.debugLog(
-          'shouldNavigate = false, no navigation needed',
-        );
+        AppHelpers.debugLog('shouldNavigate = false, no navigation needed');
       }
 
       AppHelpers.debugLog(
@@ -838,15 +834,16 @@ class BleController extends GetxController {
 
                 // Inject type from command if not present in response
                 // Device BLE might not send 'type' field, so we inject it manually
-                responseJson['type'] = responseJson['type'] ?? command['type'] ?? 'device';
+                responseJson['type'] =
+                    responseJson['type'] ?? command['type'] ?? 'device';
 
                 // Map alternate field names to 'config' (mirrors logic in readCommandResponse)
                 // Firmware may send "devices", "data", or type-based field names instead of "config"
                 if (!responseJson.containsKey('config')) {
                   dynamic configData =
-                      responseJson[command['type']] ??  // Try type as field name (e.g., "devices")
-                      responseJson['data'] ??           // Try 'data'
-                      responseJson['devices'] ??        // Try 'devices'
+                      responseJson[command['type']] ?? // Try type as field name (e.g., "devices")
+                      responseJson['data'] ?? // Try 'data'
+                      responseJson['devices'] ?? // Try 'devices'
                       {};
                   responseJson['config'] = configData;
                 }
