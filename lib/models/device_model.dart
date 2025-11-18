@@ -6,6 +6,7 @@ class DeviceModel {
   final RxBool isConnected;
   final RxBool isLoadingConnection;
   final Rx<DateTime?> lastConnectionTime;
+  final Rx<DateTime?> updatedAt;
   void Function() onConnect;
   void Function() onDisconnect;
 
@@ -15,5 +16,6 @@ class DeviceModel {
     required this.onDisconnect,
   }) : isConnected = RxBool(false),
        isLoadingConnection = RxBool(false),
-       lastConnectionTime = Rx<DateTime?>(null);
+       lastConnectionTime = Rx<DateTime?>(null),
+       updatedAt = Rx<DateTime?>(null);
 }

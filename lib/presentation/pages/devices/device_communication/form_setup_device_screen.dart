@@ -183,6 +183,11 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
 
           await controller.sendCommand(formData);
 
+          // Trigger fetch with updatedAt (only on update, not create)
+          if (widget.deviceId != null) {
+            widget.model.updatedAt.value = DateTime.now();
+          }
+
           await Future.delayed(const Duration(seconds: 1));
 
           AppHelpers.backNTimes(2);

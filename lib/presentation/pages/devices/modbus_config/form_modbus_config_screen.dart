@@ -176,6 +176,11 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
 
           await bleController.sendCommand(formData);
 
+          // Trigger fetch with updatedAt (only on update, not create)
+          if (widget.registerId != null) {
+            widget.model.updatedAt.value = DateTime.now();
+          }
+
           await Future.delayed(const Duration(seconds: 1));
 
           AppHelpers.backNTimes(2);

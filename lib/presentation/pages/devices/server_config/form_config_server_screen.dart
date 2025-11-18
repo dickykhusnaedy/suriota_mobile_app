@@ -993,7 +993,7 @@ class _FormConfigServerState extends State<FormConfigServer> {
         Row(
           children: [
             Expanded(
-              flex: 2,
+              flex: 1,
               child: CustomTextFormField(
                 controller: mqttDefaultIntervalController,
                 labelTxt: "Publish Interval - Value",
@@ -1005,6 +1005,7 @@ class _FormConfigServerState extends State<FormConfigServer> {
             ),
             AppSpacing.md,
             Expanded(
+              flex: 1,
               child: Dropdown(
                 label: 'Unit',
                 items: typeInterval,
@@ -1367,7 +1368,7 @@ class _FormConfigServerState extends State<FormConfigServer> {
           Row(
             children: [
               Expanded(
-                flex: 2,
+                flex: 1,
                 child: CustomTextFormField(
                   controller: httpIntervalController,
                   labelTxt: "Publish Interval - Value",
@@ -1380,6 +1381,7 @@ class _FormConfigServerState extends State<FormConfigServer> {
               ),
               AppSpacing.md,
               Expanded(
+                flex: 1,
                 child: Dropdown(
                   label: 'Unit',
                   items: typeInterval,
