@@ -492,9 +492,9 @@ class _ModbusScreenState extends State<ModbusScreen> {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(
-                Icons.storage,
+                Icons.settings_input_component,
                 color: AppColor.primaryColor,
-                size: 28,
+                size: 22,
               ),
             ),
             AppSpacing.sm,
@@ -513,6 +513,9 @@ class _ModbusScreenState extends State<ModbusScreen> {
                     overflow: TextOverflow.ellipsis,
                     maxLines: 1,
                   ),
+                  AppSpacing.xs,
+                  // Data Type Badge
+                  _buildDataTypeBadge(context, modbus['data_type'] ?? 'N/A'),
                   AppSpacing.xs,
                   // Address
                   Row(
@@ -535,9 +538,6 @@ class _ModbusScreenState extends State<ModbusScreen> {
                       ),
                     ],
                   ),
-                  AppSpacing.xs,
-                  // Data Type Badge
-                  _buildDataTypeBadge(context, modbus['data_type'] ?? 'N/A'),
                 ],
               ),
             ),
