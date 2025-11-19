@@ -137,16 +137,6 @@ class _HomeScreenState extends State<HomeScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Hallo, Fulan👋',
-          style: context.h1.copyWith(color: AppColor.blackColor),
-        ),
-        AppSpacing.xs,
-        Text(
-          'Connecting the device near you',
-          style: context.body.copyWith(color: AppColor.grey),
-        ),
-        AppSpacing.xxl,
-        Text(
           'Connected Devices',
           style: context.h4.copyWith(color: AppColor.blackColor),
         ),
