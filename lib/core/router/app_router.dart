@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:gateway_config/core/constants/app_color.dart';
 import 'package:gateway_config/core/controllers/ble_controller.dart';
 import 'package:gateway_config/core/utils/extensions.dart';
-import 'package:gateway_config/presentation/pages/devices/add_device_screen.dart';
 import 'package:gateway_config/presentation/pages/devices/detail_device_info_screen.dart';
 import 'package:gateway_config/presentation/pages/devices/detail_device_screen.dart';
 import 'package:gateway_config/presentation/pages/devices/device_communication/data_display_screen.dart';
@@ -11,6 +10,7 @@ import 'package:gateway_config/presentation/pages/devices/device_communication/f
 import 'package:gateway_config/presentation/pages/devices/logging_config/form_logging_config_screen.dart';
 import 'package:gateway_config/presentation/pages/devices/modbus_config/form_modbus_config_screen.dart';
 import 'package:gateway_config/presentation/pages/devices/modbus_config/modbus_screen.dart';
+import 'package:gateway_config/presentation/pages/devices/scan_device_screen.dart';
 import 'package:gateway_config/presentation/pages/devices/server_config/form_config_server_screen.dart';
 import 'package:gateway_config/presentation/pages/home/home_screen.dart';
 import 'package:gateway_config/presentation/pages/login/login_page.dart';
@@ -86,7 +86,7 @@ class AppRouter {
           GoRoute(
             path: '/add',
             name: 'add-device',
-            builder: (context, state) => const AddDeviceScreen(),
+            builder: (context, state) => const ScanDeviceScreen(),
           ),
           GoRoute(
             path: '/info',
