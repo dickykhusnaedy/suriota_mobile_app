@@ -12,6 +12,7 @@ import 'package:gateway_config/models/device_model.dart';
 import 'package:gateway_config/models/dropdown_items.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_alert_dialog.dart';
 import 'package:gateway_config/presentation/widgets/common/dropdown.dart';
+import 'package:gateway_config/presentation/widgets/common/reusable_widgets.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
 
@@ -180,6 +181,16 @@ class _ModbusScreenState extends State<ModbusScreen> {
                 color: AppColor.grey,
                 height: 1.5,
               ),
+            ),
+            const SizedBox(height: 20),
+            GradientButton(
+              text: 'Add New Device',
+              icon: Icons.add_circle_outline,
+              onPressed: () {
+                context.push(
+                  '/devices/device-communication/add?d=${widget.model.device.remoteId}',
+                );
+              },
             ),
           ],
         ),
@@ -419,7 +430,7 @@ class _ModbusScreenState extends State<ModbusScreen> {
   AppBar _appBar(BuildContext context) {
     return AppBar(
       title: Text(
-        'Modbus Configuration',
+        'Modbus Configurations',
         style: context.h5.copyWith(color: AppColor.whiteColor),
       ),
       backgroundColor: AppColor.primaryColor,
