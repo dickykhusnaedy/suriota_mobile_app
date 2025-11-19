@@ -55,13 +55,13 @@ Widget cardMenu(
 class CardMenu extends StatelessWidget {
   final String text;
   final double width;
-  final String? imagePath;
+  final IconData icon;
   final String page;
 
   const CardMenu({
     super.key,
     required this.text,
-    this.imagePath,
+    required this.icon,
     required this.width,
     required this.page,
   });
@@ -70,58 +70,71 @@ class CardMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: width,
-      height: 185,
-      child: GestureDetector(
-        onTap: () {
-          context.push(page);
-        },
-        child: Container(
-          decoration: BoxDecoration(
-            color: AppColor.whiteColor,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: AppColor.primaryColor.withValues(alpha: 0.2),
-              width: 1.5,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
+      height: 160,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => context.push(page),
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppColor.whiteColor,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: AppColor.primaryColor.withValues(alpha: 0.2),
+                width: 1.5,
               ),
-            ],
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: 100,
-                  height: 100,
-                  decoration: BoxDecoration(
-                    color: AppColor.lightPrimaryColor.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  padding: const EdgeInsets.all(12),
-                  child: Image.asset(
-                    imagePath!,
-                    fit: BoxFit.contain,
-                    cacheWidth: 500,
-                  ),
-                ),
-                AppSpacing.sm,
-                Text(
-                  text,
-                  style: context.body.copyWith(
-                    color: AppColor.primaryColor,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
                 ),
               ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 64,
+                    height: 64,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          AppColor.primaryColor.withValues(alpha: 0.15),
+                          AppColor.lightPrimaryColor.withValues(alpha: 0.25),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: AppColor.primaryColor.withValues(alpha: 0.2),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Icon(
+                      icon,
+                      size: 32,
+                      color: AppColor.primaryColor,
+                    ),
+                  ),
+                  AppSpacing.sm,
+                  Text(
+                    text,
+                    style: context.body.copyWith(
+                      color: AppColor.blackColor,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
