@@ -197,7 +197,7 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 6),
+                        AppSpacing.sm,
                         Row(
                           children: [
                             Container(
@@ -232,7 +232,7 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 4),
+                        AppSpacing.xs,
                         Row(
                           children: [
                             Icon(
