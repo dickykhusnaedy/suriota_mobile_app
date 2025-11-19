@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:gateway_config/core/constants/app_color.dart';
 import 'package:gateway_config/core/constants/app_gap.dart';
-import 'package:gateway_config/core/constants/app_image_assets.dart';
 import 'package:gateway_config/core/controllers/ble_controller.dart';
 import 'package:gateway_config/core/controllers/devices_controller.dart';
 import 'package:gateway_config/core/utils/app_helpers.dart';
@@ -502,7 +501,11 @@ class _DeviceCommunicationsScreenState
                 borderRadius: BorderRadius.circular(8),
               ),
               padding: const EdgeInsets.all(8),
-              child: Image.asset(ImageAsset.iconModbus, fit: BoxFit.contain),
+              child: Icon(
+                Icons.devices_outlined,
+                size: 22,
+                color: AppColor.primaryColor,
+              ),
             ),
             AppSpacing.sm,
             // Kolom Tengah: Device Info
