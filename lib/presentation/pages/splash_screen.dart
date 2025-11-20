@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:gateway_config/core/constants/app_color.dart';
 import 'package:gateway_config/core/constants/app_gap.dart';
 import 'package:gateway_config/core/constants/app_image_assets.dart';
 import 'package:gateway_config/core/services/bluetooth/bluetooth_permission_service.dart';
@@ -19,8 +20,14 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-
     _handleStartup();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Precache logo image agar langsung muncul
+    precacheImage(AssetImage(ImageAsset.logoSuriota), context);
   }
 
   Future<void> _handleStartup() async {
@@ -42,30 +49,53 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColor.whiteColor,
       body: AnnotatedRegion<SystemUiOverlayStyle>(
-        value: SystemUiOverlayStyle(
-          statusBarColor: Colors.white, // Latar belakang status bar transparan
-          statusBarIconBrightness:
-              Brightness.dark, // Warna ikon status bar (misal: putih)
-          statusBarBrightness: Brightness.dark, // Kecerahan status bar
-          systemNavigationBarColor: Colors.black, // Warna navigasi bar
+        value: const SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.dark,
+          statusBarBrightness: Brightness.light,
+          systemNavigationBarColor: Colors.white,
           systemNavigationBarIconBrightness: Brightness.dark,
         ),
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Expanded(
-                flex: 1,
-                child: Image.asset(
-                  ImageAsset.logoSuriota, // Ganti dengan path logo Anda
+        child: SafeArea(
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Spacer(),
+                // Logo
+                Image.asset(
+                  ImageAsset.logoSuriota,
                   width: 200,
                   height: 200,
+                  fit: BoxFit.contain,
+                  gaplessPlayback: true,
+                  cacheWidth: 400, // Cache width untuk performa
                 ),
-              ),
-              Text("v1.0.0", style: context.bodySmall),
-              AppSpacing.lg,
-            ],
+                const Spacer(),
+                // Loading indicator
+                const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      AppColor.primaryColor,
+                    ),
+                  ),
+                ),
+                AppSpacing.xl,
+                // Version
+                Text(
+                  'v1.0.0',
+                  style: context.bodySmall.copyWith(
+                    color: AppColor.grey.withValues(alpha: 0.6),
+                  ),
+                ),
+                AppSpacing.lg,
+              ],
+            ),
           ),
         ),
       ),
