@@ -173,6 +173,7 @@ class _DeviceCommunicationsScreenState
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: _appBar(context),
+      backgroundColor: AppColor.backgroundColor,
       body: RefreshIndicator(
         onRefresh: () async {
           // Force fetch fresh data (bypass cache)
@@ -472,115 +473,329 @@ class _DeviceCommunicationsScreenState
     String modbusType,
     int registerCount,
   ) {
+    // Simulasi status device (nanti bisa diganti dengan data dari backend)
+    final bool isActive = deviceId.hashCode % 2 == 0;
+
     return Container(
       decoration: BoxDecoration(
         color: AppColor.whiteColor,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: AppColor.primaryColor.withValues(alpha: 0.2),
+          color: AppColor.primaryColor.withValues(alpha: 0.15),
           width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 4,
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
             offset: const Offset(0, 2),
           ),
         ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          children: [
-            // Kolom Kiri: Icon
-            Container(
-              width: 50,
-              height: 50,
-              decoration: BoxDecoration(
-                color: AppColor.lightPrimaryColor.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              padding: const EdgeInsets.all(8),
-              child: Icon(
-                Icons.devices_outlined,
-                size: 22,
-                color: AppColor.primaryColor,
+      child: Column(
+        children: [
+          // Header dengan status dan toggle
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: isActive
+                  ? Colors.green.withValues(alpha: 0.05)
+                  : AppColor.grey.withValues(alpha: 0.05),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(16),
+                topRight: Radius.circular(16),
               ),
             ),
-            AppSpacing.sm,
-            // Kolom Tengah: Device Info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Device Name
-                  Text(
-                    title,
-                    style: context.h6.copyWith(
-                      color: AppColor.blackColor,
-                      fontWeight: FontWeight.bold,
+            child: Row(
+              children: [
+                // Status Indicator
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isActive
+                        ? Colors.green.withValues(alpha: 0.15)
+                        : AppColor.grey.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: isActive
+                          ? Colors.green.withValues(alpha: 0.3)
+                          : AppColor.grey.withValues(alpha: 0.3),
+                      width: 1,
                     ),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
                   ),
-                  AppSpacing.xs,
-                  // Protocol Badge
-                  Row(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      _buildProtocolBadge(context, modbusType),
-                      AppSpacing.xs,
-                      if (registerCount != 0)
-                        _buildProtocolBadge(
-                          context,
-                          '$registerCount Registers',
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: isActive ? Colors.green : AppColor.grey,
+                          shape: BoxShape.circle,
                         ),
-                    ],
-                  ),
-                  AppSpacing.xs,
-                  // Device ID
-                  Row(
-                    children: [
-                      Icon(Icons.fingerprint, size: 12, color: AppColor.grey),
-                      const SizedBox(width: 3),
-                      Expanded(
-                        child: Text(
-                          'ID: $deviceId',
-                          style: context.bodySmall.copyWith(
-                            color: AppColor.grey,
-                            fontSize: 10,
-                          ),
-                          overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        isActive ? 'Active' : 'Disabled',
+                        style: context.bodySmall.copyWith(
+                          color: isActive
+                              ? Colors.green.shade700
+                              : AppColor.grey,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.3,
                         ),
                       ),
                     ],
                   ),
-                ],
-              ),
-            ),
-            AppSpacing.sm,
-            // Kolom Kanan: Action Buttons
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildIconButton(
-                  icon: Icons.edit,
-                  color: AppColor.primaryColor,
-                  onPressed: () {
-                    context.push(
-                      '/devices/device-communication/edit?d=${widget.model.device.remoteId}&edit=$deviceId',
-                    );
-                  },
                 ),
-                AppSpacing.xs,
-                _buildIconButton(
-                  icon: Icons.delete,
+                const Spacer(),
+                // Toggle Switch
+                Transform.scale(
+                  scale: 0.75,
+                  child: Switch(
+                    value: isActive,
+                    onChanged: (value) {
+                      _showComingSoonDialog();
+                    },
+                    activeThumbColor: Colors.green,
+                    activeTrackColor: Colors.green.withValues(alpha: 0.5),
+                    inactiveThumbColor: AppColor.grey,
+                    inactiveTrackColor: AppColor.grey.withValues(alpha: 0.3),
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Content
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Icon
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        AppColor.primaryColor.withValues(alpha: 0.1),
+                        AppColor.lightPrimaryColor.withValues(alpha: 0.2),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: AppColor.primaryColor.withValues(alpha: 0.2),
+                      width: 1,
+                    ),
+                  ),
+                  child: Icon(
+                    Icons.devices_outlined,
+                    size: 24,
+                    color: AppColor.primaryColor,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Device Info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Device Name
+                      Text(
+                        title,
+                        style: context.h6.copyWith(
+                          color: AppColor.blackColor,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: -0.3,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                      const SizedBox(height: 6),
+                      // Protocol & Registers
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: [
+                          _buildProtocolBadge(context, modbusType),
+                          if (registerCount != 0)
+                            _buildInfoBadge(
+                              context,
+                              '$registerCount Registers',
+                              Icons.numbers,
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      // Device ID
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.fingerprint,
+                            size: 12,
+                            color: AppColor.grey.withValues(alpha: 0.7),
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              'ID: $deviceId',
+                              style: context.bodySmall.copyWith(
+                                color: AppColor.grey,
+                                fontSize: 10,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Action Buttons
+          Container(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _buildActionButton(
+                    context: context,
+                    icon: Icons.remove_red_eye_outlined,
+                    label: 'View',
+                    color: AppColor.primaryColor,
+                    onPressed: () {
+                      context.push(
+                        '/devices/device-communication/stream-data?d=${widget.model.device.remoteId}&stream=$deviceId',
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildActionButton(
+                    context: context,
+                    icon: Icons.edit_outlined,
+                    label: 'Edit',
+                    color: AppColor.primaryColor,
+                    onPressed: () {
+                      context.push(
+                        '/devices/device-communication/edit?d=${widget.model.device.remoteId}&edit=$deviceId',
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _buildCircularActionButton(
+                  icon: Icons.delete_outline,
                   color: AppColor.redColor,
                   onPressed: () => _deleteDevice(deviceId),
                 ),
               ],
             ),
-          ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showComingSoonDialog() {
+    CustomAlertDialog.show(
+      title: 'Coming Soon',
+      message: 'This feature is coming soon',
+      primaryButtonText: 'OK',
+    );
+  }
+
+  Widget _buildInfoBadge(BuildContext context, String text, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppColor.grey.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: AppColor.grey.withValues(alpha: 0.2),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: AppColor.grey, size: 10),
+          const SizedBox(width: 4),
+          Text(
+            text,
+            style: context.bodySmall.copyWith(
+              color: AppColor.grey,
+              fontSize: 10,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButton({
+    required BuildContext context,
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onPressed,
+  }) {
+    return Material(
+      color: color.withValues(alpha: 0.08),
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 16, color: color),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: context.bodySmall.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCircularActionButton({
+    required IconData icon,
+    required Color color,
+    required VoidCallback onPressed,
+  }) {
+    return Material(
+      color: color.withValues(alpha: 0.1),
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          width: 40,
+          height: 40,
+          alignment: Alignment.center,
+          child: Icon(icon, size: 18, color: color),
         ),
       ),
     );
@@ -759,36 +974,5 @@ class _DeviceCommunicationsScreenState
         ),
       );
     });
-  }
-
-  Widget _buildIconButton({
-    required IconData icon,
-    required Color color,
-    required VoidCallback onPressed,
-  }) {
-    return Container(
-      width: 32,
-      height: 32,
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(6),
-        boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.25),
-            blurRadius: 3,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
-      child: IconButton(
-        onPressed: onPressed,
-        icon: Icon(icon, size: 14, color: AppColor.whiteColor),
-        padding: EdgeInsets.zero,
-        constraints: const BoxConstraints(),
-        style: IconButton.styleFrom(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-        ),
-      ),
-    );
   }
 }

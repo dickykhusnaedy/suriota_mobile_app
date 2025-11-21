@@ -340,6 +340,7 @@ class _DisplayDataPageState extends State<DisplayDataPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: _buildAppBar(),
+      backgroundColor: AppColor.backgroundColor,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: AppPadding.horizontalMedium,

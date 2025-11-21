@@ -12,6 +12,8 @@ import 'package:gateway_config/presentation/pages/devices/modbus_config/form_mod
 import 'package:gateway_config/presentation/pages/devices/modbus_config/modbus_screen.dart';
 import 'package:gateway_config/presentation/pages/devices/scan_device_screen.dart';
 import 'package:gateway_config/presentation/pages/devices/server_config/form_config_server_screen.dart';
+import 'package:gateway_config/presentation/pages/devices/settings/settings_device_screen.dart';
+import 'package:gateway_config/presentation/pages/devices/status/status_device_screen.dart';
 import 'package:gateway_config/presentation/pages/login/login_page.dart';
 import 'package:gateway_config/presentation/pages/main/main_screen.dart';
 import 'package:gateway_config/presentation/pages/permission_denied.dart';
@@ -266,6 +268,38 @@ class AppRouter {
 
               return model != null
                   ? FormLoggingConfigScreen(model: model)
+                  : _deviceNotFound(context);
+            },
+          ),
+          GoRoute(
+            path: '/status',
+            name: 'device-status',
+            builder: (context, state) {
+              final deviceId = state.uri.queryParameters['id'];
+              if (deviceId == null) {
+                return _deviceNotFound(context);
+              }
+              final bleController = Get.find<BleController>();
+              final model = bleController.findDeviceByRemoteId(deviceId);
+
+              return model != null
+                  ? StatusDeviceScreen(model: model)
+                  : _deviceNotFound(context);
+            },
+          ),
+          GoRoute(
+            path: '/settings',
+            name: 'device-settings',
+            builder: (context, state) {
+              final deviceId = state.uri.queryParameters['id'];
+              if (deviceId == null) {
+                return _deviceNotFound(context);
+              }
+              final bleController = Get.find<BleController>();
+              final model = bleController.findDeviceByRemoteId(deviceId);
+
+              return model != null
+                  ? SettingsDeviceScreen(model: model)
                   : _deviceNotFound(context);
             },
           ),

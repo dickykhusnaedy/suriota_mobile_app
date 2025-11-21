@@ -50,7 +50,7 @@ class _LoginPageState extends State<LoginPage> {
     double screenWidth = MediaQuery.of(context).size.width;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColor.backgroundColor,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: AppPadding.horizontalMedium,

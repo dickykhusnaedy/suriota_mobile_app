@@ -3,26 +3,27 @@ import 'package:gateway_config/core/constants/app_color.dart';
 import 'package:gateway_config/core/utils/extensions.dart';
 
 class MenuSection extends StatelessWidget {
-  final String title;
+  final String? title;
   final List<MenuItem> items;
 
-  const MenuSection({super.key, required this.title, required this.items});
+  const MenuSection({super.key, this.title, required this.items});
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 8),
-          child: Text(
-            title,
-            style: context.h5.copyWith(
-              color: AppColor.blackColor,
-              fontWeight: FontWeight.w600,
+        if (title != null && title!.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 8),
+            child: Text(
+              title!,
+              style: context.h5.copyWith(
+                color: AppColor.blackColor,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
-        ),
         Container(
           decoration: BoxDecoration(
             color: AppColor.whiteColor,

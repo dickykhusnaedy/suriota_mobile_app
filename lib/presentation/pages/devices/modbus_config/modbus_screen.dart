@@ -277,6 +277,7 @@ class _ModbusScreenState extends State<ModbusScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: _appBar(context),
+      backgroundColor: AppColor.backgroundColor,
       body: RefreshIndicator(
         onRefresh: () async {
           // Force fetch fresh data (bypass cache)

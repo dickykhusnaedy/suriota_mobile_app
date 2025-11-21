@@ -234,7 +234,11 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        Scaffold(appBar: _appBar(context), body: _body(context)),
+        Scaffold(
+          appBar: _appBar(context),
+          backgroundColor: AppColor.backgroundColor,
+          body: _body(context),
+        ),
         Obx(() {
           final isAnyDeviceLoading =
               controller.commandLoading.value ||
