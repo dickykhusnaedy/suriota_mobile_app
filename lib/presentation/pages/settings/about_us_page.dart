@@ -21,6 +21,7 @@ class AboutUsPage extends StatelessWidget {
         centerTitle: true,
         backgroundColor: AppColor.primaryColor,
       ),
+      backgroundColor: AppColor.backgroundColor,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: AppPadding.horizontalMedium,

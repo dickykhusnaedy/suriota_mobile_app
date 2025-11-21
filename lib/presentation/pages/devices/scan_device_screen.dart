@@ -138,6 +138,7 @@ class _ScanDeviceScreenState extends State<ScanDeviceScreen> {
       children: [
         Scaffold(
           appBar: _buildAppBar(),
+          backgroundColor: AppColor.backgroundColor,
           body: SafeArea(child: SingleChildScrollView(child: _buildBody())),
         ),
         Obx(() {

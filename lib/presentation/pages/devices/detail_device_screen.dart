@@ -85,6 +85,7 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
       children: [
         Scaffold(
           appBar: _buildAppBar(widget.model.device.platformName),
+          backgroundColor: AppColor.backgroundColor,
           body: SafeArea(
             child: SingleChildScrollView(
               padding: AppPadding.horizontalMedium,
