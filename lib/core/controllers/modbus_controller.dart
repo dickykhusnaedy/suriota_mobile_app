@@ -12,7 +12,45 @@ class ModbusController extends GetxController {
       <Map<String, dynamic>>[].obs;
   final RxBool isFetching = false.obs;
 
+  // Smart cache functionality
+  var lastFetchTime = Rxn<DateTime>();
+  final cacheDuration = const Duration(minutes: 5);
+
   final BleController bleController = Get.find<BleController>();
+
+  // Smart cache: Check if cached data is still fresh
+  bool get isDataFresh {
+    if (lastFetchTime.value == null) return false;
+    return DateTime.now().difference(lastFetchTime.value!) < cacheDuration;
+  }
+
+  // Smart fetch: Only fetch if cache is empty or stale or data updated
+  Future<void> fetchDevicesIfNeeded(DeviceModel model, String deviceId) async {
+    // Check if device data has been updated
+    final hasUpdate = model.updatedAt.value != null;
+
+    if (dataModbus.isEmpty || !isDataFresh || hasUpdate) {
+      final reason = dataModbus.isEmpty
+          ? "empty"
+          : hasUpdate
+              ? "data updated"
+              : "stale";
+      AppHelpers.debugLog(
+        'Cache is $reason, fetching fresh modbus data...',
+      );
+      await fetchDevices(model, deviceId);
+
+      // Reset updatedAt after fetch
+      if (hasUpdate) {
+        model.updatedAt.value = null;
+      }
+    } else {
+      final cacheAge = DateTime.now().difference(lastFetchTime.value!);
+      AppHelpers.debugLog(
+        'Using cached modbus data (${dataModbus.length} registers, age: ${cacheAge.inMinutes}m ${cacheAge.inSeconds % 60}s)',
+      );
+    }
+  }
 
   Future<void> fetchDevices(DeviceModel model, String deviceId) async {
     isFetching.value = true;
@@ -31,13 +69,20 @@ class ModbusController extends GetxController {
       final response = await bleController.readCommandResponse(
         model,
         type: 'registers_summary',
-        additionalParams: {'device_id': deviceId},
+        additionalParams: {'device_id': deviceId, 'minimal': true},
       );
 
       if (response.status == 'ok' || response.status == 'success') {
         dataModbus.assignAll(
           (response.config as List<dynamic>?)?.cast<Map<String, dynamic>>() ??
               [],
+        );
+
+        // Update cache timestamp
+        lastFetchTime.value = DateTime.now();
+
+        AppHelpers.debugLog(
+          'Modbus registers fetched successfully: ${dataModbus.length} registers found',
         );
       } else {
         SnackbarCustom.showSnackbar(
@@ -151,9 +196,12 @@ class ModbusController extends GetxController {
       final response = await bleController.sendCommand(command);
 
       if (response.status == 'ok' || response.status == 'success') {
+        // Trigger fetch with updatedAt
+        model.updatedAt.value = DateTime.now();
+
         SnackbarCustom.showSnackbar(
           '',
-          'Device deleted successfully',
+          'Register deleted successfully',
           Colors.green,
           AppColor.whiteColor,
         );

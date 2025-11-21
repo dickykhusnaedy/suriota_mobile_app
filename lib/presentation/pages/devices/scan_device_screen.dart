@@ -16,14 +16,14 @@ import 'package:gateway_config/presentation/widgets/common/loading_overlay.dart'
 import 'package:gateway_config/presentation/widgets/common/reusable_widgets.dart';
 import 'package:get/get.dart';
 
-class AddDeviceScreen extends StatefulWidget {
-  const AddDeviceScreen({super.key});
+class ScanDeviceScreen extends StatefulWidget {
+  const ScanDeviceScreen({super.key});
 
   @override
-  State<AddDeviceScreen> createState() => _AddDeviceScreenState();
+  State<ScanDeviceScreen> createState() => _ScanDeviceScreenState();
 }
 
-class _AddDeviceScreenState extends State<AddDeviceScreen> {
+class _ScanDeviceScreenState extends State<ScanDeviceScreen> {
   final controller = Get.find<BleController>();
   bool isBluetoothOn = false;
 
@@ -138,6 +138,7 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
       children: [
         Scaffold(
           appBar: _buildAppBar(),
+          backgroundColor: AppColor.backgroundColor,
           body: SafeArea(child: SingleChildScrollView(child: _buildBody())),
         ),
         Obx(() {
@@ -158,7 +159,7 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
       iconTheme: const IconThemeData(color: AppColor.whiteColor),
       backgroundColor: AppColor.primaryColor,
       title: Text(
-        'Add Device',
+        'Scan Devices',
         style: context.h5.copyWith(color: AppColor.whiteColor),
       ),
       actions: [
@@ -204,7 +205,7 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
           ),
           AppSpacing.xxxl,
           GradientButton(
-            text: 'Scan Devices',
+            text: 'Scan',
             icon: Icons.search,
             width: MediaQuery.of(context).size.width * 0.4,
             onPressed: _checkBluetoothDevice,
@@ -246,7 +247,7 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           AppSpacing.sm,
-          Text('Device List', style: context.h4),
+          Text('Scan Results', style: context.h4),
           AppSpacing.md,
           // Search field dengan debouncing
           CustomTextFormField(

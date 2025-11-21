@@ -32,13 +32,26 @@ class DevicesController extends GetxController {
     return DateTime.now().difference(lastFetchTime.value!) < cacheDuration;
   }
 
-  // Smart fetch: Only fetch if cache is empty or stale
+  // Smart fetch: Only fetch if cache is empty or stale or data updated
   Future<void> fetchDevicesIfNeeded(DeviceModel model) async {
-    if (dataDevices.isEmpty || !isDataFresh) {
+    // Check if device data has been updated
+    final hasUpdate = model.updatedAt.value != null;
+
+    if (dataDevices.isEmpty || !isDataFresh || hasUpdate) {
+      final reason = dataDevices.isEmpty
+          ? "empty"
+          : hasUpdate
+              ? "data updated"
+              : "stale";
       AppHelpers.debugLog(
-        'Cache is ${dataDevices.isEmpty ? "empty" : "stale"}, fetching fresh data...',
+        'Cache is $reason, fetching fresh data...',
       );
       await fetchDevices(model);
+
+      // Reset updatedAt after fetch
+      if (hasUpdate) {
+        model.updatedAt.value = null;
+      }
     } else {
       final cacheAge = DateTime.now().difference(lastFetchTime.value!);
       AppHelpers.debugLog(
@@ -82,6 +95,7 @@ class DevicesController extends GetxController {
       final response = await bleController.readCommandResponse(
         model,
         type: 'devices_summary',
+        additionalParams: {'minimal': true},
       );
 
       if (response.status == 'ok' || response.status == 'success') {
@@ -221,6 +235,9 @@ class DevicesController extends GetxController {
       final response = await bleController.sendCommand(command);
 
       if (response.status == 'ok' || response.status == 'success') {
+        // Trigger fetch with updatedAt
+        model.updatedAt.value = DateTime.now();
+
         SnackbarCustom.showSnackbar(
           '',
           'Device deleted successfully',
@@ -275,7 +292,9 @@ class DevicesController extends GetxController {
     // Then apply search query filter
     if (searchQuery.value.isNotEmpty) {
       result = result.where((device) {
-        final deviceName = (device['device_name'] ?? '').toString().toLowerCase();
+        final deviceName = (device['device_name'] ?? '')
+            .toString()
+            .toLowerCase();
         final deviceId = (device['device_id'] ?? '').toString().toLowerCase();
         final protocol = (device['protocol'] ?? '').toString().toLowerCase();
 

@@ -95,19 +95,22 @@ class _DropdownState extends State<Dropdown> {
             AppSpacing.sm,
           ],
           DropdownSearch<DropdownItems>(
-            items: (filter, _) => widget.items,
             decoratorProps: _dropdownDecoratorProps(context),
+            items: (filter, _) => widget.items,
             onChanged: widget.onChanged,
             selectedItem: initialSelect,
             popupProps: _popupProps(context),
             validator: (item) => widget.validator?.call(item?.value),
             dropdownBuilder: (context, selectedItem) {
-              return Text(
-                selectedItem?.text ?? 'Please select...',
-                style: context.body.copyWith(
-                  color: selectedItem?.text != null
-                      ? AppColor.darkGrey
-                      : AppColor.lightGrey,
+              return Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  selectedItem?.text ?? 'Please select...',
+                  style: context.body.copyWith(
+                    color: selectedItem?.text != null
+                        ? AppColor.darkGrey
+                        : AppColor.lightGrey,
+                  ),
                 ),
               );
             },

@@ -12,6 +12,7 @@ import 'package:gateway_config/models/device_model.dart';
 import 'package:gateway_config/models/dropdown_items.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_alert_dialog.dart';
 import 'package:gateway_config/presentation/widgets/common/dropdown.dart';
+import 'package:gateway_config/presentation/widgets/common/reusable_widgets.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
 
@@ -139,7 +140,8 @@ class _ModbusScreenState extends State<ModbusScreen> {
     );
   }
 
-  Widget _emptyView(BuildContext context) {
+  // Empty state ketika belum ada device sama sekali
+  Widget _emptyDeviceView(BuildContext context) {
     return Container(
       height: MediaQuery.of(context).size.height * 0.50,
       alignment: Alignment.center,
@@ -158,13 +160,13 @@ class _ModbusScreenState extends State<ModbusScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              Icons.settings_input_component,
+              Icons.devices_other,
               size: 64,
               color: AppColor.grey.withValues(alpha: 0.5),
             ),
             const SizedBox(height: 16),
             Text(
-              'No Modbus Configuration',
+              'No Devices Available',
               textAlign: TextAlign.center,
               style: context.h6.copyWith(
                 color: AppColor.blackColor,
@@ -173,15 +175,100 @@ class _ModbusScreenState extends State<ModbusScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Please create or select a device to continue.',
+              'Please add a device first before configuring Modbus registers.',
               textAlign: TextAlign.center,
               style: context.bodySmall.copyWith(
                 color: AppColor.grey,
                 height: 1.5,
               ),
             ),
+            const SizedBox(height: 20),
+            GradientButton(
+              text: 'Add New Device',
+              icon: Icons.add_circle_outline,
+              onPressed: () {
+                context.push(
+                  '/devices/device-communication/add?d=${widget.model.device.remoteId}',
+                );
+              },
+            ),
           ],
         ),
+      ),
+    );
+  }
+
+  // Empty state ketika device dipilih tapi belum ada modbus config
+  Widget _emptyModbusView(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: AppColor.whiteColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppColor.primaryColor.withValues(alpha: 0.1),
+          width: 1.5,
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.settings_input_component,
+            size: 48,
+            color: AppColor.grey.withValues(alpha: 0.5),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'No Modbus Configuration',
+            textAlign: TextAlign.center,
+            style: context.body.copyWith(
+              color: AppColor.blackColor,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'This device has no Modbus registers configured yet.\nTap the + button to add a register.',
+            textAlign: TextAlign.center,
+            style: context.bodySmall.copyWith(
+              color: AppColor.grey,
+              height: 1.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Prompt untuk memilih device
+  Widget _selectDevicePrompt(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: AppColor.lightPrimaryColor.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppColor.primaryColor.withValues(alpha: 0.2),
+          width: 1.5,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.info_outline, size: 24, color: AppColor.primaryColor),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'Please select a device from the dropdown above to view its Modbus configuration.',
+              style: context.bodySmall.copyWith(
+                color: AppColor.blackColor,
+                height: 1.5,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -190,6 +277,7 @@ class _ModbusScreenState extends State<ModbusScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: _appBar(context),
+      backgroundColor: AppColor.backgroundColor,
       body: RefreshIndicator(
         onRefresh: () async {
           // Force fetch fresh data (bypass cache)
@@ -199,126 +287,139 @@ class _ModbusScreenState extends State<ModbusScreen> {
         child: SafeArea(
           child: SingleChildScrollView(
             padding: AppPadding.horizontalMedium,
-            physics: const AlwaysScrollableScrollPhysics(), // Enable pull-to-refresh even when content doesn't scroll
+            physics:
+                const AlwaysScrollableScrollPhysics(), // Enable pull-to-refresh even when content doesn't scroll
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-              AppSpacing.md,
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Choose Device',
-                    style: context.h5,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  // Cache status indicator
-                  Obx(() {
-                    final lastUpdate = controller.lastFetchTime.value;
-                    final timeAgo = _formatTimeAgo(lastUpdate);
-                    final isStale = lastUpdate != null &&
-                        DateTime.now().difference(lastUpdate) >
-                            const Duration(minutes: 5);
-
-                    return Row(
-                      children: [
-                        Icon(
-                          Icons.update,
-                          size: 12,
-                          color: isStale ? Colors.orange : AppColor.grey,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Updated $timeAgo',
-                          style: context.bodySmall.copyWith(
-                            color: isStale ? Colors.orange : AppColor.grey,
-                            fontSize: 11,
-                          ),
-                        ),
-                      ],
-                    );
-                  }),
-                ],
-              ),
-              AppSpacing.sm,
-              Obx(() {
-                if (controller.isFetching.value) {
-                  return LoadingProgress();
-                }
-
-                if (controller.dataDevices.isEmpty) {
-                  return _emptyView(context);
-                }
-
-                // Buat deviceItem di dalam Obx agar reactive terhadap perubahan dataDevices
-                final deviceItem = controller.dataDevices
-                    .map(
-                      (data) => DropdownItems(
-                        text: data['device_name'],
-                        value: data['device_id'],
-                      ),
-                    )
-                    .toList();
-
-                return Dropdown(
-                  items: deviceItem,
-                  selectedValue: selectedDevice?.value,
-                  onChanged: (item) {
-                    modbusController.fetchDevices(widget.model, item!.value);
-                    setState(() {
-                      selectedDevice = item;
-                    });
-                  },
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please select an device';
-                    }
-                    return null;
-                  },
-                  isRequired: true,
-                );
-              }),
-              AppSpacing.md,
-              Obx(() {
-                if (modbusController.isFetching.value) {
-                  return LoadingProgress();
-                }
-
-                if (modbusController.dataModbus.isEmpty) {
-                  return _emptyView(context);
-                }
-
-                return Column(
+                AppSpacing.md,
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    ListView.separated(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: modbusController.dataModbus.length,
-                      separatorBuilder: (context, index) => AppSpacing.sm,
-                      itemBuilder: (context, int index) {
-                        final item = modbusController.dataModbus[index];
-
-                        return cardDataConfig(item, index);
-                      },
+                    Text(
+                      'Choose Device',
+                      style: context.h5,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    AppSpacing.md,
+                    const SizedBox(height: 4),
+                    // Cache status indicator
                     Obx(() {
-                      if (modbusController.dataModbus.isNotEmpty &&
-                          !bleController.isLoading.value) {
-                        return Center(
-                          child: Text(
-                            'Showing ${modbusController.dataModbus.length} entries',
-                            style: context.bodySmall,
+                      final lastUpdate = controller.lastFetchTime.value;
+                      final timeAgo = _formatTimeAgo(lastUpdate);
+                      final isStale =
+                          lastUpdate != null &&
+                          DateTime.now().difference(lastUpdate) >
+                              const Duration(minutes: 5);
+
+                      return Row(
+                        children: [
+                          Icon(
+                            Icons.update,
+                            size: 12,
+                            color: isStale ? Colors.orange : AppColor.grey,
                           ),
-                        );
-                      }
-                      return const SizedBox.shrink();
+                          const SizedBox(width: 4),
+                          Text(
+                            'Updated $timeAgo',
+                            style: context.bodySmall.copyWith(
+                              color: isStale ? Colors.orange : AppColor.grey,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      );
                     }),
                   ],
-                );
-              }),
-              AppSpacing.md,
+                ),
+                AppSpacing.sm,
+                Obx(() {
+                  // Loading state untuk devices
+                  if (controller.isFetching.value) {
+                    return LoadingProgress();
+                  }
+
+                  // Empty state untuk devices - stop rendering di sini
+                  if (controller.dataDevices.isEmpty) {
+                    return Column(
+                      children: [_emptyDeviceView(context), AppSpacing.md],
+                    );
+                  }
+
+                  // Jika ada devices, render dropdown dan modbus list
+                  final deviceItem = controller.dataDevices
+                      .map(
+                        (data) => DropdownItems(
+                          text: data['device_name'],
+                          value: data['device_id'],
+                        ),
+                      )
+                      .toList();
+
+                  return Column(
+                    children: [
+                      Dropdown(
+                        items: deviceItem,
+                        selectedValue: selectedDevice?.value,
+                        onChanged: (item) {
+                          modbusController.fetchDevices(
+                            widget.model,
+                            item!.value,
+                          );
+                          setState(() {
+                            selectedDevice = item;
+                          });
+                        },
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please select a device';
+                          }
+                          return null;
+                        },
+                        isRequired: true,
+                      ),
+                      AppSpacing.md,
+                      // Modbus data section
+                      Obx(() {
+                        if (modbusController.isFetching.value) {
+                          return LoadingProgress();
+                        }
+
+                        // Empty state untuk modbus data (setelah device dipilih)
+                        if (modbusController.dataModbus.isEmpty) {
+                          return selectedDevice != null
+                              ? _emptyModbusView(context)
+                              : _selectDevicePrompt(context);
+                        }
+
+                        return Column(
+                          children: [
+                            ListView.separated(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: modbusController.dataModbus.length,
+                              separatorBuilder: (context, index) =>
+                                  AppSpacing.sm,
+                              itemBuilder: (context, int index) {
+                                final item = modbusController.dataModbus[index];
+                                return cardDataConfig(item, index);
+                              },
+                            ),
+                            AppSpacing.md,
+                            if (modbusController.dataModbus.isNotEmpty &&
+                                !bleController.isLoading.value)
+                              Center(
+                                child: Text(
+                                  'Showing ${modbusController.dataModbus.length} entries',
+                                  style: context.bodySmall,
+                                ),
+                              ),
+                          ],
+                        );
+                      }),
+                      AppSpacing.md,
+                    ],
+                  );
+                }),
               ],
             ),
           ),
@@ -330,7 +431,7 @@ class _ModbusScreenState extends State<ModbusScreen> {
   AppBar _appBar(BuildContext context) {
     return AppBar(
       title: Text(
-        'Modbus Configuration',
+        'Modbus Configurations',
         style: context.h5.copyWith(color: AppColor.whiteColor),
       ),
       backgroundColor: AppColor.primaryColor,
@@ -392,9 +493,9 @@ class _ModbusScreenState extends State<ModbusScreen> {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(
-                Icons.storage,
+                Icons.settings_input_component,
                 color: AppColor.primaryColor,
-                size: 28,
+                size: 22,
               ),
             ),
             AppSpacing.sm,
@@ -413,6 +514,9 @@ class _ModbusScreenState extends State<ModbusScreen> {
                     overflow: TextOverflow.ellipsis,
                     maxLines: 1,
                   ),
+                  AppSpacing.xs,
+                  // Data Type Badge
+                  _buildDataTypeBadge(context, modbus['data_type'] ?? 'N/A'),
                   AppSpacing.xs,
                   // Address
                   Row(
@@ -435,9 +539,6 @@ class _ModbusScreenState extends State<ModbusScreen> {
                       ),
                     ],
                   ),
-                  AppSpacing.xs,
-                  // Data Type Badge
-                  _buildDataTypeBadge(context, modbus['data_type'] ?? 'N/A'),
                 ],
               ),
             ),

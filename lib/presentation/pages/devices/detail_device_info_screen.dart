@@ -13,6 +13,7 @@ class DetailDeviceInfoScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: _appBar(context),
+      backgroundColor: AppColor.backgroundColor,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: AppPadding.horizontalMedium,

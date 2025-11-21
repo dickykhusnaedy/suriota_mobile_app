@@ -1,5 +1,6 @@
 import 'package:app_settings/app_settings.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:gateway_config/core/constants/app_color.dart';
 import 'package:gateway_config/core/constants/app_gap.dart';
 import 'package:gateway_config/core/constants/app_image_assets.dart';
@@ -11,6 +12,7 @@ import 'package:gateway_config/core/utils/snackbar_custom.dart';
 import 'package:gateway_config/models/device_model.dart';
 import 'package:gateway_config/presentation/pages/devices/widgets/device_list_widget.dart';
 import 'package:gateway_config/presentation/pages/sidebar_menu/sidebar_menu.dart';
+import 'package:gateway_config/presentation/widgets/common/app_bottom_navigation.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_alert_dialog.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_alert_widget.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_button.dart';
@@ -19,7 +21,9 @@ import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final bool showBottomNav;
+
+  const HomeScreen({super.key, this.showBottomNav = false});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -87,35 +91,54 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     double screenWidth = MediaQuery.of(context).size.width;
 
-    return Stack(
-      children: [
-        Scaffold(
-          appBar: _buildAppBar(screenWidth),
-          body: SafeArea(
-            child: SingleChildScrollView(
-              padding: AppPadding.screenPadding,
-              child: _buildHomeContent(),
-            ),
-          ),
-          endDrawer: const SideBarMenu(),
-          floatingActionButton: Obx(() {
-            return Visibility(
-              visible: !controller.errorMessage.value.contains(
-                'Bluetooth has been turned off',
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle(
+        statusBarColor: widget.showBottomNav
+            ? Colors.transparent
+            : AppColor.whiteColor,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+        systemNavigationBarColor: AppColor.whiteColor,
+        systemNavigationBarIconBrightness: Brightness.dark,
+      ),
+      child: Stack(
+        children: [
+          Scaffold(
+            backgroundColor: AppColor.backgroundColor,
+            appBar: widget.showBottomNav ? null : _buildAppBar(screenWidth),
+            body: SafeArea(
+              child: SingleChildScrollView(
+                padding: AppPadding.screenPadding,
+                child: _buildHomeContent(),
               ),
-              child: _buildFloatingButton(),
+            ),
+            endDrawer: widget.showBottomNav ? null : const SideBarMenu(),
+            floatingActionButton: widget.showBottomNav
+                ? null
+                : Obx(() {
+                    return Visibility(
+                      visible: !controller.errorMessage.value.contains(
+                        'Bluetooth has been turned off',
+                      ),
+                      child: ModernFAB(
+                        onPressed: () => context.pushNamed('add-device'),
+                      ),
+                    );
+                  }),
+            floatingActionButtonLocation: widget.showBottomNav
+                ? null
+                : FloatingActionButtonLocation.centerDocked,
+          ),
+          Obx(() {
+            return LoadingOverlay(
+              isLoading: controller.isLoadingConnectionGlobal.value,
+              message: controller.message.value.isNotEmpty
+                  ? controller.message.value
+                  : controller.errorMessage.value,
             );
           }),
-        ),
-        Obx(() {
-          return LoadingOverlay(
-            isLoading: controller.isLoadingConnectionGlobal.value,
-            message: controller.message.value.isNotEmpty
-                ? controller.message.value
-                : controller.errorMessage.value,
-          );
-        }),
-      ],
+        ],
+      ),
     );
   }
 
@@ -136,19 +159,30 @@ class _HomeScreenState extends State<HomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Hallo, Fulan👋',
-          style: context.h1.copyWith(color: AppColor.blackColor),
-        ),
-        AppSpacing.xs,
-        Text(
-          'Connecting the device near you',
-          style: context.body.copyWith(color: AppColor.grey),
-        ),
-        AppSpacing.xxl,
+        if (widget.showBottomNav) ...[
+          AppSpacing.sm,
+          Text(
+            'Home',
+            style: context.h2.copyWith(
+              color: AppColor.blackColor,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          AppSpacing.sm,
+          Text(
+            'Manage your connected devices',
+            style: context.bodySmall.copyWith(color: AppColor.grey),
+          ),
+          AppSpacing.lg,
+        ],
         Text(
           'Connected Devices',
-          style: context.h4.copyWith(color: AppColor.blackColor),
+          style: widget.showBottomNav
+              ? context.h5.copyWith(
+                  color: AppColor.blackColor,
+                  fontWeight: FontWeight.w600,
+                )
+              : context.h4.copyWith(color: AppColor.blackColor),
         ),
         AppSpacing.md,
         Obx(() {
@@ -255,29 +289,8 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           );
         }),
+        if (widget.showBottomNav) AppSpacing.xl,
       ],
-    );
-  }
-
-  Widget _buildFloatingButton() {
-    return InkWell(
-      onTap: () {
-        context.pushNamed('add-device');
-      },
-      child: Container(
-        width: 50,
-        height: 50,
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-        decoration: BoxDecoration(
-          color: AppColor.primaryColor,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: const Icon(
-          Icons.add_circle,
-          size: 20,
-          color: AppColor.whiteColor,
-        ),
-      ),
     );
   }
 }

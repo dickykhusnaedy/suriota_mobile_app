@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:gateway_config/core/constants/app_color.dart';
 import 'package:gateway_config/core/constants/app_font.dart';
-import 'package:gateway_config/presentation/pages/sidebar_menu/about_us_page.dart';
+import 'package:gateway_config/presentation/pages/settings/about_us_page.dart';
 import 'package:gateway_config/presentation/pages/home/home_screen.dart';
 import 'package:gateway_config/presentation/pages/login/login_page.dart';
 import '../../core/constants/app_image_assets.dart';
-import 'sidebar_menu/profile.dart';
+import 'settings/profile.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key, required this.title});
@@ -28,7 +28,7 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColor.backgroundColor,
       endDrawer: Drawer(
         child: Padding(
           padding: const EdgeInsets.all(8.0),

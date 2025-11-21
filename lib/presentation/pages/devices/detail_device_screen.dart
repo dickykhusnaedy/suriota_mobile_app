@@ -85,6 +85,7 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
       children: [
         Scaffold(
           appBar: _buildAppBar(widget.model.device.platformName),
+          backgroundColor: AppColor.backgroundColor,
           body: SafeArea(
             child: SingleChildScrollView(
               padding: AppPadding.horizontalMedium,
@@ -109,25 +110,35 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
 
     final List<Map<String, dynamic>> menuItems = [
       {
-        "text": "Device Communication",
-        "imagePath": ImageAsset.iconDevice,
+        "text": "Device Communications",
+        "icon": Icons.devices_outlined,
         "page":
             '/devices/device-communication?id=${widget.model.device.remoteId}',
       },
       {
         "text": "Modbus Configurations",
-        "imagePath": ImageAsset.iconConfig,
+        "icon": Icons.settings_input_component,
         "page": '/devices/modbus-config?id=${widget.model.device.remoteId}',
       },
       {
         "text": "Server Configurations",
-        "imagePath": ImageAsset.iconServer,
+        "icon": Icons.dns_outlined,
         "page": '/devices/server-config?id=${widget.model.device.remoteId}',
       },
       {
         "text": "Logging Configurations",
-        "imagePath": ImageAsset.iconLogging,
+        "icon": Icons.description_outlined,
         "page": '/devices/logging?id=${widget.model.device.remoteId}',
+      },
+      {
+        "text": "Status",
+        "icon": Icons.analytics_outlined,
+        "page": '/devices/status?id=${widget.model.device.remoteId}',
+      },
+      {
+        "text": "Settings",
+        "icon": Icons.settings_outlined,
+        "page": '/devices/settings?id=${widget.model.device.remoteId}',
       },
     ];
 
@@ -187,7 +198,7 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 6),
+                        AppSpacing.sm,
                         Row(
                           children: [
                             Container(
@@ -222,7 +233,7 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 4),
+                        AppSpacing.xs,
                         Row(
                           children: [
                             Icon(
@@ -296,7 +307,7 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
                     (item) => CardMenu(
                       width: cardWidth,
                       text: item['text']!,
-                      imagePath: item['imagePath']!,
+                      icon: item['icon']!,
                       page: item['page'],
                     ),
                   )

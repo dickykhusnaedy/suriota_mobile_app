@@ -160,7 +160,11 @@ class _FormLoggingConfigScreenState extends State<FormLoggingConfigScreen> {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        Scaffold(appBar: _appBar(context), body: _body(context)),
+        Scaffold(
+          appBar: _appBar(context),
+          backgroundColor: AppColor.backgroundColor,
+          body: _body(context),
+        ),
         Obx(() {
           final isAnyDeviceLoading = controller.isFetching.value;
           return LoadingOverlay(
