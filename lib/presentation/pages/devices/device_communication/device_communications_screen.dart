@@ -34,6 +34,9 @@ class _DeviceCommunicationsScreenState
   bool isLoading = false;
   bool isInitialized = false;
 
+  // Device status cache (deviceId -> enabled status)
+  final RxMap<String, bool> deviceStatusCache = <String, bool>{}.obs;
+
   // Search functionality
   final TextEditingController searchController = TextEditingController();
   Timer? _searchDebounceTimer;
@@ -60,6 +63,10 @@ class _DeviceCommunicationsScreenState
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         // Use smart cache instead of always fetching
         await controller.fetchDevicesIfNeeded(widget.model);
+
+        // Fetch status for all devices
+        await _getAllDeviceStatus();
+
         isInitialized = true;
       });
     }
@@ -161,6 +168,167 @@ class _DeviceCommunicationsScreenState
             AppColor.redColor,
             AppColor.whiteColor,
           );
+        } finally {
+          controller.isFetching.value = false;
+        }
+      },
+      barrierDismissible: false,
+    );
+  }
+
+  // Get status for all devices
+  Future<void> _getAllDeviceStatus() async {
+    if (!widget.model.isConnected.value) {
+      return;
+    }
+
+    try {
+      final command = {"op": "control", "type": "get_all_device_status"};
+
+      final response = await bleController.sendCommand(command);
+
+      if (response.status == 'ok') {
+        // Parse RTU devices
+        if (response.config?['rtu_devices']?['devices'] != null) {
+          final rtuDevices =
+              response.config!['rtu_devices']['devices'] as List<dynamic>;
+          for (var device in rtuDevices) {
+            final deviceId = device['device_id'] as String?;
+            final enabled = device['enabled'] as bool? ?? true;
+            if (deviceId != null) {
+              deviceStatusCache[deviceId] = enabled;
+            }
+          }
+        }
+
+        // Parse TCP devices
+        if (response.config?['tcp_devices']?['devices'] != null) {
+          final tcpDevices =
+              response.config!['tcp_devices']['devices'] as List<dynamic>;
+          for (var device in tcpDevices) {
+            final deviceId = device['device_id'] as String?;
+            final enabled = device['enabled'] as bool? ?? true;
+            if (deviceId != null) {
+              deviceStatusCache[deviceId] = enabled;
+            }
+          }
+        }
+
+        AppHelpers.debugLog(
+          'Device status fetched: ${deviceStatusCache.length} devices',
+        );
+      }
+    } catch (e) {
+      AppHelpers.debugLog('Error fetching all device status: $e');
+    }
+  }
+
+  // Get status for a specific device
+  Future<bool?> _getDeviceStatus(String deviceId) async {
+    if (!widget.model.isConnected.value) {
+      return null;
+    }
+
+    try {
+      final command = {
+        "op": "control",
+        "type": "get_device_status",
+        "device_id": deviceId,
+      };
+
+      final response = await bleController.sendCommand(command);
+
+      if (response.status == 'ok' &&
+          response.config?['device_status'] != null) {
+        final enabled =
+            response.config!['device_status']['enabled'] as bool? ?? true;
+        deviceStatusCache[deviceId] = enabled;
+        AppHelpers.debugLog('Device $deviceId status: $enabled');
+        return enabled;
+      }
+    } catch (e) {
+      AppHelpers.debugLog('Error fetching device status for $deviceId: $e');
+    }
+    return null;
+  }
+
+  // Enable or disable device with confirmation dialog
+  Future<void> _enableDisableDevice(String deviceId, bool currentStatus) async {
+    if (!widget.model.isConnected.value) {
+      SnackbarCustom.showSnackbar(
+        '',
+        'Device not connected',
+        AppColor.redColor,
+        AppColor.whiteColor,
+      );
+      return;
+    }
+
+    final bool willEnable = !currentStatus;
+    final String action = willEnable ? 'enable' : 'disable';
+    final String actionCapitalized = willEnable ? 'Enable' : 'Disable';
+
+    CustomAlertDialog.show(
+      title: "Are you sure?",
+      message: "Are you sure you want to $action this device?",
+      primaryButtonText: 'Yes',
+      secondaryButtonText: 'No',
+      onPrimaryPressed: () async {
+        Get.back();
+        controller.isFetching.value = true;
+
+        try {
+          Map<String, dynamic> command;
+
+          if (willEnable) {
+            // Enable device
+            command = {
+              "op": "control",
+              "type": "enable_device",
+              "device_id": deviceId,
+              "clear_metrics": false,
+            };
+          } else {
+            // Disable device
+            command = {
+              "op": "control",
+              "type": "disable_device",
+              "device_id": deviceId,
+              "reason": "Manual disable via mobile app",
+            };
+          }
+
+          final response = await bleController.sendCommand(command);
+
+          if (response.status == 'ok') {
+            SnackbarCustom.showSnackbar(
+              '',
+              'Device ${actionCapitalized.toLowerCase()}d successfully',
+              Colors.green,
+              AppColor.whiteColor,
+            );
+
+            // Update cache
+            deviceStatusCache[deviceId] = willEnable;
+
+            // Refresh device status
+            await _getDeviceStatus(deviceId);
+          } else {
+            SnackbarCustom.showSnackbar(
+              '',
+              'Failed to $action device: ${response.message}',
+              AppColor.redColor,
+              AppColor.whiteColor,
+            );
+          }
+        } catch (e) {
+          SnackbarCustom.showSnackbar(
+            '',
+            'Failed to $action device',
+            AppColor.redColor,
+            AppColor.whiteColor,
+          );
+          AppHelpers.debugLog('Error ${action}ing device: $e');
         } finally {
           controller.isFetching.value = false;
         }
@@ -384,6 +552,8 @@ class _DeviceCommunicationsScreenState
               );
             },
           );
+
+          
         }),
         AppSpacing.md,
         Obx(() {
@@ -473,247 +643,241 @@ class _DeviceCommunicationsScreenState
     String modbusType,
     int registerCount,
   ) {
-    // Simulasi status device (nanti bisa diganti dengan data dari backend)
-    final bool isActive = deviceId.hashCode % 2 == 0;
+    return Obx(() {
+      // Get status from cache (default to true if not found)
+      final bool isActive = deviceStatusCache[deviceId] ?? true;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColor.whiteColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppColor.primaryColor.withValues(alpha: 0.15),
-          width: 1.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+      return Container(
+        decoration: BoxDecoration(
+          color: AppColor.whiteColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: AppColor.primaryColor.withValues(alpha: 0.15),
+            width: 1.5,
           ),
-        ],
-      ),
-      child: Column(
-        children: [
-          // Header dengan status dan toggle
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(
-              color: isActive
-                  ? Colors.green.withValues(alpha: 0.05)
-                  : AppColor.grey.withValues(alpha: 0.05),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(16),
-                topRight: Radius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            // Header dengan status dan toggle
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: isActive
+                    ? Colors.green.withValues(alpha: 0.05)
+                    : AppColor.grey.withValues(alpha: 0.05),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(16),
+                  topRight: Radius.circular(16),
+                ),
+              ),
+              child: Row(
+                children: [
+                  // Status Indicator
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isActive
+                          ? Colors.green.withValues(alpha: 0.15)
+                          : AppColor.grey.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: isActive
+                            ? Colors.green.withValues(alpha: 0.3)
+                            : AppColor.grey.withValues(alpha: 0.3),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: isActive ? Colors.green : AppColor.grey,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          isActive ? 'Active' : 'Disabled',
+                          style: context.bodySmall.copyWith(
+                            color: isActive
+                                ? Colors.green.shade700
+                                : AppColor.grey,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Spacer(),
+                  // Toggle Switch
+                  Transform.scale(
+                    scale: 0.75,
+                    child: Switch(
+                      value: isActive,
+                      onChanged: (value) {
+                        _enableDisableDevice(deviceId, isActive);
+                      },
+                      activeThumbColor: Colors.green,
+                      activeTrackColor: Colors.green.withValues(alpha: 0.5),
+                      inactiveThumbColor: AppColor.grey,
+                      inactiveTrackColor: AppColor.grey.withValues(alpha: 0.3),
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                  ),
+                ],
               ),
             ),
-            child: Row(
-              children: [
-                // Status Indicator
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 5,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isActive
-                        ? Colors.green.withValues(alpha: 0.15)
-                        : AppColor.grey.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: isActive
-                          ? Colors.green.withValues(alpha: 0.3)
-                          : AppColor.grey.withValues(alpha: 0.3),
-                      width: 1,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: isActive ? Colors.green : AppColor.grey,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        isActive ? 'Active' : 'Disabled',
-                        style: context.bodySmall.copyWith(
-                          color: isActive
-                              ? Colors.green.shade700
-                              : AppColor.grey,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.3,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Spacer(),
-                // Toggle Switch
-                Transform.scale(
-                  scale: 0.75,
-                  child: Switch(
-                    value: isActive,
-                    onChanged: (value) {
-                      _showComingSoonDialog();
-                    },
-                    activeThumbColor: Colors.green,
-                    activeTrackColor: Colors.green.withValues(alpha: 0.5),
-                    inactiveThumbColor: AppColor.grey,
-                    inactiveTrackColor: AppColor.grey.withValues(alpha: 0.3),
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // Content
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Icon
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        AppColor.primaryColor.withValues(alpha: 0.1),
-                        AppColor.lightPrimaryColor.withValues(alpha: 0.2),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: AppColor.primaryColor.withValues(alpha: 0.2),
-                      width: 1,
-                    ),
-                  ),
-                  child: Icon(
-                    Icons.devices_outlined,
-                    size: 24,
-                    color: AppColor.primaryColor,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                // Device Info
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Device Name
-                      Text(
-                        title,
-                        style: context.h6.copyWith(
-                          color: AppColor.blackColor,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: -0.3,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 1,
-                      ),
-                      const SizedBox(height: 6),
-                      // Protocol & Registers
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 4,
-                        children: [
-                          _buildProtocolBadge(context, modbusType),
-                          if (registerCount != 0)
-                            _buildInfoBadge(
-                              context,
-                              '$registerCount Registers',
-                              Icons.numbers,
-                            ),
+            // Content
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Icon
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          AppColor.primaryColor.withValues(alpha: 0.1),
+                          AppColor.lightPrimaryColor.withValues(alpha: 0.2),
                         ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                       ),
-                      const SizedBox(height: 6),
-                      // Device ID
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.fingerprint,
-                            size: 12,
-                            color: AppColor.grey.withValues(alpha: 0.7),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: AppColor.primaryColor.withValues(alpha: 0.2),
+                        width: 1,
+                      ),
+                    ),
+                    child: Icon(
+                      Icons.devices_outlined,
+                      size: 24,
+                      color: AppColor.primaryColor,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  // Device Info
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Device Name
+                        Text(
+                          title,
+                          style: context.h6.copyWith(
+                            color: AppColor.blackColor,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: -0.3,
                           ),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              'ID: $deviceId',
-                              style: context.bodySmall.copyWith(
-                                color: AppColor.grey,
-                                fontSize: 10,
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                        const SizedBox(height: 6),
+                        // Protocol & Registers
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 4,
+                          children: [
+                            _buildProtocolBadge(context, modbusType),
+                            if (registerCount != 0)
+                              _buildInfoBadge(
+                                context,
+                                '$registerCount Registers',
+                                Icons.numbers,
                               ),
-                              overflow: TextOverflow.ellipsis,
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        // Device ID
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.fingerprint,
+                              size: 12,
+                              color: AppColor.grey.withValues(alpha: 0.7),
                             ),
-                          ),
-                        ],
-                      ),
-                    ],
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                'ID: $deviceId',
+                                style: context.bodySmall.copyWith(
+                                  color: AppColor.grey,
+                                  fontSize: 10,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          // Action Buttons
-          Container(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _buildActionButton(
-                    context: context,
-                    icon: Icons.remove_red_eye_outlined,
-                    label: 'View',
-                    color: AppColor.primaryColor,
-                    onPressed: () {
-                      context.push(
-                        '/devices/device-communication/stream-data?d=${widget.model.device.remoteId}&stream=$deviceId',
-                      );
-                    },
+            // Action Buttons
+            Container(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _buildActionButton(
+                      context: context,
+                      icon: Icons.remove_red_eye_outlined,
+                      label: 'View',
+                      color: AppColor.primaryColor,
+                      onPressed: () {
+                        context.push(
+                          '/devices/device-communication/stream-data?d=${widget.model.device.remoteId}&stream=$deviceId',
+                        );
+                      },
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _buildActionButton(
-                    context: context,
-                    icon: Icons.edit_outlined,
-                    label: 'Edit',
-                    color: AppColor.primaryColor,
-                    onPressed: () {
-                      context.push(
-                        '/devices/device-communication/edit?d=${widget.model.device.remoteId}&edit=$deviceId',
-                      );
-                    },
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _buildActionButton(
+                      context: context,
+                      icon: Icons.edit_outlined,
+                      label: 'Edit',
+                      color: AppColor.primaryColor,
+                      onPressed: () {
+                        context.push(
+                          '/devices/device-communication/edit?d=${widget.model.device.remoteId}&edit=$deviceId',
+                        );
+                      },
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                _buildCircularActionButton(
-                  icon: Icons.delete_outline,
-                  color: AppColor.redColor,
-                  onPressed: () => _deleteDevice(deviceId),
-                ),
-              ],
+                  const SizedBox(width: 8),
+                  _buildCircularActionButton(
+                    icon: Icons.delete_outline,
+                    color: AppColor.redColor,
+                    onPressed: () => _deleteDevice(deviceId),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showComingSoonDialog() {
-    CustomAlertDialog.show(
-      title: 'Coming Soon',
-      message: 'This feature is coming soon',
-      primaryButtonText: 'OK',
-    );
+          ],
+        ),
+      );
+    });
   }
 
   Widget _buildInfoBadge(BuildContext context, String text, IconData icon) {
