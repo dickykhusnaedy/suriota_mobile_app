@@ -102,10 +102,10 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
 
     if (device['protocol'] == 'RTU') {
       selectedSerialPort = device['serial_port']?.toString();
-      selectedBaudRate = device['baud_rate']?.toString();
-      selectedBitData = device['data_bits']?.toString();
-      selectedParity = device['parity'] ?? 'None';
-      selectedStopBit = device['stop_bits']?.toString();
+      selectedBaudRate   = device['baud_rate']?.toString();
+      selectedBitData    = device['data_bits']?.toString();
+      selectedParity     = device['parity'] ?? 'None';
+      selectedStopBit    = device['stop_bits']?.toString();
     } else {
       ipAddressController.text = device['ip'] ?? '';
       serverPortController.text = device['port']?.toString() ?? '';
@@ -164,19 +164,10 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
             "config": {
               "device_name": _sanitizeInput(deviceNameController.text),
               "protocol": modBusSelected,
-              "slave_id": _tryParseInt(slaveIdController.text),
-              "timeout": _tryParseInt(
-                connectionTimeoutController.text,
-                defaultValue: 3000,
-              ),
-              "retry_count": _tryParseInt(
-                retryCountController.text,
-                defaultValue: 3,
-              ),
-              "refresh_rate_ms": _tryParseInt(
-                refreshRateController.text,
-                defaultValue: 5000,
-              ),
+              "slave_id": slaveIdController.intValue,
+              "timeout": connectionTimeoutController.intValue ?? 3000,
+              "retry_count": retryCountController.intValue ?? 3,
+              "refresh_rate_ms": refreshRateController.intValue ?? 5000,
               ...modBusSelected == 'RTU' ? modbusRtu : modbusTcp,
             },
           };
@@ -351,7 +342,10 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
                     return 'Timeout is required';
                   }
 
-                  final timeout = int.tryParse(value);
+                  final timeout = ThousandsSeparatorInputFormatter.getIntValue(
+                    value,
+                  );
+                  AppHelpers.debugLog('timeout from user $value');
                   if (timeout == null || timeout <= 0) {
                     return 'Enter a valid positive number';
                   }
@@ -379,7 +373,9 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
                   if (value == null || value.isEmpty) {
                     return 'Refresh rate is required';
                   }
-                  final num = int.tryParse(value);
+                  final num = ThousandsSeparatorInputFormatter.getIntValue(
+                    value,
+                  );
                   if (num == null || num <= 0) {
                     return 'Enter a valid positive number';
                   }

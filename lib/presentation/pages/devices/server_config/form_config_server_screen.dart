@@ -133,10 +133,10 @@ class _FormConfigServerState extends State<FormConfigServer> {
     wifiPasswordController.text = config['wifi']?['password'] ?? '';
 
     // Ethernet config
-    isEthernetEnabled = (config['ethernet']?['enabled'] ?? '').toString();
-    isUseDhcp = (config['ethernet']?['use_dhcp'] ?? '').toString();
-    ipAddressController.text = config['ethernet']?['static_ip'] ?? '';
-    gatewayController.text = config['ethernet']?['gateway'] ?? '';
+    isEthernetEnabled         = (config['ethernet']?['enabled'] ?? '').toString();
+    isUseDhcp                 = (config['ethernet']?['use_dhcp'] ?? '').toString();
+    ipAddressController.text  = config['ethernet']?['static_ip'] ?? '';
+    gatewayController.text    = config['ethernet']?['gateway'] ?? '';
     subnetMaskController.text = config['ethernet']?['subnet'] ?? '';
 
     // MQTT
@@ -450,11 +450,11 @@ class _FormConfigServerState extends State<FormConfigServer> {
         var mqttConfig = {
           "enabled": isEnabledMqtt == 'true',
           "broker_address": _sanitizeInput(serverNameController.text),
-          "broker_port": _tryParseInt(portMqttController.text) ?? 0,
+          "broker_port": portMqttController.intValue ?? 0,
           "client_id": _sanitizeInput(clientIdController.text),
           "username": _sanitizeInput(usernameController.text),
           "password": _sanitizeInput(passwordController.text),
-          "keep_alive": _tryParseInt(keepAliveController.text) ?? 60,
+          "keep_alive": keepAliveController.intValue ?? 60,
           "clean_session": cleanSessionSelected == 'true',
           "use_tls": useTlsSelected == 'true',
           "publish_mode": mqttPublishMode,
@@ -462,7 +462,7 @@ class _FormConfigServerState extends State<FormConfigServer> {
             "enabled": mqttPublishMode == 'default',
             "topic_publish": _sanitizeInput(publishTopicController.text),
             "topic_subscribe": _sanitizeInput(subscribeTopicController.text),
-            "interval": _tryParseInt(mqttDefaultIntervalController.text) ?? 5,
+            "interval": mqttDefaultIntervalController.intValue ?? 5,
             "interval_unit": mqttDefaultIntervalUnit,
           },
           "customize_mode": {
@@ -498,9 +498,9 @@ class _FormConfigServerState extends State<FormConfigServer> {
           "endpoint_url": _sanitizeInput(urlLinkController.text),
           "method": methodRequestSelected,
           "body_format": bodyFormatRequestSelected,
-          "timeout": _tryParseInt(timeoutController.text) ?? 0,
-          "retry": _tryParseInt(retryController.text) ?? 0,
-          "interval": _tryParseInt(httpIntervalController.text) ?? 5,
+          "timeout": timeoutController.intValue ?? 0,
+          "retry": retryController.intValue ?? 0,
+          "interval": httpIntervalController.intValue ?? 5,
           "interval_unit": httpIntervalUnit,
           "headers": {
             for (final c in headerControllers)
@@ -569,11 +569,6 @@ class _FormConfigServerState extends State<FormConfigServer> {
 
   String _sanitizeInput(String input) =>
       input.replaceAll('|', '').replaceAll('#', '');
-
-  int? _tryParseInt(String? value, {int? defaultValue}) {
-    if (value == null || value.isEmpty) return defaultValue;
-    return int.tryParse(value) ?? defaultValue;
-  }
 
   List<DropdownItems> typeInterval = [
     DropdownItems(text: 'ms', value: 'ms'),
