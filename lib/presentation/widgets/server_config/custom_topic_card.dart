@@ -71,7 +71,7 @@ class _CustomTopicCardState extends State<CustomTopicCard> {
   void _notifyChanges() {
     widget.onTopicChanged({
       'topicName': _topicNameController.text,
-      'intervalValue': int.tryParse(_intervalValueController.text) ?? 0,
+      'intervalValue': _intervalValueController.intValue ?? 0,
       'intervalUnit': _selectedIntervalUnit,
       'selectedRegisters': widget.selectedRegisters,
     });
@@ -90,7 +90,7 @@ class _CustomTopicCardState extends State<CustomTopicCard> {
 
     widget.onTopicChanged({
       'topicName': _topicNameController.text,
-      'intervalValue': int.tryParse(_intervalValueController.text) ?? 0,
+      'intervalValue': _intervalValueController.intValue ?? 0,
       'intervalUnit': _selectedIntervalUnit,
       'selectedRegisters': updatedSelection,
     });
@@ -237,7 +237,7 @@ class _CustomTopicCardState extends State<CustomTopicCard> {
                     if (value == null || value.isEmpty) {
                       return 'Required';
                     }
-                    final num = int.tryParse(value);
+                    final num = ThousandsSeparatorInputFormatter.getIntValue(value);
                     if (num == null || num <= 0) {
                       return 'Invalid';
                     }
