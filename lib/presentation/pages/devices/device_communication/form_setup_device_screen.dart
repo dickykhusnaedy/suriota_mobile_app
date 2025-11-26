@@ -102,10 +102,10 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
 
     if (device['protocol'] == 'RTU') {
       selectedSerialPort = device['serial_port']?.toString();
-      selectedBaudRate   = device['baud_rate']?.toString();
-      selectedBitData    = device['data_bits']?.toString();
-      selectedParity     = device['parity'] ?? 'None';
-      selectedStopBit    = device['stop_bits']?.toString();
+      selectedBaudRate = device['baud_rate']?.toString();
+      selectedBitData = device['data_bits']?.toString();
+      selectedParity = device['parity'] ?? 'None';
+      selectedStopBit = device['stop_bits']?.toString();
     } else {
       ipAddressController.text = device['ip'] ?? '';
       serverPortController.text = device['port']?.toString() ?? '';
@@ -345,7 +345,6 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
                   final timeout = ThousandsSeparatorInputFormatter.getIntValue(
                     value,
                   );
-                  AppHelpers.debugLog('timeout from user $value');
                   if (timeout == null || timeout <= 0) {
                     return 'Enter a valid positive number';
                   }
