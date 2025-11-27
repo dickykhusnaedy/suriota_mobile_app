@@ -12,6 +12,7 @@ class BluetoothPermissionService extends GetxController {
       Permission.bluetoothScan,
       Permission.bluetoothConnect,
       Permission.locationWhenInUse,
+      Permission.manageExternalStorage
     ].request();
 
     final allGranted = statuses.values.every((status) => status.isGranted);
