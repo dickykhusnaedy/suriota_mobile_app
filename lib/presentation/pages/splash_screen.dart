@@ -34,13 +34,18 @@ class _SplashScreenState extends State<SplashScreen> {
     await Future.delayed(const Duration(seconds: 3));
     if (!mounted) return;
 
+    print('=== Splash Screen: Checking Permissions ===');
     bool permissionGranted =
         await BluetoothPermissionService.checkAndRequestPermissions(context);
 
+    print('=== Splash Screen: Permission Result = $permissionGranted ===');
+
     if (mounted) {
       if (permissionGranted) {
+        print('=== Splash Screen: Navigating to / ===');
         context.go('/');
       } else {
+        print('=== Splash Screen: Navigating to /permission-denied ===');
         context.go('/permission-denied');
       }
     }

@@ -32,7 +32,10 @@ class _SettingsDeviceScreenState extends State<SettingsDeviceScreen> {
   final bleController = Get.find<BleController>();
   bool isLoading = false;
 
-  Future<void> _showPermissionBottomSheet(BuildContext context) async {
+  Future<void> _showPermissionBottomSheet(
+    BuildContext context, {
+    bool isPhotos = false,
+  }) async {
     await showModalBottomSheet(
       context: context,
       isDismissible: false,
@@ -50,10 +53,17 @@ class _SettingsDeviceScreenState extends State<SettingsDeviceScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text("Storage Permission Required", style: sheetContext.h4),
+                    Text(
+                      isPhotos
+                          ? "Photos Permission Required"
+                          : "Storage Permission Required",
+                      style: sheetContext.h4,
+                    ),
                     AppSpacing.sm,
                     Text(
-                      "Storage permission is required to save and access backup files. Please enable it in your settings to continue.",
+                      isPhotos
+                          ? "On Android 13+, we need Photos permission to save backup files to your device. This allows the app to store configuration backups that you can access later.\n\nPlease enable it in your settings to continue."
+                          : "Storage permission is required to save and access backup files. Please enable it in your settings to continue.",
                       style: sheetContext.bodySmall,
                       textAlign: TextAlign.center,
                     ),
@@ -96,54 +106,75 @@ class _SettingsDeviceScreenState extends State<SettingsDeviceScreen> {
   }
 
   Future<bool> _requestStoragePermission(BuildContext context) async {
-    if (Platform.isAndroid) {
-      final androidVersion = await _getAndroidVersion();
+    if (!Platform.isAndroid) {
+      return true; // iOS doesn't need permission for app documents
+    }
 
-      // Android 13+ (API 33+) - No storage permission needed for app-specific directories
-      if (androidVersion >= 33) {
+    print('=== Storage Permission Request ===');
+
+    // Try Android 13+ permissions first (photos/media)
+    // If not available, will automatically fall back to storage
+    PermissionStatus photosStatus = await Permission.photos.status;
+    print('Photos Permission Status: $photosStatus');
+
+    // Check if photos permission is available (Android 13+)
+    // On older Android, Permission.photos will return denied/restricted
+    if (photosStatus != PermissionStatus.restricted) {
+      // Android 13+ detected - use photos permission
+      print('Using Photos Permission (Android 13+)');
+
+      if (photosStatus.isGranted) {
         return true;
       }
 
-      // Android 11-12 (API 30-32) - Use scoped storage, no permission needed
-      if (androidVersion >= 30) {
+      // Request photos permission
+      photosStatus = await Permission.photos.request();
+      print('Photos Permission After Request: $photosStatus');
+
+      if (photosStatus.isGranted) {
         return true;
       }
 
-      // Android 10 and below - Use WRITE_EXTERNAL_STORAGE
-      PermissionStatus status = await Permission.storage.status;
-
-      // If already granted, return immediately
-      if (status.isGranted) {
-        return true;
-      }
-
-      // Request permission
-      status = await Permission.storage.request();
-
-        // If denied after request, show bottom sheet
-      if (!status.isGranted) {
-        if (status.isPermanentlyDenied || status.isDenied) {
-          if (!mounted) return false;
-          // ignore: use_build_context_synchronously
-          await _showPermissionBottomSheet(context);
-        }
+      // If denied, show explanation
+      if (photosStatus.isPermanentlyDenied) {
+        if (!mounted) return false;
+        // ignore: use_build_context_synchronously
+        await _showPermissionBottomSheet(context, isPhotos: true);
         return false;
       }
 
+      // User just denied, don't show bottom sheet yet
+      // They might grant it next time
+      return false;
+    }
+
+    // Fallback to storage permission for Android 12 and below
+    print('Using Storage Permission (Android 12 and below)');
+    PermissionStatus storageStatus = await Permission.storage.status;
+    print('Storage Permission Status: $storageStatus');
+
+    if (storageStatus.isGranted) {
       return true;
     }
-    return true; // iOS doesn't need permission for app documents
-  }
 
-  Future<int> _getAndroidVersion() async {
-    if (Platform.isAndroid) {
-      final version = Platform.operatingSystemVersion;
-      final match = RegExp(r'(\d+)').firstMatch(version);
-      if (match != null) {
-        return int.tryParse(match.group(1) ?? '0') ?? 0;
-      }
+    // Request storage permission
+    storageStatus = await Permission.storage.request();
+    print('Storage Permission After Request: $storageStatus');
+
+    if (storageStatus.isGranted) {
+      return true;
     }
-    return 0;
+
+    // If permanently denied, show bottom sheet
+    if (storageStatus.isPermanentlyDenied) {
+      if (!mounted) return false;
+      // ignore: use_build_context_synchronously
+      await _showPermissionBottomSheet(context, isPhotos: false);
+      return false;
+    }
+
+    // User just denied, don't show bottom sheet yet
+    return false;
   }
 
   Future<void> downloadAllConfig(BuildContext context) async {
@@ -165,60 +196,159 @@ class _SettingsDeviceScreenState extends State<SettingsDeviceScreen> {
       });
 
       if (response.status == 'ok' || response.status == 'success') {
+        print('=== BLE Response Received ===');
+        print('Response status: ${response.status}');
+        print('Response has backup_info: ${response.backupInfo != null}');
+        print('Response has config: ${response.config != null}');
+
+        // Extract backup info for display
+        final backupInfo = response.backupInfo;
+
+        // Show notification that data was received successfully
+        SnackbarCustom.showSnackbar(
+          '',
+          '✅ Saving to file...',
+          AppColor.lightPrimaryColor,
+          AppColor.primaryColor,
+        );
+
+        // Wait for first snackbar to show and start saving
+        await Future.delayed(const Duration(milliseconds: 1600));
+
         // Create backup object with metadata
+        // IMPORTANT: Structure matches BLE_BACKUP_RESTORE.md documentation
+        // Response format: { status, backup_info, config }
         final backup = {
           "created_at": DateTime.now().toIso8601String(),
           "backup_info":
-              response.config['backup_info'] ??
+              response.backupInfo ??
               {
                 "timestamp": DateTime.now().millisecondsSinceEpoch,
-                "device_name": "SURIOTA_GW",
+                "device_name": backupInfo?["device_name"] ?? "SURIOTA_GW",
+                "firmware_version":
+                    backupInfo?["firmware_version"] ?? "unknown",
+                "total_devices": backupInfo?["total_devices"] ?? 0,
+                "total_registers": backupInfo?["total_registers"] ?? 0,
               },
-          "config": response.config['config'] ?? response.config,
+          "config": response.config,
         };
 
-        // Create filename with timestamp
-        final now = DateTime.now();
-        final timestamp =
-            '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}_${now.hour.toString().padLeft(2, '0')}-${now.minute.toString().padLeft(2, '0')}-${now.second.toString().padLeft(2, '0')}';
+        print('Backup info: ${backup["backup_info"]}');
+
+        // Calculate devices count from config
+        final configMap = response.config is Map
+            ? response.config as Map
+            : null;
+        final devicesCount = configMap?["devices"]?.length ?? 0;
+        print('Config devices count: $devicesCount');
+
+        if (response.backupInfo != null) {
+          print(
+            'Firmware version: ${response.backupInfo!["firmware_version"]}',
+          );
+          print('Total devices: ${response.backupInfo!["total_devices"]}');
+          print('Total registers: ${response.backupInfo!["total_registers"]}');
+          print(
+            'Backup size: ${response.backupInfo!["backup_size_bytes"]} bytes',
+          );
+        }
+
+        // Create filename with timestamp (matches API documentation format)
+        final timestamp = DateTime.now().toIso8601String().replaceAll(
+          RegExp(r'[:.Z]'),
+          '-',
+        );
         final filename = 'gateway_backup_$timestamp.json';
 
-        // Get directory path - Use app-specific external directory (no permission needed)
+        // Get directory path based on platform
         Directory? directory;
+        String? filePath;
+
         if (Platform.isAndroid) {
-          // For Android, use app-specific external storage
-          // Path: /storage/emulated/0/Android/data/com.example.app/files/GatewayApp/Backup
-          directory = await getExternalStorageDirectory();
-          if (directory != null) {
-            directory = Directory('${directory.path}/GatewayApp/Backup');
+          // For Android, save to public Documents folder
+          // Path: /storage/emulated/0/Documents/GatewayConfig/backup
+          // This requires storage/photos permission which we already requested
+
+          // Get external storage directory first
+          final externalDir = await getExternalStorageDirectory();
+          if (externalDir != null) {
+            // Navigate to public Documents folder
+            // From: /storage/emulated/0/Android/data/com.app/files
+            // To:   /storage/emulated/0/Documents/GatewayConfig/backup
+            final publicPath = externalDir.path.split('/Android/data/')[0];
+            directory = Directory('$publicPath/Documents/GatewayConfig/backup');
+
+            print('=== Saving Backup File ===');
+            print('Target Directory: ${directory.path}');
           }
         } else {
           // iOS uses app documents directory
           directory = await getApplicationDocumentsDirectory();
-          directory = Directory('${directory.path}/GatewayApp/Backup');
+          directory = Directory('${directory.path}/GatewayConfig/backup');
+          print('=== Saving Backup File (iOS) ===');
+          print('Target Directory: ${directory.path}');
+        }
+
+        if (directory == null) {
+          throw Exception('Failed to get storage directory');
         }
 
         // Create directory if not exists
-        if (!await directory!.exists()) {
+        if (!await directory.exists()) {
+          print('Creating directory: ${directory.path}');
           await directory.create(recursive: true);
+          print('✅ Directory created successfully');
+        } else {
+          print('✅ Directory already exists');
         }
 
+        // Verify directory is writable
+        print('Directory path: ${directory.path}');
+        print('Directory exists: ${await directory.exists()}');
+
         // Save file
-        final filePath = '${directory.path}/$filename';
+        filePath = '${directory.path}/$filename';
         final file = File(filePath);
+
+        print('=== Writing Backup File ===');
+        print('Full file path: $filePath');
+        print('File name: $filename');
+
         await file.writeAsString(jsonEncode(backup));
+
+        print('✅ File written successfully');
+
+        // Verify file exists
+        final fileExists = await file.exists();
+        final fileSize = await file.length();
+        print('File exists: $fileExists');
+        print('File size: $fileSize bytes');
 
         setState(() {
           isLoading = false;
         });
 
-        // Show success snackbar with file info
+        // Prepare user-friendly path display
+        String displayPath;
+        if (Platform.isAndroid) {
+          // Show relative path from storage root
+          displayPath = filePath.replaceFirst('/storage/emulated/0/', '');
+        } else {
+          // iOS - show directory name
+          displayPath = 'GatewayConfig/backup/$filename';
+        }
+
+        // Show success snackbar with complete file info and full path
         SnackbarCustom.showSnackbar(
-          '',
-          'Backup saved successfully!\nFile: $filename\nLocation: ${directory.path}',
+          'Backup Success',
+          'Data successfully saved to:\n$displayPath',
           Colors.green,
           AppColor.whiteColor,
         );
+
+        print('=== Backup Complete ===');
+        print('Full path: $filePath');
+        print('Display path: $displayPath');
       } else {
         setState(() {
           isLoading = false;
@@ -299,7 +429,7 @@ class _SettingsDeviceScreenState extends State<SettingsDeviceScreen> {
         secondaryButtonText: 'No',
         barrierDismissible: false,
         onPrimaryPressed: () async {
-          Get.back(); // Close dialog
+          Navigator.of(context).pop(); // Close dialog safely
 
           setState(() {
             isLoading = true;
@@ -344,7 +474,7 @@ class _SettingsDeviceScreenState extends State<SettingsDeviceScreen> {
                   primaryButtonText: 'Restart Now',
                   secondaryButtonText: 'Later',
                   onPrimaryPressed: () {
-                    Get.back();
+                    Navigator.of(context).pop(); // Close dialog safely
                     // TODO: Implement device restart if API available
                     SnackbarCustom.showSnackbar(
                       '',
@@ -400,7 +530,7 @@ class _SettingsDeviceScreenState extends State<SettingsDeviceScreen> {
       secondaryButtonText: 'No',
       barrierDismissible: false,
       onPrimaryPressed: () async {
-        Get.back(); // Close dialog
+        Navigator.of(context).pop(); // Close dialog safely
 
         setState(() {
           isLoading = true;
