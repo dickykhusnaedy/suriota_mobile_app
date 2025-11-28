@@ -1,7 +1,7 @@
 import 'dart:io';
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:open_filex/open_filex.dart';
 
 class NotificationHelper {
   static final NotificationHelper _instance = NotificationHelper._internal();
@@ -10,6 +10,8 @@ class NotificationHelper {
 
   final FlutterLocalNotificationsPlugin _notifications =
       FlutterLocalNotificationsPlugin();
+
+  static const MethodChannel _channel = MethodChannel('com.gateway.config/file_manager');
 
   bool _initialized = false;
 
@@ -34,12 +36,31 @@ class NotificationHelper {
     await _notifications.initialize(
       initSettings,
       onDidReceiveNotificationResponse: (NotificationResponse response) {
-        // Handle notification tap
+        // Handle notification tap when app is running or in background
         _handleNotificationTap(response);
       },
     );
 
     _initialized = true;
+
+    // Check if app was launched from notification
+    await _checkLaunchNotification();
+  }
+
+  /// Check if the app was launched by tapping on a notification
+  Future<void> _checkLaunchNotification() async {
+    final NotificationAppLaunchDetails? launchDetails =
+        await _notifications.getNotificationAppLaunchDetails();
+
+    if (launchDetails != null && launchDetails.didNotificationLaunchApp) {
+      // App was launched from notification
+      final response = launchDetails.notificationResponse;
+      if (response != null) {
+        print('App launched from notification with payload: ${response.payload}');
+        // Handle the notification that launched the app
+        await _handleNotificationTap(response);
+      }
+    }
   }
 
   Future<void> _handleNotificationTap(NotificationResponse response) async {
@@ -51,24 +72,33 @@ class NotificationHelper {
 
   Future<void> _openFileManager(String filePath) async {
     try {
-      print('Attempting to open file: $filePath');
+      print('=== Opening File Manager ===');
+      print('File path: $filePath');
 
-      // Use OpenFilex to open the file directly
-      // This will automatically open the file manager if the file exists
-      final result = await OpenFilex.open(filePath);
+      if (!Platform.isAndroid) {
+        print('iOS not supported for file manager intent');
+        return;
+      }
 
-      print('OpenFilex result: ${result.type}');
-      print('OpenFilex message: ${result.message}');
+      // Check if file exists
+      final file = File(filePath);
+      final fileExists = await file.exists();
+      print('File exists: $fileExists');
 
-      // If file doesn't exist or can't be opened, result.type will be error
-      if (result.type == ResultType.error) {
-        print('Failed to open file, trying to open parent directory');
-        // Try to open parent directory instead
-        final directory = File(filePath).parent;
-        if (await directory.exists()) {
-          // Open the parent directory
-          await OpenFilex.open(directory.path);
-        }
+      // Get the directory path
+      final directory = file.parent;
+      final directoryPath = directory.path;
+      print('Directory path: $directoryPath');
+
+      // Call native Android code to open file manager
+      try {
+        await _channel.invokeMethod('openFileManager', {
+          'directoryPath': directoryPath,
+        });
+        print('=== File Manager Opened Successfully ===');
+      } on PlatformException catch (e) {
+        print('Platform exception: ${e.message}');
+        print('Error code: ${e.code}');
       }
     } catch (e) {
       print('Error opening file manager: $e');

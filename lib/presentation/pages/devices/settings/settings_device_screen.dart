@@ -191,13 +191,10 @@ class _SettingsDeviceScreenState extends State<SettingsDeviceScreen> {
 
     try {
       // Send backup command via BLE
-      final response = await bleController.sendCommand(
-        {
-          "op": "read",
-          "type": "full_config",
-        },
-        useGlobalLoading: false,
-      );
+      final response = await bleController.sendCommand({
+        "op": "read",
+        "type": "full_config",
+      }, useGlobalLoading: false);
 
       if (response.status == 'ok' || response.status == 'success') {
         print('=== BLE Response Received ===');
@@ -446,8 +443,8 @@ class _SettingsDeviceScreenState extends State<SettingsDeviceScreen> {
 
           setState(() {
             setState(() {
-      isLoading = true;
-    });
+              isLoading = true;
+            });
           });
 
           // Show importing in progress message
@@ -460,20 +457,17 @@ class _SettingsDeviceScreenState extends State<SettingsDeviceScreen> {
 
           try {
             // Send restore command
-            final response = await bleController.sendCommand(
-              {
-                "op": "system",
-                "type": "restore_config",
-                "config": backup['config'],
-              },
-              useGlobalLoading: false,
-            );
+            final response = await bleController.sendCommand({
+              "op": "system",
+              "type": "restore_config",
+              "config": backup['config'],
+            }, useGlobalLoading: false);
 
             if (response.status == 'ok' || response.status == 'success') {
               setState(() {
                 setState(() {
-            isLoading = false;
-          });
+                  isLoading = false;
+                });
               });
 
               // Calculate total configs imported
@@ -499,8 +493,8 @@ class _SettingsDeviceScreenState extends State<SettingsDeviceScreen> {
             } else {
               setState(() {
                 setState(() {
-            isLoading = false;
-          });
+                  isLoading = false;
+                });
               });
 
               SnackbarCustom.showSnackbar(
@@ -513,8 +507,8 @@ class _SettingsDeviceScreenState extends State<SettingsDeviceScreen> {
           } catch (e) {
             setState(() {
               setState(() {
-            isLoading = false;
-          });
+                isLoading = false;
+              });
             });
 
             SnackbarCustom.showSnackbar(
@@ -548,19 +542,16 @@ class _SettingsDeviceScreenState extends State<SettingsDeviceScreen> {
         Navigator.of(context).pop(); // Close dialog safely
 
         setState(() {
-      isLoading = true;
-    });
+          isLoading = true;
+        });
 
         try {
           // Send factory reset command
-          final response = await bleController.sendCommand(
-            {
-              "op": "system",
-              "type": "factory_reset",
-              "reason": "Clear all configuration via mobile app",
-            },
-            useGlobalLoading: false,
-          );
+          final response = await bleController.sendCommand({
+            "op": "system",
+            "type": "factory_reset",
+            "reason": "Clear all configuration via mobile app",
+          }, useGlobalLoading: false);
 
           if (response.status == 'ok' || response.status == 'success') {
             // Wait 3 seconds before showing success snackbar
@@ -568,8 +559,8 @@ class _SettingsDeviceScreenState extends State<SettingsDeviceScreen> {
 
             setState(() {
               setState(() {
-            isLoading = false;
-          });
+                isLoading = false;
+              });
             });
 
             // Show success snackbar
@@ -594,8 +585,8 @@ class _SettingsDeviceScreenState extends State<SettingsDeviceScreen> {
           } else {
             setState(() {
               setState(() {
-            isLoading = false;
-          });
+                isLoading = false;
+              });
             });
 
             // Show error snackbar
@@ -658,11 +649,15 @@ class _SettingsDeviceScreenState extends State<SettingsDeviceScreen> {
                         MenuItem(
                           icon: Icons.upload_file_outlined,
                           title: 'Import Config',
+                          description: 'Only support .json file',
                           onTap: () => importConfig(context),
                         ),
                         MenuItem(
                           icon: Icons.download_outlined,
                           title: 'Download All Config',
+                          description: Platform.isAndroid
+                              ? 'Saved to Documents/GatewayConfig/backup/'
+                              : 'Saved to App Documents/GatewayConfig/backup/',
                           onTap: () => downloadAllConfig(context),
                         ),
                         MenuItem(

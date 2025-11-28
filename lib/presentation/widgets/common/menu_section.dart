@@ -87,12 +87,29 @@ class _MenuTile extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  item.title,
-                  style: context.body.copyWith(
-                    color: item.titleColor ?? AppColor.blackColor,
-                    fontWeight: FontWeight.w500,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.title,
+                      style: context.body.copyWith(
+                        color: item.titleColor ?? AppColor.blackColor,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    if (item.description != null && item.description!.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          item.description!,
+                          style: context.bodySmall.copyWith(
+                            color: AppColor.grey,
+                            fontSize: 10,
+                            height: 1.3,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
               if (item.trailing != null)
@@ -114,6 +131,7 @@ class _MenuTile extends StatelessWidget {
 class MenuItem {
   final IconData icon;
   final String title;
+  final String? description;
   final VoidCallback onTap;
   final Color? iconColor;
   final Color? titleColor;
@@ -122,6 +140,7 @@ class MenuItem {
   MenuItem({
     required this.icon,
     required this.title,
+    this.description,
     required this.onTap,
     this.iconColor,
     this.titleColor,
