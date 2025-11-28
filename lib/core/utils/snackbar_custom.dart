@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:gateway_config/core/utils/app_helpers.dart';
 import 'package:get/get.dart';
 import 'package:gateway_config/core/constants/app_color.dart';
 import 'package:gateway_config/core/constants/app_font.dart';
@@ -10,24 +11,31 @@ class SnackbarCustom {
     Color? bgColor,
     Color? textColor,
   ) {
-    Get.showSnackbar(
-      GetSnackBar(
-        title: title.isEmpty ? null : title,
-        message: message,
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: bgColor ?? AppColor.redColor,
-        messageText: Text(
-          message,
+    // Try to get context from GetX navigator
+    final BuildContext? context = Get.context;
+
+    if (context == null) {
+      AppHelpers.debugLog('⚠️ Cannot show snackbar: No context available');
+      return;
+    }
+
+    // Build full message with title if provided
+    final String fullMessage = title.isEmpty ? message : '$title\n$message';
+
+    // Use ScaffoldMessenger instead of GetX snackbar (more stable)
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          fullMessage,
           style: FontFamily.normal.copyWith(
             color: textColor ?? AppColor.whiteColor,
           ),
         ),
+        backgroundColor: bgColor ?? AppColor.redColor,
         duration: const Duration(milliseconds: 1500),
+        behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.all(16),
-        padding: title.isEmpty
-            ? const EdgeInsets.fromLTRB(12.0, 8.0, 12.0, 12.0)
-            : const EdgeInsets.all(12.0),
-        borderRadius: 8,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     );
   }
