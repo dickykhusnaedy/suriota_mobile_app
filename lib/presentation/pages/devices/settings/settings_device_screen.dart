@@ -325,7 +325,9 @@ class _SettingsDeviceScreenState extends State<SettingsDeviceScreen> {
         print('File size: $fileSize bytes');
 
         setState(() {
-          isLoading = false;
+          setState(() {
+            isLoading = false;
+          });
         });
 
         // Prepare user-friendly path display
@@ -351,7 +353,9 @@ class _SettingsDeviceScreenState extends State<SettingsDeviceScreen> {
         print('Display path: $displayPath');
       } else {
         setState(() {
-          isLoading = false;
+          setState(() {
+            isLoading = false;
+          });
         });
 
         SnackbarCustom.showSnackbar(
@@ -432,7 +436,9 @@ class _SettingsDeviceScreenState extends State<SettingsDeviceScreen> {
           Navigator.of(context).pop(); // Close dialog safely
 
           setState(() {
-            isLoading = true;
+            setState(() {
+      isLoading = true;
+    });
           });
 
           try {
@@ -445,49 +451,27 @@ class _SettingsDeviceScreenState extends State<SettingsDeviceScreen> {
 
             if (response.status == 'ok' || response.status == 'success') {
               setState(() {
-                isLoading = false;
+                setState(() {
+            isLoading = false;
+          });
               });
 
-              final restoredConfigs = response.config['restored_configs'] ?? [];
-              final requiresRestart =
-                  response.config['requires_restart'] ?? true;
-
-              // Show success snackbar
+              // Show success snackbar with auto disconnect info
               SnackbarCustom.showSnackbar(
                 '',
-                'Configuration restored successfully!\n'
-                    'Restored: ${restoredConfigs.join(', ')}',
+                'Configuration restored successfully!',
                 Colors.green,
                 AppColor.whiteColor,
               );
 
-              // Show restart dialog if needed
-              if (requiresRestart) {
-                await Future.delayed(const Duration(seconds: 2));
-
-                CustomAlertDialog.show(
-                  title: 'Restart Required',
-                  message:
-                      'Configuration has been restored successfully.\n\n'
-                      'Device restart is recommended to apply all changes.\n\n'
-                      'Would you like to restart the device now?',
-                  primaryButtonText: 'Restart Now',
-                  secondaryButtonText: 'Later',
-                  onPrimaryPressed: () {
-                    Navigator.of(context).pop(); // Close dialog safely
-                    // TODO: Implement device restart if API available
-                    SnackbarCustom.showSnackbar(
-                      '',
-                      'Please restart the device manually',
-                      AppColor.primaryColor,
-                      AppColor.whiteColor,
-                    );
-                  },
-                );
-              }
+              // Wait 3 seconds then disconnect from device
+              await Future.delayed(const Duration(seconds: 3));
+              await bleController.disconnectFromDevice(widget.model);
             } else {
               setState(() {
-                isLoading = false;
+                setState(() {
+            isLoading = false;
+          });
               });
 
               SnackbarCustom.showSnackbar(
@@ -499,7 +483,9 @@ class _SettingsDeviceScreenState extends State<SettingsDeviceScreen> {
             }
           } catch (e) {
             setState(() {
-              isLoading = false;
+              setState(() {
+            isLoading = false;
+          });
             });
 
             SnackbarCustom.showSnackbar(
@@ -533,8 +519,8 @@ class _SettingsDeviceScreenState extends State<SettingsDeviceScreen> {
         Navigator.of(context).pop(); // Close dialog safely
 
         setState(() {
-          isLoading = true;
-        });
+      isLoading = true;
+    });
 
         try {
           // Send factory reset command
@@ -549,7 +535,9 @@ class _SettingsDeviceScreenState extends State<SettingsDeviceScreen> {
             await Future.delayed(const Duration(seconds: 3));
 
             setState(() {
-              isLoading = false;
+              setState(() {
+            isLoading = false;
+          });
             });
 
             // Show success snackbar
@@ -573,7 +561,9 @@ class _SettingsDeviceScreenState extends State<SettingsDeviceScreen> {
             }
           } else {
             setState(() {
-              isLoading = false;
+              setState(() {
+            isLoading = false;
+          });
             });
 
             // Show error snackbar

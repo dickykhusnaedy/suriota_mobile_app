@@ -16,7 +16,6 @@ import 'package:gateway_config/presentation/widgets/common/app_bottom_navigation
 import 'package:gateway_config/presentation/widgets/common/custom_alert_dialog.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_alert_widget.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_button.dart';
-import 'package:gateway_config/presentation/widgets/common/loading_overlay.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
 
@@ -30,7 +29,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final controller = Get.put(BleController());
+  final controller = Get.find<BleController>();
   final devicesController = Get.put(DevicesController());
 
   @override
@@ -101,43 +100,31 @@ class _HomeScreenState extends State<HomeScreen> {
         systemNavigationBarColor: AppColor.whiteColor,
         systemNavigationBarIconBrightness: Brightness.dark,
       ),
-      child: Stack(
-        children: [
-          Scaffold(
-            backgroundColor: AppColor.backgroundColor,
-            appBar: widget.showBottomNav ? null : _buildAppBar(screenWidth),
-            body: SafeArea(
-              child: SingleChildScrollView(
-                padding: AppPadding.screenPadding,
-                child: _buildHomeContent(),
-              ),
-            ),
-            endDrawer: widget.showBottomNav ? null : const SideBarMenu(),
-            floatingActionButton: widget.showBottomNav
-                ? null
-                : Obx(() {
-                    return Visibility(
-                      visible: !controller.errorMessage.value.contains(
-                        'Bluetooth has been turned off',
-                      ),
-                      child: ModernFAB(
-                        onPressed: () => context.pushNamed('add-device'),
-                      ),
-                    );
-                  }),
-            floatingActionButtonLocation: widget.showBottomNav
-                ? null
-                : FloatingActionButtonLocation.centerDocked,
+      child: Scaffold(
+        backgroundColor: AppColor.backgroundColor,
+        appBar: widget.showBottomNav ? null : _buildAppBar(screenWidth),
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: AppPadding.screenPadding,
+            child: _buildHomeContent(),
           ),
-          Obx(() {
-            return LoadingOverlay(
-              isLoading: controller.isLoadingConnectionGlobal.value,
-              message: controller.message.value.isNotEmpty
-                  ? controller.message.value
-                  : controller.errorMessage.value,
-            );
-          }),
-        ],
+        ),
+        endDrawer: widget.showBottomNav ? null : const SideBarMenu(),
+        floatingActionButton: widget.showBottomNav
+            ? null
+            : Obx(() {
+                return Visibility(
+                  visible: !controller.errorMessage.value.contains(
+                    'Bluetooth has been turned off',
+                  ),
+                  child: ModernFAB(
+                    onPressed: () => context.pushNamed('add-device'),
+                  ),
+                );
+              }),
+        floatingActionButtonLocation: widget.showBottomNav
+            ? null
+            : FloatingActionButtonLocation.centerDocked,
       ),
     );
   }

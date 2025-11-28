@@ -9,9 +9,8 @@ import 'package:gateway_config/core/utils/snackbar_custom.dart';
 import 'package:gateway_config/models/device_model.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_alert_dialog.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_button.dart';
-import 'package:gateway_config/presentation/widgets/common/loading_overlay.dart';
-import 'package:gateway_config/presentation/widgets/spesific/device_card.dart';
 import 'package:get/get.dart';
+import 'package:go_router/go_router.dart';
 
 class DetailDeviceScreen extends StatefulWidget {
   const DetailDeviceScreen({super.key, required this.model});
@@ -79,29 +78,45 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
     );
   }
 
+  void handleMenuNavigation(String page) {
+    // Check if device is still connected
+    if (!widget.model.isConnected.value) {
+      // Show snackbar
+      SnackbarCustom.showSnackbar(
+        '',
+        'Device is not connected. Redirecting to home...',
+        AppColor.redColor,
+        AppColor.whiteColor,
+      );
+
+      // Redirect to home after short delay
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) {
+          // Pop until we reach the root route (home)
+          // This clears all navigation stack and returns to home
+          while (context.canPop()) {
+            context.pop();
+          }
+        }
+      });
+      return;
+    }
+
+    // If device is connected, navigate to the page
+    context.push(page);
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        Scaffold(
-          appBar: _buildAppBar(widget.model.device.platformName),
-          backgroundColor: AppColor.backgroundColor,
-          body: SafeArea(
-            child: SingleChildScrollView(
-              padding: AppPadding.horizontalMedium,
-              child: _buildBodyContent(),
-            ),
-          ),
+    return Scaffold(
+      appBar: _buildAppBar(widget.model.device.platformName),
+      backgroundColor: AppColor.backgroundColor,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: AppPadding.horizontalMedium,
+          child: _buildBodyContent(),
         ),
-        Obx(() {
-          return LoadingOverlay(
-            isLoading: controller.isLoadingConnectionGlobal.value,
-            message: controller.message.value.isNotEmpty
-                ? controller.message.value
-                : controller.errorMessage.value,
-          );
-        }),
-      ],
+      ),
     );
   }
 
@@ -304,11 +319,78 @@ class _DetailDeviceScreenState extends State<DetailDeviceScreen> {
               alignment: WrapAlignment.spaceBetween,
               children: menuItems
                   .map(
-                    (item) => CardMenu(
-                      width: cardWidth,
-                      text: item['text']!,
-                      icon: item['icon']!,
-                      page: item['page'],
+                    (item) => InkWell(
+                      onTap: () => handleMenuNavigation(item['page']),
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        width: cardWidth,
+                        height: 160,
+                        decoration: BoxDecoration(
+                          color: AppColor.whiteColor,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: AppColor.primaryColor.withValues(alpha: 0.2),
+                            width: 1.5,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.05),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                width: 64,
+                                height: 64,
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      AppColor.primaryColor.withValues(
+                                        alpha: 0.15,
+                                      ),
+                                      AppColor.lightPrimaryColor.withValues(
+                                        alpha: 0.25,
+                                      ),
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: AppColor.primaryColor.withValues(
+                                      alpha: 0.2,
+                                    ),
+                                    width: 1.5,
+                                  ),
+                                ),
+                                child: Icon(
+                                  item['icon']!,
+                                  size: 32,
+                                  color: AppColor.primaryColor,
+                                ),
+                              ),
+                              AppSpacing.sm,
+                              Text(
+                                item['text']!,
+                                style: context.body.copyWith(
+                                  color: AppColor.blackColor,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                ),
+                                textAlign: TextAlign.center,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
                   )
                   .toList(),
