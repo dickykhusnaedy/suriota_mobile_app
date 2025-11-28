@@ -443,11 +443,22 @@ class BleController extends GetxController {
     } catch (e) {
       errorMessage.value = 'Error connecting';
       AppHelpers.debugLog('Connection error: $e');
+
+      // Clear error message after showing it
+      Future.delayed(const Duration(seconds: 3), () {
+        errorMessage.value = '';
+      });
+
       await disconnectFromDevice(deviceModel);
     } finally {
       deviceModel.isLoadingConnection.value = false;
-      isLoadingConnectionGlobal.value = false;
-      message.value = 'Success connected...';
+      isLoadingConnectionGlobal.value       = false;
+      message.value                         = 'Success connected...';
+
+      // Clear message after 2 seconds to prevent it from showing on other pages
+      Future.delayed(const Duration(seconds: 2), () {
+        message.value = '';
+      });
     }
   }
 
@@ -624,6 +635,11 @@ class BleController extends GetxController {
       AppHelpers.debugLog('Error: $e');
       AppHelpers.debugLog('StackTrace: $stackTrace');
 
+      // Clear error message after showing it
+      Future.delayed(const Duration(seconds: 3), () {
+        errorMessage.value = '';
+      });
+
       // Show error to user
       SnackbarCustom.showSnackbar(
         'Error',
@@ -635,6 +651,11 @@ class BleController extends GetxController {
       isLoadingConnectionGlobal.value = false; // Reset global loading
       message.value = 'Success disconnected...';
       AppHelpers.debugLog('disconnectFromDevice() finally block executed');
+
+      // Clear message after 2 seconds to prevent it from showing on other pages
+      Future.delayed(const Duration(seconds: 2), () {
+        message.value = '';
+      });
     }
   }
 
@@ -719,7 +740,10 @@ class BleController extends GetxController {
   }
 
   // Function to send command
-  Future<CommandResponse> sendCommand(Map<String, dynamic> command) async {
+  Future<CommandResponse> sendCommand(
+    Map<String, dynamic> command, {
+    bool useGlobalLoading = false,
+  }) async {
     if (commandChar == null || responseChar == null) {
       errorMessage.value = 'Not connected';
       return CommandResponse(
@@ -740,6 +764,11 @@ class BleController extends GetxController {
     }
 
     commandLoading.value = true;
+
+    // Only trigger global loading if useGlobalLoading is true
+    if (useGlobalLoading) {
+      isLoadingConnectionGlobal.value = true;
+    }
     commandProgress.value = 0.0;
     lastCommand.value = command; // Cache last command
 
@@ -994,6 +1023,11 @@ class BleController extends GetxController {
           (response.config as List).isEmpty) {
         errorMessage.value = 'Warning: No devices found in response';
         AppHelpers.debugLog('Empty devices_summary in response');
+
+        // Clear warning message after 2 seconds
+        Future.delayed(const Duration(seconds: 2), () {
+          errorMessage.value = '';
+        });
       }
 
       AppHelpers.debugLog('Error message.value all: ${response.message}');
@@ -1006,6 +1040,11 @@ class BleController extends GetxController {
       } else {
         errorMessage.value = response.message ?? 'Failed to save configuration';
         AppHelpers.debugLog('Error message.value: ${response.message}');
+
+        // Clear error message after showing it
+        Future.delayed(const Duration(seconds: 3), () {
+          errorMessage.value = '';
+        });
       }
 
       // Show feedback (skip untuk delete dan stop command)
@@ -1031,6 +1070,11 @@ class BleController extends GetxController {
       errorMessage.value = 'Error sending command: $e';
       commandProgress.value = 0.0;
       AppHelpers.debugLog('Error sending command: $e');
+
+      // Clear error message after showing it
+      Future.delayed(const Duration(seconds: 3), () {
+        errorMessage.value = '';
+      });
 
       // Skip snackbar error untuk stop command
       if (!isStopCommand) {
@@ -1059,6 +1103,11 @@ class BleController extends GetxController {
       );
     } finally {
       commandLoading.value = false;
+
+      // Only reset global loading if it was triggered
+      if (useGlobalLoading) {
+        isLoadingConnectionGlobal.value = false;
+      }
     }
   }
 
@@ -1287,6 +1336,11 @@ class BleController extends GetxController {
           (response.config as List).isEmpty) {
         errorMessage.value = 'Warning: No devices found in response';
         AppHelpers.debugLog('Empty devices_summary in response');
+
+        // Clear warning message after 2 seconds
+        Future.delayed(const Duration(seconds: 2), () {
+          errorMessage.value = '';
+        });
       }
 
       // Simpan response bahkan jika status bukan ok/success untuk debugging

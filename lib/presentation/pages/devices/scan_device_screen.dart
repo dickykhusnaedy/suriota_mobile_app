@@ -12,7 +12,6 @@ import 'package:gateway_config/models/device_model.dart';
 import 'package:gateway_config/presentation/pages/devices/widgets/device_list_widget.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_alert_dialog.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_textfield.dart';
-import 'package:gateway_config/presentation/widgets/common/loading_overlay.dart';
 import 'package:gateway_config/presentation/widgets/common/reusable_widgets.dart';
 import 'package:get/get.dart';
 
@@ -134,22 +133,10 @@ class _ScanDeviceScreenState extends State<ScanDeviceScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        Scaffold(
-          appBar: _buildAppBar(),
-          backgroundColor: AppColor.backgroundColor,
-          body: SafeArea(child: SingleChildScrollView(child: _buildBody())),
-        ),
-        Obx(() {
-          return LoadingOverlay(
-            isLoading: controller.isLoadingConnectionGlobal.value,
-            message: controller.message.value.isNotEmpty
-                ? controller.message.value
-                : controller.errorMessage.value,
-          );
-        }),
-      ],
+    return Scaffold(
+      appBar: _buildAppBar(),
+      backgroundColor: AppColor.backgroundColor,
+      body: SafeArea(child: SingleChildScrollView(child: _buildBody())),
     );
   }
 

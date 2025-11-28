@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:gateway_config/core/constants/app_color.dart';
 import 'package:gateway_config/core/constants/app_gap.dart';
 import 'package:gateway_config/core/utils/extensions.dart';
+import 'package:gateway_config/core/utils/notification_helper.dart';
 import 'package:gateway_config/core/utils/snackbar_custom.dart';
 import 'package:gateway_config/models/device_model.dart';
 
@@ -190,10 +191,13 @@ class _SettingsDeviceScreenState extends State<SettingsDeviceScreen> {
 
     try {
       // Send backup command via BLE
-      final response = await bleController.sendCommand({
-        "op": "read",
-        "type": "full_config",
-      });
+      final response = await bleController.sendCommand(
+        {
+          "op": "read",
+          "type": "full_config",
+        },
+        useGlobalLoading: false,
+      );
 
       if (response.status == 'ok' || response.status == 'success') {
         print('=== BLE Response Received ===');
@@ -204,12 +208,12 @@ class _SettingsDeviceScreenState extends State<SettingsDeviceScreen> {
         // Extract backup info for display
         final backupInfo = response.backupInfo;
 
-        // Show notification that data was received successfully
+        // Show notification that download is in progress
         SnackbarCustom.showSnackbar(
           '',
-          '✅ Saving to file...',
-          AppColor.lightPrimaryColor,
-          AppColor.primaryColor,
+          'Downloading in progress...',
+          AppColor.lightGrey,
+          AppColor.blackColor,
         );
 
         // Wait for first snackbar to show and start saving
@@ -340,12 +344,17 @@ class _SettingsDeviceScreenState extends State<SettingsDeviceScreen> {
           displayPath = 'GatewayConfig/backup/$filename';
         }
 
-        // Show success snackbar with complete file info and full path
+        // Show success snackbar
         SnackbarCustom.showSnackbar(
-          'Backup Success',
-          'Data successfully saved to:\n$displayPath',
+          '',
+          'Successfully saved data to your local files',
           Colors.green,
           AppColor.whiteColor,
+        );
+
+        // Show push notification with full file path for opening file manager
+        await NotificationHelper().showDownloadSuccessNotification(
+          filePath: filePath, // Use full path, not displayPath
         );
 
         print('=== Backup Complete ===');
@@ -441,13 +450,24 @@ class _SettingsDeviceScreenState extends State<SettingsDeviceScreen> {
     });
           });
 
+          // Show importing in progress message
+          SnackbarCustom.showSnackbar(
+            '',
+            'Importing in progress, check your notification to see result',
+            AppColor.lightPrimaryColor,
+            AppColor.primaryColor,
+          );
+
           try {
             // Send restore command
-            final response = await bleController.sendCommand({
-              "op": "system",
-              "type": "restore_config",
-              "config": backup['config'],
-            });
+            final response = await bleController.sendCommand(
+              {
+                "op": "system",
+                "type": "restore_config",
+                "config": backup['config'],
+              },
+              useGlobalLoading: false,
+            );
 
             if (response.status == 'ok' || response.status == 'success') {
               setState(() {
@@ -456,12 +476,21 @@ class _SettingsDeviceScreenState extends State<SettingsDeviceScreen> {
           });
               });
 
-              // Show success snackbar with auto disconnect info
+              // Calculate total configs imported
+              final config = backup['config'] as Map;
+              final devicesCount = (config['devices'] as List?)?.length ?? 0;
+
+              // Show success snackbar
               SnackbarCustom.showSnackbar(
                 '',
-                'Configuration restored successfully!',
+                'Successfully imported configuration to device',
                 Colors.green,
                 AppColor.whiteColor,
+              );
+
+              // Show push notification with total configs
+              await NotificationHelper().showImportSuccessNotification(
+                totalConfigs: devicesCount,
               );
 
               // Wait 3 seconds then disconnect from device
@@ -524,11 +553,14 @@ class _SettingsDeviceScreenState extends State<SettingsDeviceScreen> {
 
         try {
           // Send factory reset command
-          final response = await bleController.sendCommand({
-            "op": "system",
-            "type": "factory_reset",
-            "reason": "Clear all configuration via mobile app",
-          });
+          final response = await bleController.sendCommand(
+            {
+              "op": "system",
+              "type": "factory_reset",
+              "reason": "Clear all configuration via mobile app",
+            },
+            useGlobalLoading: false,
+          );
 
           if (response.status == 'ok' || response.status == 'success') {
             // Wait 3 seconds before showing success snackbar

@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gateway_config/core/constants/theme.dart';
 import 'package:gateway_config/core/controllers/ble_controller.dart';
 import 'package:gateway_config/core/router/app_router.dart';
+import 'package:gateway_config/core/utils/notification_helper.dart';
 import 'package:gateway_config/presentation/providers/loading_provider.dart';
 import 'package:gateway_config/presentation/widgets/common/loading_overlay.dart';
 import 'package:get/get.dart';
@@ -11,6 +12,9 @@ import 'package:provider/provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize notification
+  await NotificationHelper().initialize();
 
   // Set orientation potrait only
   SystemChrome.setPreferredOrientations([
