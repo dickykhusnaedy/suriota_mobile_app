@@ -18,7 +18,6 @@ class BleController extends GetxController {
   var isLoading = false.obs;
   var isLoadingConnectionGlobal = false.obs;
   var connectedDevice = Rxn<BluetoothDevice>();
-  var response = ''.obs;
   var errorMessage = ''.obs;
   var message = ''.obs;
 
@@ -28,6 +27,10 @@ class BleController extends GetxController {
   var commandCache = <String, CommandResponse>{}.obs;
   var gatewayDeviceResponses = <CommandResponse>[].obs;
   var isNavigatingHome = false.obs;
+
+  // Firmware capability flags
+  var firmwareSupportsPagination = false.obs;
+  var firmwareVersionChecked = false.obs;
 
   final RxMap<String, String> streamedData = <String, String>{}.obs;
 
@@ -258,8 +261,6 @@ class BleController extends GetxController {
                 );
               }
 
-              response.value = '';
-
               // Clear gateway device responses to avoid stale data
               gatewayDeviceResponses.clear();
 
@@ -452,8 +453,8 @@ class BleController extends GetxController {
       await disconnectFromDevice(deviceModel);
     } finally {
       deviceModel.isLoadingConnection.value = false;
-      isLoadingConnectionGlobal.value       = false;
-      message.value                         = 'Success connected...';
+      isLoadingConnectionGlobal.value = false;
+      message.value = 'Success connected...';
 
       // Clear message after 2 seconds to prevent it from showing on other pages
       Future.delayed(const Duration(seconds: 2), () {
@@ -514,7 +515,6 @@ class BleController extends GetxController {
           'Manual disconnect: Keeping BLE characteristics alive (streaming active)',
         );
       }
-      response.value = '';
       deviceModel.isConnected.value = false;
 
       // Update connection history with disconnect timestamp
@@ -733,10 +733,220 @@ class BleController extends GetxController {
     return _deviceCache[remoteId]; // O(1)
   }
 
+  // Check if firmware supports pagination
+  Future<bool> checkFirmwarePaginationSupport() async {
+    if (firmwareVersionChecked.value) {
+      return firmwareSupportsPagination.value;
+    }
+
+    try {
+      AppHelpers.debugLog('Testing firmware pagination support...');
+
+      // Test with small pagination request (2 devices)
+      final testResponse = await sendCommand({
+        "op": "read",
+        "type": "devices_summary", // Use summary for quick test
+        "page": 0,
+        "limit": 2,
+      });
+
+      // Check if response indicates pagination support
+      final responseJson = testResponse.toJson();
+
+      // Firmware with pagination should return:
+      // - total_count, total_pages, page, limit fields
+      // - config array with exactly 'limit' items (or less if last page)
+      bool hasPaginationFields =
+          responseJson.containsKey('total_count') ||
+          responseJson.containsKey('total_pages');
+
+      if (hasPaginationFields) {
+        firmwareSupportsPagination.value = true;
+        AppHelpers.debugLog('✅ Firmware SUPPORTS pagination!');
+        AppHelpers.debugLog('   Response has pagination fields: $responseJson');
+      } else {
+        firmwareSupportsPagination.value = false;
+        AppHelpers.debugLog('❌ Firmware does NOT support pagination');
+        AppHelpers.debugLog('   Response missing pagination fields');
+        AppHelpers.debugLog(
+          '   Will use fallback strategy (on-demand loading)',
+        );
+      }
+
+      firmwareVersionChecked.value = true;
+      return firmwareSupportsPagination.value;
+    } catch (e) {
+      AppHelpers.debugLog('Error checking pagination support: $e');
+      // Assume no pagination support on error
+      firmwareSupportsPagination.value = false;
+      firmwareVersionChecked.value = true;
+      return false;
+    }
+  }
+
   // Method to clear cache (ex. when disconnect or manual)
   void clearCommandCache() {
     commandCache.clear();
     AppHelpers.debugLog('Command cache cleared');
+  }
+
+  // SMART LOADER: Auto-detect pagination support and choose best strategy
+  Future<List<Map<String, dynamic>>> loadDevicesWithRegisters({
+    bool minimal = true,
+    int devicesPerPage = 5,
+    Function(int current, int total)? onProgress,
+  }) async {
+    AppHelpers.debugLog('=== SMART DEVICE LOADER ===');
+    AppHelpers.debugLog('Checking firmware pagination support...');
+
+    // Check if firmware supports pagination
+    final supportsPagination = await checkFirmwarePaginationSupport();
+
+    if (supportsPagination) {
+      AppHelpers.debugLog('Using PAGINATION strategy (optimal)');
+      return await _loadDevicesPaginated(
+        minimal: minimal,
+        devicesPerPage: devicesPerPage,
+        onProgress: onProgress,
+      );
+    } else {
+      AppHelpers.debugLog('Using FALLBACK strategy (on-demand loading)');
+      AppHelpers.debugLog('⚠️  Firmware does not support pagination yet');
+      AppHelpers.debugLog(
+        '⚠️  Will load summary first, then devices on-demand',
+      );
+
+      return await _loadDevicesFallback(
+        minimal: minimal,
+        onProgress: onProgress,
+      );
+    }
+  }
+
+  // Strategy 1: Paginated loading (when firmware supports it)
+  Future<List<Map<String, dynamic>>> _loadDevicesPaginated({
+    required bool minimal,
+    required int devicesPerPage,
+    Function(int current, int total)? onProgress,
+  }) async {
+    List<Map<String, dynamic>> allDevices = [];
+    int page = 0;
+    int totalPages = 1;
+
+    while (page < totalPages) {
+      AppHelpers.debugLog('Loading page ${page + 1}...');
+
+      final response = await sendCommand({
+        "op": "read",
+        "type": "devices_with_registers",
+        "minimal": minimal,
+        "page": page,
+        "limit": devicesPerPage,
+      });
+
+      // Extract pagination info from response
+      final responseJson = response.toJson();
+      totalPages = responseJson['total_pages'] ?? 1;
+      final totalCount = responseJson['total_count'] ?? 0;
+
+      AppHelpers.debugLog(
+        'Page ${page + 1}/$totalPages loaded (Total devices: $totalCount)',
+      );
+
+      // Add devices from this page
+      if (response.config is List) {
+        // FIX: Safe type casting - handle Map<dynamic, dynamic>
+        final rawList = response.config as List;
+        for (var item in rawList) {
+          if (item is Map) {
+            allDevices.add(Map<String, dynamic>.from(item));
+          }
+        }
+      }
+
+      // Notify progress
+      onProgress?.call(page + 1, totalPages);
+
+      page++;
+    }
+
+    AppHelpers.debugLog(
+      '✅ Pagination complete: ${allDevices.length} devices loaded',
+    );
+    return allDevices;
+  }
+
+  // Strategy 2: Fallback loading (when firmware doesn't support pagination)
+  Future<List<Map<String, dynamic>>> _loadDevicesFallback({
+    required bool minimal,
+    Function(int current, int total)? onProgress,
+  }) async {
+    AppHelpers.debugLog('Step 1: Loading devices summary...');
+
+    // Step 1: Get summary (fast - 60s)
+    final summary = await sendCommand({
+      "op": "read",
+      "type": "devices_summary",
+    });
+
+    List<Map<String, dynamic>> deviceIds = [];
+    if (summary.config is List) {
+      // FIX: Safe type casting - handle Map<dynamic, dynamic>
+      final rawList = summary.config as List;
+      for (var item in rawList) {
+        if (item is Map) {
+          // Convert Map<dynamic, dynamic> to Map<String, dynamic>
+          deviceIds.add(Map<String, dynamic>.from(item));
+        }
+      }
+    }
+
+    final totalDevices = deviceIds.length;
+    AppHelpers.debugLog('Found $totalDevices devices');
+
+    // Step 2: Show warning for large datasets
+    if (totalDevices > 10) {
+      AppHelpers.debugLog('⚠️  Large dataset detected ($totalDevices devices)');
+      AppHelpers.debugLog(
+        '⚠️  Estimated time: ${totalDevices * 90 ~/ 60} minutes',
+      );
+      AppHelpers.debugLog(
+        '⚠️  Consider upgrading firmware to support pagination',
+      );
+    }
+
+    // Step 3: Load each device individually
+    List<Map<String, dynamic>> allDevices = [];
+
+    for (int i = 0; i < totalDevices; i++) {
+      final deviceId = deviceIds[i]['device_id'] ?? deviceIds[i]['id'];
+
+      AppHelpers.debugLog('Loading device ${i + 1}/$totalDevices: $deviceId');
+
+      try {
+        final deviceDetail = await sendCommand({
+          "op": "read",
+          "type": "device",
+          "device_id": deviceId,
+          "minimal": minimal,
+        });
+
+        if (deviceDetail.config is Map) {
+          allDevices.add(deviceDetail.config as Map<String, dynamic>);
+        }
+
+        // Notify progress
+        onProgress?.call(i + 1, totalDevices);
+      } catch (e) {
+        AppHelpers.debugLog('Error loading device $deviceId: $e');
+        // Continue with next device
+      }
+    }
+
+    AppHelpers.debugLog(
+      '✅ Fallback loading complete: ${allDevices.length} devices loaded',
+    );
+    return allDevices;
   }
 
   // Function to send command
@@ -783,12 +993,19 @@ class BleController extends GetxController {
     int currentChunk = 0;
 
     try {
-      // Cancel sub lama jika ada
-      responseSubscription?.cancel();
+      // FIX: Cancel sub lama dan wait untuk ensure clean state
+      await responseSubscription?.cancel();
+      responseSubscription = null;
 
-      // Setup buffer dan completer UNTUK RESPONSE (sebelum kirim command)
+      // Small delay to ensure old subscription is fully cancelled
+      await Future.delayed(const Duration(milliseconds: 50));
+
+      // FIX: Implement Python-style response handling
+      // Python waits for separate <END> chunk instead of parsing immediately
       final responseCompleter = Completer<CommandResponse?>();
-      StringBuffer responseBuffer = StringBuffer();
+      final List<String> responseChunks = []; // Match Python's response_buffer
+      // ignore: unused_local_variable
+      bool responseComplete = false; // Match Python's response_complete flag
 
       // Set subscription SEKALI, sebelum kirim, dan collect di sini
       AppHelpers.debugLog(
@@ -803,101 +1020,97 @@ class BleController extends GetxController {
           }
 
           final chunk = utf8.decode(data, allowMalformed: true);
-          AppHelpers.debugLog('Notify chunk received: $chunk');
-          responseBuffer.write(chunk);
+          AppHelpers.debugLog('Notify chunk received: "$chunk"');
 
-          if (chunk.contains('<END>')) {
-            // Deteksi <END> di chunk apapun
+          // FIX: Python-style logic - check if chunk IS <END>, not contains
+          if (chunk == '<END>') {
+            responseComplete = true;
+            AppHelpers.debugLog('✓ Response complete marker received');
+
+            // NOW parse the complete buffer (Python line 159)
+            final fullResponse = responseChunks.join('');
             AppHelpers.debugLog(
-              'Buffer before parsing: ${responseBuffer.toString()}',
+              'Full response (${fullResponse.length} bytes): $fullResponse',
             );
+
             try {
-              // Split by <END> to handle multiple messages
-              final bufferStr = responseBuffer.toString();
-              final parts = bufferStr.split('<END>');
+              // Clean control characters
+              final cleanedResponse = fullResponse
+                  .replaceAll(RegExp(r'[\x00-\x1F\x7F]'), '')
+                  .trim();
 
-              // Process only FIRST complete segment (before first <END>)
-              if (parts.isNotEmpty) {
-                final firstSegment = parts[0]
-                    .replaceAll(RegExp(r'[\x00-\x1F\x7F]'), '')
-                    .trim();
-
-                // Special handling untuk stop command - lebih lenient
-                if (isStopCommand) {
-                  // Untuk stop command, accept empty/simple response
-                  if (firstSegment.isEmpty ||
-                      !firstSegment.startsWith('{') &&
-                          !firstSegment.startsWith('[')) {
-                    AppHelpers.debugLog(
-                      'Stop command: accepting simple/empty response',
-                    );
-                    if (!responseCompleter.isCompleted) {
-                      responseCompleter.complete(
-                        CommandResponse(
-                          status: 'ok',
-                          message: 'Stream stopped successfully',
-                          type: command['type'] ?? 'device',
-                        ),
-                      );
-                    }
-                    responseBuffer.clear();
-                    return;
-                  }
-                }
-
-                // Normal validation untuk non-stop command
-                if (firstSegment.isEmpty) {
-                  throw Exception('Empty buffer');
-                }
-                if (!firstSegment.startsWith('{') &&
-                    !firstSegment.startsWith('[')) {
-                  throw Exception('Malformed JSON structure');
-                }
-                if (!firstSegment.endsWith('}') &&
-                    !firstSegment.endsWith(']')) {
-                  throw Exception('Incomplete JSON structure');
-                }
-
-                final responseJson =
-                    jsonDecode(firstSegment) as Map<String, dynamic>;
-
-                // Inject type from command if not present in response
-                // Device BLE might not send 'type' field, so we inject it manually
-                responseJson['type'] =
-                    responseJson['type'] ?? command['type'] ?? 'device';
-
-                // Map alternate field names to 'config' (mirrors logic in readCommandResponse)
-                // Firmware may send "devices", "data", or type-based field names instead of "config"
-                if (!responseJson.containsKey('config')) {
-                  dynamic configData =
-                      responseJson[command['type']] ?? // Try type as field name (e.g., "devices")
-                      responseJson['data'] ?? // Try 'data'
-                      responseJson['devices'] ?? // Try 'devices'
-                      {};
-                  responseJson['config'] = configData;
-                }
-
-                final cmdResponse = CommandResponse.fromJson(responseJson);
-
-                // Cache dengan ID (ex. from lastCommand)
-                if (lastCommand.isNotEmpty) {
-                  final commandId =
-                      '${lastCommand['op']}_${lastCommand['type'] ?? 'general'}_${DateTime.now().toIso8601String().split('T')[0]}';
-                  _cacheResponse(commandId, cmdResponse);
-                }
-
-                AppHelpers.debugLog('Parsed response: ${cmdResponse.toJson()}');
-
-                // Complete hanya jika belum completed
+              // Special handling untuk stop command - lebih lenient
+              if (isStopCommand) {
+                AppHelpers.debugLog('Stop command: accepting any response');
                 if (!responseCompleter.isCompleted) {
-                  responseCompleter.complete(cmdResponse);
+                  responseCompleter.complete(
+                    CommandResponse(
+                      status: 'ok',
+                      message: 'Stream stopped successfully',
+                      type: command['type'] ?? 'device',
+                    ),
+                  );
                 }
+                return;
+              }
+
+              // FIX: Less strict validation (match Python's try-except)
+              if (cleanedResponse.isEmpty) {
+                AppHelpers.debugLog('Warning: Empty response, using default');
+                if (!responseCompleter.isCompleted) {
+                  responseCompleter.complete(
+                    CommandResponse(
+                      status: 'ok',
+                      message: 'Empty response',
+                      type: command['type'] ?? 'device',
+                    ),
+                  );
+                }
+                return;
+              }
+
+              // Try to parse JSON
+              final responseJson =
+                  jsonDecode(cleanedResponse) as Map<String, dynamic>;
+
+              // Inject type from command if not present in response
+              responseJson['type'] =
+                  responseJson['type'] ?? command['type'] ?? 'device';
+
+              // Map alternate field names to 'config'
+              if (!responseJson.containsKey('config')) {
+                dynamic configData =
+                    responseJson[command['type']] ??
+                    responseJson['data'] ??
+                    responseJson['devices'] ??
+                    {};
+                responseJson['config'] = configData;
+              }
+
+              final cmdResponse = CommandResponse.fromJson(responseJson);
+
+              // Cache dengan ID
+              if (lastCommand.isNotEmpty) {
+                final commandId =
+                    '${lastCommand['op']}_${lastCommand['type'] ?? 'general'}_${DateTime.now().toIso8601String().split('T')[0]}';
+                _cacheResponse(commandId, cmdResponse);
+              }
+
+              AppHelpers.debugLog('Parsed response: ${cmdResponse.toJson()}');
+
+              if (!responseCompleter.isCompleted) {
+                responseCompleter.complete(cmdResponse);
+                // FIX: Cancel subscription immediately setelah complete
+                responseSubscription?.cancel();
+                AppHelpers.debugLog(
+                  'Response received, subscription cancelled',
+                );
               }
             } catch (e) {
               errorMessage.value = 'Invalid response JSON: $e';
               AppHelpers.debugLog('JSON parsing error: $e');
+              AppHelpers.debugLog('Raw response was: $fullResponse');
 
-              // Complete dengan error hanya jika belum completed
               if (!responseCompleter.isCompleted) {
                 responseCompleter.complete(
                   CommandResponse(
@@ -906,16 +1119,23 @@ class BleController extends GetxController {
                     type: command['type'] ?? 'device',
                   ),
                 );
+                // FIX: Cancel subscription immediately setelah complete
+                responseSubscription?.cancel();
+                AppHelpers.debugLog('Error occurred, subscription cancelled');
               }
             }
-            responseBuffer.clear();
+          } else {
+            // FIX: Accumulate chunks like Python (line 55-56)
+            responseChunks.add(chunk);
+            AppHelpers.debugLog(
+              'Accumulated chunk ${responseChunks.length} (${chunk.length} bytes)',
+            );
           }
         },
         onError: (e) {
           errorMessage.value = 'Notification error: $e';
           AppHelpers.debugLog('Notification error: $e');
 
-          // Complete dengan error hanya jika belum completed
           if (!responseCompleter.isCompleted) {
             responseCompleter.complete(
               CommandResponse(
@@ -924,15 +1144,17 @@ class BleController extends GetxController {
                 type: command['type'] ?? 'device',
               ),
             );
+            // FIX: Cancel subscription immediately setelah error
+            responseSubscription?.cancel();
+            AppHelpers.debugLog('Error in stream, subscription cancelled');
           }
         },
       );
 
       // Enable notify jika belum
       await responseChar!.setNotifyValue(true);
-      await Future.delayed(
-        const Duration(milliseconds: 300),
-      ); // Tingkatkan delay ke 300ms untuk safety
+      // FIX: No explicit delay in Python, but 300ms is safer for Flutter
+      await Future.delayed(const Duration(milliseconds: 300));
 
       // Check if writeWithoutResponse is supported
       final bool useWriteWithResponse =
@@ -954,9 +1176,8 @@ class BleController extends GetxController {
         AppHelpers.debugLog('Sent chunk: $chunk');
         currentChunk++;
         commandProgress.value = currentChunk / totalChunks; // Update progress
-        await Future.delayed(
-          const Duration(milliseconds: 50),
-        ); // Optimized delay
+        // FIX: Match Python delay (line 143) - 100ms for stable transmission
+        await Future.delayed(const Duration(milliseconds: 100));
       }
       // Validate sent command
       AppHelpers.debugLog('Full sent command: ${sentCommand.toString()}');
@@ -977,17 +1198,117 @@ class BleController extends GetxController {
       currentChunk++;
       commandProgress.value = 1.0;
 
-      // Tunggu response via completer dengan timeout berbeda untuk stop command
-      final timeoutDuration = isStopCommand
-          ? const Duration(seconds: 5)
-          : const Duration(seconds: 15);
+      // FIX: Dynamic timeout based on command type for VERY large data (70 registers)
+      // REAL worst case: 10 devices × 70 registers × 150 bytes = ~105KB
+      // Calculation: 105KB / 18 bytes/chunk × 100ms/chunk = ~583s (9.7 min) + overhead
+      // CRITICAL: Need different strategy for such large data!
+      Duration timeoutDuration;
+
+      if (isStopCommand) {
+        timeoutDuration = const Duration(seconds: 5);
+      } else {
+        final opType = command['op'] as String?;
+        final commandType = command['type'] as String?;
+        final isMinimal = command['minimal'] == true;
+
+        // Check if requesting full data with registers (VERY LARGE)
+        if (opType == 'read' && commandType == 'devices_with_registers') {
+          if (isMinimal) {
+            // Minimal mode: essential fields only
+            // REALISTIC: 10 devices × 70 reg = ~33 KB = ~183s
+            // EXTREME: 70 devices × 70 reg = ~235 KB = ~1,305s = 22 min
+
+            // Check if pagination is being used
+            final hasLimit = command['limit'] != null;
+
+            if (hasLimit) {
+              // Paginated request (5-10 devices max)
+              timeoutDuration = const Duration(seconds: 360); // 6 min per page
+              AppHelpers.debugLog(
+                'Using timeout (360s/6min) for paginated minimal mode',
+              );
+            } else {
+              // EXTREME: All devices at once (NOT RECOMMENDED!)
+              timeoutDuration = const Duration(seconds: 1500); // 25 min
+              AppHelpers.debugLog(
+                '⚠️⚠️⚠️  Using EXTREME timeout (1500s/25min) for ALL devices minimal mode',
+              );
+              AppHelpers.debugLog(
+                '⚠️⚠️⚠️  STRONGLY RECOMMENDED: Use pagination instead!',
+              );
+            }
+          } else {
+            // FULL mode with 70 registers: EXTREMELY SLOW
+            // EXTREME: 70 devices × 70 reg × full data = ~735 KB = ~4,083s = 68 min!
+
+            final hasLimit = command['limit'] != null;
+
+            if (hasLimit) {
+              // Paginated full mode (5 devices max recommended)
+              timeoutDuration = const Duration(seconds: 360); // 6 min per page
+              AppHelpers.debugLog(
+                'Using timeout (360s/6min) for paginated FULL mode',
+              );
+            } else {
+              // FULL mode ALL devices: ULTRA EXTREME (AVOID AT ALL COSTS!)
+              timeoutDuration = const Duration(
+                seconds: 4800,
+              ); // 80 min (MAX possible)
+              AppHelpers.debugLog(
+                '🚨🚨🚨  ULTRA EXTREME timeout (4800s/80min) for FULL ALL devices',
+              );
+              AppHelpers.debugLog(
+                '🚨🚨🚨  This will take over 1 HOUR! Use pagination or minimal mode!',
+              );
+              AppHelpers.debugLog(
+                '🚨🚨🚨  User may experience: timeout, battery drain, BLE disconnect',
+              );
+            }
+          }
+        } else if (opType == 'read' && commandType == 'devices_summary') {
+          // Summary without registers: much smaller
+          timeoutDuration = const Duration(seconds: 60);
+          AppHelpers.debugLog('Using timeout (60s) for devices_summary');
+        } else if (opType == 'read' && commandType == 'device') {
+          // Single device with 70 registers: ~10KB
+          // 10KB / 18 bytes × 100ms = ~56s
+          timeoutDuration = const Duration(seconds: 90);
+          AppHelpers.debugLog(
+            'Using timeout (90s) for single device read (may have 70 registers)',
+          );
+        } else if (opType == 'read' && commandType == 'registers') {
+          // Reading registers for one device: ~10KB
+          timeoutDuration = const Duration(seconds: 90);
+          AppHelpers.debugLog(
+            'Using timeout (90s) for registers read (may have 70 registers)',
+          );
+        } else if (opType == 'read') {
+          // Other read operations
+          timeoutDuration = const Duration(seconds: 60);
+          AppHelpers.debugLog(
+            'Using standard timeout (60s) for read operation',
+          );
+        } else if (opType == 'create' || opType == 'update') {
+          // Write operations: request small, response small
+          timeoutDuration = const Duration(seconds: 45);
+          AppHelpers.debugLog('Using timeout (45s) for write operation');
+        } else {
+          // Default fallback
+          timeoutDuration = const Duration(seconds: 90);
+          AppHelpers.debugLog('Using default timeout (90s)');
+        }
+      }
 
       final response = await responseCompleter.future.timeout(
         timeoutDuration,
         onTimeout: () {
-          AppHelpers.debugLog(
-            'Response timeout${isStopCommand ? ' (stop command)' : ''}',
-          );
+          // FIX: Only log timeout if completer hasn't been completed yet
+          // If completer already completed, timeout callback shouldn't log error
+          if (!responseCompleter.isCompleted) {
+            AppHelpers.debugLog(
+              'Response timeout after ${timeoutDuration.inSeconds}s${isStopCommand ? ' (stop command)' : ''}',
+            );
+          }
           // Untuk stop command, timeout tidak dianggap error
           if (isStopCommand) {
             return CommandResponse(
@@ -998,7 +1319,7 @@ class BleController extends GetxController {
           }
           return CommandResponse(
             status: 'error',
-            message: 'Response timeout',
+            message: 'Response timeout after ${timeoutDuration.inSeconds}s',
             type: command['type'] ?? 'device',
           );
         },
@@ -1138,9 +1459,18 @@ class BleController extends GetxController {
     commandProgress.value = 0.0;
 
     try {
-      responseSubscription?.cancel();
+      // FIX: Cancel sub lama dan wait untuk ensure clean state
+      await responseSubscription?.cancel();
+      responseSubscription = null;
+
+      // Small delay to ensure old subscription is fully cancelled
+      await Future.delayed(const Duration(milliseconds: 50));
+
+      // FIX: Apply same Python-style response handling for read commands
       final responseCompleter = Completer<CommandResponse?>();
-      StringBuffer responseBuffer = StringBuffer();
+      final List<String> responseChunks = [];
+      // ignore: unused_local_variable
+      bool responseComplete = false;
 
       AppHelpers.debugLog(
         'Starting new response subscription before sending read command',
@@ -1154,94 +1484,94 @@ class BleController extends GetxController {
           }
 
           final chunk = utf8.decode(data, allowMalformed: true);
-          AppHelpers.debugLog('Notify chunk received: $chunk');
-          responseBuffer.write(chunk);
+          AppHelpers.debugLog('Notify chunk received: "$chunk"');
 
-          if (chunk.contains('<END>')) {
+          // FIX: Same Python-style logic
+          if (chunk == '<END>') {
+            responseComplete = true;
+            AppHelpers.debugLog('✓ Read response complete marker received');
+
+            final fullResponse = responseChunks.join('');
             AppHelpers.debugLog(
-              'Buffer before parsing: ${responseBuffer.toString()}',
+              'Full read response (${fullResponse.length} bytes): $fullResponse',
             );
+
             try {
-              // Split by <END> to handle multiple messages
-              final bufferStr = responseBuffer.toString();
-              final parts = bufferStr.split('<END>');
+              final cleanedResponse = fullResponse
+                  .replaceAll(RegExp(r'[\x00-\x1F\x7F]'), '')
+                  .trim();
 
-              // Process only FIRST complete segment (before first <END>)
-              if (parts.isNotEmpty && parts[0].trim().isNotEmpty) {
-                final firstSegment = parts[0]
-                    .replaceAll(RegExp(r'[\x00-\x1F\x7F]'), '')
-                    .trim();
-
-                AppHelpers.debugLog('Raw cleaned buffer: $firstSegment');
-
-                if (firstSegment.isEmpty) {
-                  throw Exception('Empty buffer');
-                }
-                if (!firstSegment.startsWith('{') &&
-                    !firstSegment.startsWith('[')) {
-                  throw Exception('Malformed JSON structure');
-                }
-                if (!firstSegment.endsWith('}') &&
-                    !firstSegment.endsWith(']')) {
-                  throw Exception('Incomplete JSON structure');
-                }
-
-                final decoded = jsonDecode(firstSegment);
-                Map<String, dynamic> responseJson;
-
-                if (decoded is Map) {
-                  responseJson = Map<String, dynamic>.from(decoded);
-                  responseJson = _sanitizeMap(responseJson);
-                } else if (decoded is List &&
-                    decoded.isNotEmpty &&
-                    decoded.first is Map) {
-                  // fallback jika JSON root array (misal BLE kirim list langsung)
-                  responseJson = Map<String, dynamic>.from(decoded.first);
-                  responseJson = _sanitizeMap(responseJson);
-                } else {
-                  throw Exception('Invalid JSON root: ${decoded.runtimeType}');
-                }
-
-                dynamic configData =
-                    responseJson['config'] ??
-                    responseJson[type] ??
-                    responseJson['data'] ??
-                    {};
-
-                if (configData is Map) {
-                  configData = [configData]; // Wrap Map jadi List<Map>
-                } else if (configData is! List) {
-                  configData = []; // Fallback jika bukan List/Map
-                }
-
-                // Map field lain ke config jika config tidak ada
-                responseJson['config'] = configData;
-                responseJson['message'] = "Get data successfully";
-                responseJson['type'] = responseJson['type'] ?? type;
-
-                final cmdResponse = CommandResponse.fromJson(responseJson);
-
-                AppHelpers.debugLog(
-                  'Parsed response status: ${cmdResponse.status}, full: ${cmdResponse.toJson()}',
-                );
-
-                // Cache jika perlu
-                if (lastCommand.isNotEmpty) {
-                  final commandId =
-                      '${lastCommand['op']}_${lastCommand['type'] ?? 'general'}_${DateTime.now().toIso8601String().split('T')[0]}';
-                  _cacheResponse(commandId, cmdResponse);
-                }
-
-                // Complete hanya jika belum completed
+              if (cleanedResponse.isEmpty) {
+                AppHelpers.debugLog('Warning: Empty read response');
                 if (!responseCompleter.isCompleted) {
-                  responseCompleter.complete(cmdResponse);
+                  responseCompleter.complete(
+                    CommandResponse(
+                      status: 'ok',
+                      message: 'Empty response',
+                      type: type,
+                      config: [],
+                    ),
+                  );
                 }
+                return;
+              }
+
+              final decoded = jsonDecode(cleanedResponse);
+              Map<String, dynamic> responseJson;
+
+              if (decoded is Map) {
+                responseJson = Map<String, dynamic>.from(decoded);
+                responseJson = _sanitizeMap(responseJson);
+              } else if (decoded is List &&
+                  decoded.isNotEmpty &&
+                  decoded.first is Map) {
+                responseJson = Map<String, dynamic>.from(decoded.first);
+                responseJson = _sanitizeMap(responseJson);
+              } else {
+                throw Exception('Invalid JSON root: ${decoded.runtimeType}');
+              }
+
+              dynamic configData =
+                  responseJson['config'] ??
+                  responseJson[type] ??
+                  responseJson['data'] ??
+                  {};
+
+              if (configData is Map) {
+                configData = [configData];
+              } else if (configData is! List) {
+                configData = [];
+              }
+
+              responseJson['config'] = configData;
+              responseJson['message'] = "Get data successfully";
+              responseJson['type'] = responseJson['type'] ?? type;
+
+              final cmdResponse = CommandResponse.fromJson(responseJson);
+
+              AppHelpers.debugLog(
+                'Parsed response status: ${cmdResponse.status}, full: ${cmdResponse.toJson()}',
+              );
+
+              if (lastCommand.isNotEmpty) {
+                final commandId =
+                    '${lastCommand['op']}_${lastCommand['type'] ?? 'general'}_${DateTime.now().toIso8601String().split('T')[0]}';
+                _cacheResponse(commandId, cmdResponse);
+              }
+
+              if (!responseCompleter.isCompleted) {
+                responseCompleter.complete(cmdResponse);
+                // FIX: Cancel subscription immediately setelah complete
+                responseSubscription?.cancel();
+                AppHelpers.debugLog(
+                  'Read response received, subscription cancelled',
+                );
               }
             } catch (e) {
               errorMessage.value = 'Invalid response JSON: $e';
               AppHelpers.debugLog('JSON parsing error: $e');
+              AppHelpers.debugLog('Raw response was: $fullResponse');
 
-              // Complete dengan error hanya jika belum completed
               if (!responseCompleter.isCompleted) {
                 responseCompleter.complete(
                   CommandResponse(
@@ -1251,15 +1581,23 @@ class BleController extends GetxController {
                     config: [],
                   ),
                 );
+                // FIX: Cancel subscription immediately setelah error
+                responseSubscription?.cancel();
+                AppHelpers.debugLog(
+                  'Read error occurred, subscription cancelled',
+                );
               }
             }
-            responseBuffer.clear();
+          } else {
+            responseChunks.add(chunk);
+            AppHelpers.debugLog(
+              'Accumulated read chunk ${responseChunks.length} (${chunk.length} bytes)',
+            );
           }
         },
         onError: (e) {
           AppHelpers.debugLog('Notification error: $e');
 
-          // Complete dengan error hanya jika belum completed
           if (!responseCompleter.isCompleted) {
             responseCompleter.complete(
               CommandResponse(
@@ -1269,6 +1607,9 @@ class BleController extends GetxController {
                 config: [],
               ),
             );
+            // FIX: Cancel subscription immediately setelah error
+            responseSubscription?.cancel();
+            AppHelpers.debugLog('Read error in stream, subscription cancelled');
           }
         },
       );
@@ -1294,7 +1635,8 @@ class BleController extends GetxController {
         AppHelpers.debugLog('Sent chunk: $chunk');
         currentChunk++;
         commandProgress.value = currentChunk / totalChunks;
-        await Future.delayed(const Duration(milliseconds: 50));
+        // FIX: Match Python delay - 100ms for stable transmission
+        await Future.delayed(const Duration(milliseconds: 100));
       }
 
       AppHelpers.debugLog('Full sent read command: ${sentCommand.toString()}');
@@ -1314,13 +1656,68 @@ class BleController extends GetxController {
       currentChunk++;
       commandProgress.value = 1.0;
 
+      // FIX: Dynamic timeout for read commands - handle EXTREME 70×70 scenario
+      Duration timeoutDuration;
+      final isMinimal = additionalParams?['minimal'] == true;
+      final hasLimit = additionalParams?['limit'] != null;
+
+      // Large data types need VERY extended timeout (70 devices × 70 registers)
+      if (type == 'devices_with_registers') {
+        if (isMinimal) {
+          if (hasLimit) {
+            // Paginated minimal (5-10 devices)
+            timeoutDuration = const Duration(seconds: 360); // 6 min
+            AppHelpers.debugLog(
+              'Using timeout (360s/6min) for paginated minimal',
+            );
+          } else {
+            // ALL devices minimal (70 devices): ~22 min theoretical
+            timeoutDuration = const Duration(seconds: 1500); // 25 min
+            AppHelpers.debugLog(
+              '⚠️⚠️⚠️  EXTREME timeout (1500s/25min) for ALL devices minimal',
+            );
+          }
+        } else {
+          if (hasLimit) {
+            // Paginated full (5 devices max)
+            timeoutDuration = const Duration(seconds: 360); // 6 min
+            AppHelpers.debugLog('Using timeout (360s/6min) for paginated FULL');
+          } else {
+            // ULTRA EXTREME: 70 devices × 70 reg full = ~68 min theoretical
+            timeoutDuration = const Duration(seconds: 4800); // 80 min MAX
+            AppHelpers.debugLog(
+              '🚨🚨🚨  ULTRA EXTREME timeout (4800s/80min) for FULL ALL',
+            );
+          }
+        }
+      } else if (type == 'devices_summary') {
+        // Summary: just device list without registers (much smaller)
+        timeoutDuration = const Duration(seconds: 60);
+        AppHelpers.debugLog('Using timeout (60s) for devices_summary');
+      } else if (type == 'device' || type == 'registers') {
+        // Single device with 70 registers: ~10KB = ~56s theoretical
+        timeoutDuration = const Duration(seconds: 90);
+        AppHelpers.debugLog(
+          'Using timeout (90s) for single device/registers (may have 70 registers)',
+        );
+      } else {
+        timeoutDuration = const Duration(seconds: 90);
+        AppHelpers.debugLog('Using default timeout (90s) for read: $type');
+      }
+
       final response = await responseCompleter.future.timeout(
-        const Duration(seconds: 15),
+        timeoutDuration,
         onTimeout: () {
-          AppHelpers.debugLog('Response timeout');
+          // FIX: Only log timeout if completer hasn't been completed yet
+          // If completer already completed, timeout callback shouldn't log error
+          if (!responseCompleter.isCompleted) {
+            AppHelpers.debugLog(
+              'Read command timeout after ${timeoutDuration.inSeconds}s',
+            );
+          }
           return CommandResponse(
             status: 'error',
-            message: 'Response timeout',
+            message: 'Response timeout after ${timeoutDuration.inSeconds}s',
             type: type,
             config: [],
           );
