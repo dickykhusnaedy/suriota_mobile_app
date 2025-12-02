@@ -571,6 +571,9 @@ class _SettingsDeviceScreenState extends State<SettingsDeviceScreen> {
               AppColor.whiteColor,
             );
 
+            // Clear device data and register data from controllers
+            widget.model.clearData();
+
             // Wait 3 seconds after snackbar before navigating to home
             await Future.delayed(const Duration(seconds: 3));
 
