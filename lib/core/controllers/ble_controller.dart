@@ -34,6 +34,16 @@ class BleController extends GetxController {
 
   final RxMap<String, String> streamedData = <String, String>{}.obs;
 
+  // Streaming state management
+  var isStreaming = false.obs;
+  var currentStreamType = ''.obs;
+  var currentStreamDeviceId = ''.obs;
+  Timer? _streamTimeout;
+
+  // Buffer size limits for memory protection
+  static const int maxBufferSize = 1024 * 100; // 100KB
+  static const int maxPartialSize = 1024 * 10; // 10KB
+
   final _deviceCache = <String, DeviceModel>{}.obs;
   final _connectionSubscriptions =
       <String, StreamSubscription<BluetoothConnectionState>>{};
@@ -1368,8 +1378,13 @@ class BleController extends GetxController {
         });
       }
 
-      // Show feedback (skip untuk delete dan stop command)
-      if (command['op'] != 'delete' && !isStopCommand) {
+      // Show feedback only for data-modifying operations (skip read, delete, stop)
+      final shouldShowFeedback =
+          command['op'] != 'delete' &&
+          command['op'] != 'read' &&
+          !isStopCommand;
+
+      if (shouldShowFeedback) {
         SnackbarCustom.showSnackbar(
           '',
           response.status == 'success' || response.status == 'ok'
@@ -1377,7 +1392,7 @@ class BleController extends GetxController {
                     ? 'Data saved successfully'
                     : command['op'] == 'update'
                     ? 'Data updated successfully'
-                    : 'Data fetched successfully'
+                    : 'Operation completed successfully'
               : errorMessage.value,
           response.status == 'success' || response.status == 'ok'
               ? Colors.green
@@ -1531,11 +1546,70 @@ class BleController extends GetxController {
                 throw Exception('Invalid JSON root: ${decoded.runtimeType}');
               }
 
-              dynamic configData =
-                  responseJson['config'] ??
-                  responseJson[type] ??
-                  responseJson['data'] ??
-                  {};
+              dynamic configData;
+
+              // Special handling untuk type "device" dengan tcp_devices/rtu_devices
+              if (type == 'device') {
+                // Check if response has tcp_devices or rtu_devices structure
+                if (responseJson.containsKey('tcp_devices') ||
+                    responseJson.containsKey('rtu_devices')) {
+                  AppHelpers.debugLog(
+                    'Device response has tcp_devices/rtu_devices structure',
+                  );
+
+                  // Try to extract from tcp_devices first
+                  final tcpDevices = responseJson['tcp_devices'];
+                  final rtuDevices = responseJson['rtu_devices'];
+
+                  if (tcpDevices is Map && tcpDevices['devices'] is List) {
+                    final devices = tcpDevices['devices'] as List;
+                    if (devices.isNotEmpty) {
+                      configData = devices;
+                      AppHelpers.debugLog(
+                        'Extracted ${devices.length} device(s) from tcp_devices',
+                      );
+                    } else {
+                      configData = {};
+                      AppHelpers.debugLog('tcp_devices.devices is empty');
+                    }
+                  } else if (rtuDevices is Map &&
+                      rtuDevices['devices'] is List) {
+                    final devices = rtuDevices['devices'] as List;
+                    if (devices.isNotEmpty) {
+                      configData = devices;
+                      AppHelpers.debugLog(
+                        'Extracted ${devices.length} device(s) from rtu_devices',
+                      );
+                    } else {
+                      configData = {};
+                      AppHelpers.debugLog('rtu_devices.devices is empty');
+                    }
+                  } else {
+                    // No devices found in either tcp or rtu
+                    configData = {};
+                    AppHelpers.debugLog(
+                      'No devices found in tcp_devices or rtu_devices',
+                    );
+                  }
+                } else {
+                  // Fallback to original logic for device type without tcp/rtu structure
+                  configData =
+                      responseJson['config'] ??
+                      responseJson[type] ??
+                      responseJson['data'] ??
+                      {};
+                  AppHelpers.debugLog(
+                    'Using fallback config extraction for device type',
+                  );
+                }
+              } else {
+                // Original logic untuk type lain (devices_summary, registers, etc.)
+                configData =
+                    responseJson['config'] ??
+                    responseJson[type] ??
+                    responseJson['data'] ??
+                    {};
+              }
 
               if (configData is Map) {
                 configData = [configData];
@@ -1771,21 +1845,75 @@ class BleController extends GetxController {
     return gatewayDeviceResponses.where((resp) => resp.type == type).toList();
   }
 
-  Future<void> startDataStream(String type, String deviceId) async {
+  Future<void> startDataStream(
+    String type,
+    String deviceId, {
+    Duration timeout = const Duration(seconds: 30),
+  }) async {
     if (commandChar == null || responseChar == null) {
       errorMessage.value = 'Not connected';
       return;
     }
 
+    // Prevent multiple streams - stop previous stream if active
+    if (isStreaming.value) {
+      AppHelpers.debugLog(
+        'Stream already active, stopping previous stream first',
+      );
+      await stopDataStream(currentStreamType.value);
+    }
+
     final startCommand = {"op": "read", "type": type, "device_id": deviceId};
     commandLoading.value = true;
+    isStreaming.value = true;
+    currentStreamType.value = type;
+    currentStreamDeviceId.value = deviceId;
 
     try {
       // Setup continuous listener BEFORE sending command
       responseSubscription?.cancel(); // Cancel jika ada sebelumnya
       StringBuffer streamBuffer = StringBuffer();
+      bool streamActive = true;
+
+      // Setup timeout - will be reset on each data received
+      _streamTimeout = Timer(timeout, () {
+        if (streamActive) {
+          AppHelpers.debugLog(
+            '⚠️ Stream timeout after ${timeout.inSeconds}s - no data received',
+          );
+          responseSubscription?.cancel();
+          streamedData.clear();
+          errorMessage.value = 'Stream timeout after ${timeout.inSeconds}s';
+          streamActive = false;
+          isStreaming.value = false;
+        }
+      });
 
       responseSubscription = responseChar!.lastValueStream.listen((data) {
+        // Reset timeout on each data received
+        _streamTimeout?.cancel();
+        if (streamActive) {
+          _streamTimeout = Timer(timeout, () {
+            if (streamActive) {
+              AppHelpers.debugLog('⚠️ Stream inactive timeout - no new data');
+              responseSubscription?.cancel();
+              errorMessage.value = 'Stream inactive - no new data';
+              streamActive = false;
+              isStreaming.value = false;
+            }
+          });
+        }
+
+        // Check buffer size before writing
+        if (streamBuffer.length > maxBufferSize) {
+          AppHelpers.debugLog(
+            '⚠️ Buffer overflow detected (${streamBuffer.length} bytes), clearing buffer',
+          );
+          streamBuffer.clear();
+          errorMessage.value = 'Buffer overflow - data stream too large';
+          return;
+        }
+
         final chunk = utf8.decode(data, allowMalformed: true);
         AppHelpers.debugLog('Realtime chunk received: $chunk');
         streamBuffer.write(chunk);
@@ -1867,10 +1995,17 @@ class BleController extends GetxController {
             // Keep partial segment in buffer if exists
             streamBuffer.clear();
             if (!endsWithDelimiter && parts.isNotEmpty) {
-              streamBuffer.write(parts.last);
-              AppHelpers.debugLog(
-                'Keeping partial data for next chunk: ${parts.last.substring(0, parts.last.length > 30 ? 30 : parts.last.length)}...',
-              );
+              // Validate partial data size before keeping
+              if (parts.last.length > maxPartialSize) {
+                AppHelpers.debugLog(
+                  '⚠️ Partial data too large (${parts.last.length} bytes), discarding',
+                );
+              } else {
+                streamBuffer.write(parts.last);
+                AppHelpers.debugLog(
+                  'Keeping partial data for next chunk: ${parts.last.substring(0, parts.last.length > 30 ? 30 : parts.last.length)}...',
+                );
+              }
             }
           } catch (e) {
             AppHelpers.debugLog('Realtime parsing error: $e');
@@ -1914,6 +2049,17 @@ class BleController extends GetxController {
       AppHelpers.debugLog('Stream started successfully');
     } catch (e) {
       errorMessage.value = 'Error starting stream: $e';
+      AppHelpers.debugLog('Error starting stream: $e');
+
+      // Cleanup on error
+      _streamTimeout?.cancel();
+      responseSubscription?.cancel();
+      responseSubscription = null;
+      streamedData.clear();
+      isStreaming.value = false;
+      currentStreamType.value = '';
+      currentStreamDeviceId.value = '';
+
       SnackbarCustom.showSnackbar(
         '',
         errorMessage.value,
@@ -1927,9 +2073,10 @@ class BleController extends GetxController {
 
   Future<void> stopDataStream(String type) async {
     try {
-      responseSubscription?.cancel();
-      streamedData.clear();
+      // Cancel timeout first
+      _streamTimeout?.cancel();
 
+      // Send stop command FIRST before canceling subscription
       if (commandChar != null) {
         final stopCommand = {"op": "read", "type": type, "device_id": "stop"};
         String jsonStr = jsonEncode(stopCommand);
@@ -1958,30 +2105,110 @@ class BleController extends GetxController {
           utf8.encode('<END>'),
           withoutResponse: !useWriteWithResponse,
         );
+
+        // Wait for device to process stop command
+        await Future.delayed(const Duration(milliseconds: 500));
       }
 
-      AppHelpers.debugLog('Stream stopped');
+      // THEN cancel subscription and clear data
+      responseSubscription?.cancel();
+      responseSubscription = null;
+      streamedData.clear();
+
+      // Reset streaming state
+      isStreaming.value = false;
+      currentStreamType.value = '';
+      currentStreamDeviceId.value = '';
+
+      AppHelpers.debugLog('Stream stopped successfully');
     } catch (e) {
       AppHelpers.debugLog('Error stopping stream: $e');
+
+      // Ensure cleanup even on error
+      _streamTimeout?.cancel();
+      responseSubscription?.cancel();
+      responseSubscription = null;
+      streamedData.clear();
+      isStreaming.value = false;
+      currentStreamType.value = '';
+      currentStreamDeviceId.value = '';
     }
   }
 
   // Function baru untuk enhanced streaming dengan device tracking
-  Future<void> startStreamDevice(String type, String deviceId) async {
+  Future<void> startStreamDevice(
+    String type,
+    String deviceId, {
+    Duration timeout = const Duration(seconds: 30),
+  }) async {
     if (commandChar == null || responseChar == null) {
       errorMessage.value = 'Not connected';
       return;
     }
 
+    // Prevent multiple streams - stop previous stream if active
+    if (isStreaming.value) {
+      AppHelpers.debugLog(
+        'Enhanced stream already active, stopping previous stream first',
+      );
+      await stopStreamDevice(currentStreamType.value);
+    }
+
     final startCommand = {"op": "read", "type": type, "device_id": deviceId};
     commandLoading.value = true;
+    isStreaming.value = true;
+    currentStreamType.value = type;
+    currentStreamDeviceId.value = deviceId;
 
     try {
       // Setup streaming listener yang lebih advanced
       responseSubscription?.cancel();
       StringBuffer streamBuffer = StringBuffer();
+      bool streamActive = true;
+
+      // Setup timeout - will be reset on each data received
+      _streamTimeout = Timer(timeout, () {
+        if (streamActive) {
+          AppHelpers.debugLog(
+            '⚠️ Enhanced stream timeout after ${timeout.inSeconds}s - no data received',
+          );
+          responseSubscription?.cancel();
+          streamedData.clear();
+          errorMessage.value =
+              'Enhanced stream timeout after ${timeout.inSeconds}s';
+          streamActive = false;
+          isStreaming.value = false;
+        }
+      });
 
       responseSubscription = responseChar!.lastValueStream.listen((data) {
+        // Reset timeout on each data received
+        _streamTimeout?.cancel();
+        if (streamActive) {
+          _streamTimeout = Timer(timeout, () {
+            if (streamActive) {
+              AppHelpers.debugLog(
+                '⚠️ Enhanced stream inactive timeout - no new data',
+              );
+              responseSubscription?.cancel();
+              errorMessage.value = 'Enhanced stream inactive - no new data';
+              streamActive = false;
+              isStreaming.value = false;
+            }
+          });
+        }
+
+        // Check buffer size before writing
+        if (streamBuffer.length > maxBufferSize) {
+          AppHelpers.debugLog(
+            '⚠️ Enhanced stream buffer overflow detected (${streamBuffer.length} bytes), clearing buffer',
+          );
+          streamBuffer.clear();
+          errorMessage.value =
+              'Enhanced stream buffer overflow - data stream too large';
+          return;
+        }
+
         final chunk = utf8.decode(data, allowMalformed: true);
         AppHelpers.debugLog(
           'Stream chunk received for device $deviceId: $chunk',
@@ -2090,10 +2317,17 @@ class BleController extends GetxController {
             // Keep partial segment in buffer if exists
             streamBuffer.clear();
             if (!endsWithDelimiter && parts.isNotEmpty) {
-              streamBuffer.write(parts.last);
-              AppHelpers.debugLog(
-                'Keeping partial data for next chunk: ${parts.last.substring(0, parts.last.length > 30 ? 30 : parts.last.length)}...',
-              );
+              // Validate partial data size before keeping
+              if (parts.last.length > maxPartialSize) {
+                AppHelpers.debugLog(
+                  '⚠️ Enhanced stream partial data too large (${parts.last.length} bytes), discarding',
+                );
+              } else {
+                streamBuffer.write(parts.last);
+                AppHelpers.debugLog(
+                  'Keeping partial data for next chunk: ${parts.last.substring(0, parts.last.length > 30 ? 30 : parts.last.length)}...',
+                );
+              }
             }
           } catch (e) {
             AppHelpers.debugLog('Enhanced stream parsing error: $e');
@@ -2137,6 +2371,17 @@ class BleController extends GetxController {
       AppHelpers.debugLog('Enhanced streaming started for device: $deviceId');
     } catch (e) {
       errorMessage.value = 'Error starting enhanced stream: $e';
+      AppHelpers.debugLog('Error starting enhanced stream: $e');
+
+      // Cleanup on error
+      _streamTimeout?.cancel();
+      responseSubscription?.cancel();
+      responseSubscription = null;
+      streamedData.clear();
+      isStreaming.value = false;
+      currentStreamType.value = '';
+      currentStreamDeviceId.value = '';
+
       SnackbarCustom.showSnackbar(
         '',
         errorMessage.value,
@@ -2149,22 +2394,66 @@ class BleController extends GetxController {
   }
 
   Future<void> stopStreamDevice(String type) async {
-    final stopCommand = {"op": "read", "type": type, "device_id": "stop"};
-
     try {
-      await sendCommand(stopCommand);
+      // Cancel timeout first
+      _streamTimeout?.cancel();
 
-      // Delay sebelum cancel subscription untuk memastikan device process stop command
-      await Future.delayed(const Duration(milliseconds: 500));
+      // Send stop command manually FIRST (avoid sendCommand subscription conflict)
+      if (commandChar != null) {
+        final stopCommand = {"op": "read", "type": type, "device_id": "stop"};
+        String jsonStr = jsonEncode(stopCommand);
+        AppHelpers.debugLog('Sending enhanced stream stop command: $jsonStr');
 
+        const chunkSize = 18;
+        final bool useWriteWithResponse =
+            !(commandChar?.properties.writeWithoutResponse ?? false);
+
+        // Send command in chunks
+        for (int i = 0; i < jsonStr.length; i += chunkSize) {
+          String chunk = jsonStr.substring(
+            i,
+            (i + chunkSize > jsonStr.length) ? jsonStr.length : i + chunkSize,
+          );
+          await commandChar!.write(
+            utf8.encode(chunk),
+            withoutResponse: !useWriteWithResponse,
+          );
+          await Future.delayed(const Duration(milliseconds: 50));
+        }
+
+        // Send END delimiter
+        await Future.delayed(const Duration(milliseconds: 100));
+        await commandChar!.write(
+          utf8.encode('<END>'),
+          withoutResponse: !useWriteWithResponse,
+        );
+
+        // Wait for device to process stop command
+        await Future.delayed(const Duration(milliseconds: 500));
+      }
+
+      // THEN cancel subscription and clear data
       responseSubscription?.cancel();
+      responseSubscription = null;
       streamedData.clear();
-      AppHelpers.debugLog('Enhanced streaming stopped');
+
+      // Reset streaming state
+      isStreaming.value = false;
+      currentStreamType.value = '';
+      currentStreamDeviceId.value = '';
+
+      AppHelpers.debugLog('Enhanced streaming stopped successfully');
     } catch (e) {
       AppHelpers.debugLog('Error stopping enhanced stream: $e');
-      // Tetap cancel subscription dan clear data meskipun ada error
+
+      // Ensure cleanup even on error
+      _streamTimeout?.cancel();
       responseSubscription?.cancel();
+      responseSubscription = null;
       streamedData.clear();
+      isStreaming.value = false;
+      currentStreamType.value = '';
+      currentStreamDeviceId.value = '';
     }
   }
 
@@ -2190,6 +2479,7 @@ class BleController extends GetxController {
     // OPTIMIZATION: Cancel batch processing timers
     _batchProcessTimer?.cancel();
     _uiUpdateDebounceTimer?.cancel();
+    _streamTimeout?.cancel(); // Cancel streaming timeout
     _scanBatchQueue.clear();
 
     _deviceCache.clear();
