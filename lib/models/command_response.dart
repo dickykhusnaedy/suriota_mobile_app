@@ -44,5 +44,6 @@ class CommandResponse {
   Map<String, dynamic> toJson() => _$CommandResponseToJson(this);
 
   // Convenience getter for backup_info
+  // ignore: non_constant_identifier_names
   Map<String, dynamic>? get backup_info => backupInfo;
 }

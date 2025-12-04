@@ -13,6 +13,52 @@ import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
 
 class BleController extends GetxController {
+  // ========== BLE COMMUNICATION CONSTANTS ==========
+  /// BLE chunk size for data transmission
+  /// Based on MTU (Maximum Transmission Unit) size minus header overhead
+  /// Typical BLE MTU is 23 bytes, minus 3 bytes ATT header = 20 bytes usable
+  /// We use 18 bytes to be safe and ensure compatibility across devices
+  static const int bleChunkSize = 18;
+
+  /// Delay to ensure old subscription is fully cancelled before creating new one
+  static const Duration subscriptionCleanupDelay = Duration(milliseconds: 50);
+
+  /// Delay between BLE characteristic notifications to ensure stable transmission
+  static const Duration notificationSetupDelay = Duration(milliseconds: 300);
+
+  /// Delay between chunk transmissions for stable BLE communication
+  static const Duration chunkTransmissionDelay = Duration(milliseconds: 100);
+
+  /// Delay before sending END delimiter
+  static const Duration endDelimiterDelay = Duration(milliseconds: 100);
+
+  /// Delay for batch processing of scanned devices (debounce)
+  static const Duration batchProcessDelay = Duration(milliseconds: 300);
+
+  /// Delay for UI updates (debounce)
+  static const Duration uiUpdateDelay = Duration(milliseconds: 100);
+
+  /// Buffer size limits for memory protection
+  static const int maxBufferSize = 1024 * 100; // 100KB - Maximum buffer size
+  static const int maxPartialSize =
+      1024 * 10; // 10KB - Maximum partial data size
+
+  /// Command timeout durations
+  static const Duration timeoutStopCommand = Duration(seconds: 5);
+  static const Duration timeoutDevicesSummary = Duration(seconds: 60);
+  static const Duration timeoutSingleDevice = Duration(seconds: 90);
+  static const Duration timeoutPaginatedRequest = Duration(
+    seconds: 360,
+  ); // 6 min
+  static const Duration timeoutWriteOperation = Duration(seconds: 45);
+  static const Duration timeoutDefault = Duration(seconds: 90);
+  static const Duration timeoutLargeDataMinimal = Duration(
+    seconds: 900,
+  ); // 15 min (reduced from 25 min)
+  static const Duration timeoutLargeDataFull = Duration(
+    seconds: 900,
+  ); // 15 min (reduced from 80 min)
+
   // State variables
   var isScanning = false.obs;
   var isLoading = false.obs;
@@ -39,10 +85,6 @@ class BleController extends GetxController {
   var currentStreamType = ''.obs;
   var currentStreamDeviceId = ''.obs;
   Timer? _streamTimeout;
-
-  // Buffer size limits for memory protection
-  static const int maxBufferSize = 1024 * 100; // 100KB
-  static const int maxPartialSize = 1024 * 10; // 10KB
 
   final _deviceCache = <String, DeviceModel>{}.obs;
   final _connectionSubscriptions =
@@ -170,9 +212,9 @@ class BleController extends GetxController {
     // Cancel existing timer
     _batchProcessTimer?.cancel();
 
-    // Process batch setelah 300ms (debounce)
+    // Process batch setelah delay (debounce)
     // Ini membuat multiple devices diproses sekaligus, bukan satu-satu
-    _batchProcessTimer = Timer(const Duration(milliseconds: 300), () {
+    _batchProcessTimer = Timer(batchProcessDelay, () {
       _processBatch();
     });
   }
@@ -202,7 +244,7 @@ class BleController extends GetxController {
 
   void _scheduleUIUpdate() {
     _uiUpdateDebounceTimer?.cancel();
-    _uiUpdateDebounceTimer = Timer(const Duration(milliseconds: 100), () {
+    _uiUpdateDebounceTimer = Timer(uiUpdateDelay, () {
       update(); // Single update call untuk semua devices
     });
   }
@@ -488,16 +530,21 @@ class BleController extends GetxController {
 
       AppHelpers.debugLog('Disconnecting device: $deviceId');
 
-      // Remove from cache (device tetap di scannedDevices untuk reconnection)
-      // Device akan di-add kembali ke cache saat reconnect (di connectToDevice)
-      _deviceCache.remove(deviceId);
-      AppHelpers.debugLog('Device removed from cache: $deviceId');
+      // FIX: Don't remove from cache - keep device data for reconnection
+      // Device cache should only be cleared on new scan or explicit cleanup
+      // Just update the connection state instead
+      AppHelpers.debugLog(
+        'Keeping device in cache for reconnection: $deviceId',
+      );
 
-      // Cancel connection subscription
-      _connectionSubscriptions[deviceId]?.cancel();
-      _connectionSubscriptions.remove(deviceId);
-
-      AppHelpers.debugLog('Connection subscriptions cancelled for: $deviceId');
+      // Cancel connection subscription with proper cleanup
+      final subscription = _connectionSubscriptions[deviceId];
+      if (subscription != null) {
+        await subscription.cancel();
+        await Future.delayed(subscriptionCleanupDelay); // Ensure cleanup
+        _connectionSubscriptions.remove(deviceId);
+        AppHelpers.debugLog('Connection subscription cancelled for: $deviceId');
+      }
       // Manual disconnect: show snackbar and delay before triggering navigation
       // Don't clear BLE resources if streaming is active
       if (streamedData.isEmpty) {
@@ -675,24 +722,50 @@ class BleController extends GetxController {
     errorMessage.value =
         'Bluetooth has been turned off. Please turn it back on to connect to devices.';
 
-    // Cancel all connection subscriptions
+    // FIX: Batch disconnect to avoid multiple navigation attempts
+    // Cancel all connection subscriptions first
     for (var subscription in _connectionSubscriptions.values) {
-      subscription.cancel();
+      await subscription.cancel();
     }
     _connectionSubscriptions.clear();
+    AppHelpers.debugLog('All connection subscriptions cancelled');
 
-    // Disconnect all connected devices
-    for (var deviceModel in scannedDevices.toList()) {
-      if (deviceModel.isConnected.value) {
-        await disconnectFromDevice(deviceModel);
+    // Batch disconnect all connected devices WITHOUT individual navigation
+    // This is more efficient than calling disconnectFromDevice for each device
+    final connectedDevices = scannedDevices
+        .where((d) => d.isConnected.value)
+        .toList();
+
+    for (var deviceModel in connectedDevices) {
+      try {
+        // Direct disconnect without triggering navigation logic
+        await deviceModel.device.disconnect();
+        deviceModel.isConnected.value = false;
+
+        // Don't clear characteristics if streaming is active
+        if (streamedData.isEmpty) {
+          commandChar = null;
+          responseChar = null;
+        }
+
         AppHelpers.debugLog(
           'Disconnected device: ${deviceModel.device.remoteId}',
+        );
+      } catch (e) {
+        AppHelpers.debugLog(
+          'Error disconnecting device during Bluetooth off: $e',
         );
       }
     }
 
-    // Clear all caches
+    // Clear global connected device
+    connectedDevice.value = null;
+
+    // Clear all caches and streaming data
     gatewayDeviceResponses.clear();
+    streamedData.clear();
+    responseSubscription?.cancel();
+    responseSubscription = null;
 
     SnackbarCustom.showSnackbar(
       'Bluetooth Turned Off',
@@ -701,7 +774,7 @@ class BleController extends GetxController {
       AppColor.whiteColor,
     );
 
-    // Redirect to home
+    // Single navigation at the end (not per device)
     try {
       if (Get.context != null) {
         AppHelpers.debugLog(
@@ -998,17 +1071,30 @@ class BleController extends GetxController {
     String jsonStr = jsonEncode(command);
     AppHelpers.debugLog('Full command JSON: $jsonStr');
 
-    const chunkSize = 18;
-    int totalChunks = (jsonStr.length / chunkSize).ceil() + 1; // +1 for <END>
+    int totalChunks =
+        (jsonStr.length / bleChunkSize).ceil() + 1; // +1 for <END>
     int currentChunk = 0;
 
-    try {
-      // FIX: Cancel sub lama dan wait untuk ensure clean state
-      await responseSubscription?.cancel();
-      responseSubscription = null;
+    // FIX: Store characteristic references to prevent null issues during execution
+    final cmd = commandChar;
+    final resp = responseChar;
+    if (cmd == null || resp == null) {
+      errorMessage.value = 'Characteristics became null';
+      return CommandResponse(
+        status: 'error',
+        message: 'Characteristics became null',
+        type: command['type'] ?? 'device',
+      );
+    }
 
-      // Small delay to ensure old subscription is fully cancelled
-      await Future.delayed(const Duration(milliseconds: 50));
+    try {
+      // FIX: Improved subscription cleanup to prevent memory leaks
+      if (responseSubscription != null) {
+        await responseSubscription!.cancel();
+        await Future.delayed(subscriptionCleanupDelay); // Ensure cleanup
+        responseSubscription = null;
+        AppHelpers.debugLog('Previous subscription cleaned up');
+      }
 
       // FIX: Implement Python-style response handling
       // Python waits for separate <END> chunk instead of parsing immediately
@@ -1019,7 +1105,7 @@ class BleController extends GetxController {
 
       // Set subscription SEKALI, sebelum kirim, dan collect di sini
       AppHelpers.debugLog(
-        'Starting response subscription before sending command',
+        'Setting up new response subscription before sending command',
       );
       responseSubscription = responseChar!.lastValueStream.listen(
         (data) {
@@ -1162,32 +1248,33 @@ class BleController extends GetxController {
       );
 
       // Enable notify jika belum
-      await responseChar!.setNotifyValue(true);
-      // FIX: No explicit delay in Python, but 300ms is safer for Flutter
-      await Future.delayed(const Duration(milliseconds: 300));
+      await resp.setNotifyValue(true);
+      // Delay to ensure notification is properly set up
+      await Future.delayed(notificationSetupDelay);
 
       // Check if writeWithoutResponse is supported
-      final bool useWriteWithResponse =
-          !(commandChar?.properties.writeWithoutResponse ?? false);
+      final bool useWriteWithResponse = !(cmd.properties.writeWithoutResponse);
       AppHelpers.debugLog('Using write with response: $useWriteWithResponse');
 
       // Send command in chunks
       StringBuffer sentCommand = StringBuffer(); // Track sent command
-      for (int i = 0; i < jsonStr.length; i += chunkSize) {
+      for (int i = 0; i < jsonStr.length; i += bleChunkSize) {
         String chunk = jsonStr.substring(
           i,
-          (i + chunkSize > jsonStr.length) ? jsonStr.length : i + chunkSize,
+          (i + bleChunkSize > jsonStr.length)
+              ? jsonStr.length
+              : i + bleChunkSize,
         );
         sentCommand.write(chunk); // Build sent command
-        await commandChar!.write(
+        await cmd.write(
           utf8.encode(chunk),
           withoutResponse: !useWriteWithResponse,
         );
         AppHelpers.debugLog('Sent chunk: $chunk');
         currentChunk++;
         commandProgress.value = currentChunk / totalChunks; // Update progress
-        // FIX: Match Python delay (line 143) - 100ms for stable transmission
-        await Future.delayed(const Duration(milliseconds: 100));
+        // Delay for stable BLE transmission
+        await Future.delayed(chunkTransmissionDelay);
       }
       // Validate sent command
       AppHelpers.debugLog('Full sent command: ${sentCommand.toString()}');
@@ -1199,8 +1286,8 @@ class BleController extends GetxController {
       }
 
       // Add delay before sending <END>
-      await Future.delayed(const Duration(milliseconds: 100));
-      await commandChar!.write(
+      await Future.delayed(endDelimiterDelay);
+      await cmd.write(
         utf8.encode('<END>'),
         withoutResponse: !useWriteWithResponse,
       );
@@ -1208,104 +1295,60 @@ class BleController extends GetxController {
       currentChunk++;
       commandProgress.value = 1.0;
 
-      // FIX: Dynamic timeout based on command type for VERY large data (70 registers)
-      // REAL worst case: 10 devices × 70 registers × 150 bytes = ~105KB
-      // Calculation: 105KB / 18 bytes/chunk × 100ms/chunk = ~583s (9.7 min) + overhead
-      // CRITICAL: Need different strategy for such large data!
+      // FIX: Simplified timeout calculation using constants
+      // Reduced from extreme 80min to more practical 15min max
       Duration timeoutDuration;
 
       if (isStopCommand) {
-        timeoutDuration = const Duration(seconds: 5);
+        timeoutDuration = timeoutStopCommand;
+        AppHelpers.debugLog(
+          'Using timeout: ${timeoutDuration.inSeconds}s (stop command)',
+        );
       } else {
         final opType = command['op'] as String?;
         final commandType = command['type'] as String?;
         final isMinimal = command['minimal'] == true;
+        final hasLimit = command['limit'] != null;
 
-        // Check if requesting full data with registers (VERY LARGE)
+        // Determine timeout based on command type
         if (opType == 'read' && commandType == 'devices_with_registers') {
-          if (isMinimal) {
-            // Minimal mode: essential fields only
-            // REALISTIC: 10 devices × 70 reg = ~33 KB = ~183s
-            // EXTREME: 70 devices × 70 reg = ~235 KB = ~1,305s = 22 min
-
-            // Check if pagination is being used
-            final hasLimit = command['limit'] != null;
-
-            if (hasLimit) {
-              // Paginated request (5-10 devices max)
-              timeoutDuration = const Duration(seconds: 360); // 6 min per page
-              AppHelpers.debugLog(
-                'Using timeout (360s/6min) for paginated minimal mode',
-              );
-            } else {
-              // EXTREME: All devices at once (NOT RECOMMENDED!)
-              timeoutDuration = const Duration(seconds: 1500); // 25 min
-              AppHelpers.debugLog(
-                '⚠️⚠️⚠️  Using EXTREME timeout (1500s/25min) for ALL devices minimal mode',
-              );
-              AppHelpers.debugLog(
-                '⚠️⚠️⚠️  STRONGLY RECOMMENDED: Use pagination instead!',
-              );
-            }
+          // Large data requests
+          if (hasLimit) {
+            // Paginated: 5-10 devices per page
+            timeoutDuration = timeoutPaginatedRequest;
+            AppHelpers.debugLog(
+              'Using timeout: ${timeoutDuration.inSeconds}s (paginated ${isMinimal ? 'minimal' : 'full'})',
+            );
           } else {
-            // FULL mode with 70 registers: EXTREMELY SLOW
-            // EXTREME: 70 devices × 70 reg × full data = ~735 KB = ~4,083s = 68 min!
-
-            final hasLimit = command['limit'] != null;
-
-            if (hasLimit) {
-              // Paginated full mode (5 devices max recommended)
-              timeoutDuration = const Duration(seconds: 360); // 6 min per page
-              AppHelpers.debugLog(
-                'Using timeout (360s/6min) for paginated FULL mode',
-              );
-            } else {
-              // FULL mode ALL devices: ULTRA EXTREME (AVOID AT ALL COSTS!)
-              timeoutDuration = const Duration(
-                seconds: 4800,
-              ); // 80 min (MAX possible)
-              AppHelpers.debugLog(
-                '🚨🚨🚨  ULTRA EXTREME timeout (4800s/80min) for FULL ALL devices',
-              );
-              AppHelpers.debugLog(
-                '🚨🚨🚨  This will take over 1 HOUR! Use pagination or minimal mode!',
-              );
-              AppHelpers.debugLog(
-                '🚨🚨🚨  User may experience: timeout, battery drain, BLE disconnect',
-              );
-            }
+            // All devices at once (not recommended but supported)
+            timeoutDuration = isMinimal
+                ? timeoutLargeDataMinimal
+                : timeoutLargeDataFull;
+            AppHelpers.debugLog(
+              '⚠️ Using timeout: ${timeoutDuration.inSeconds}s (ALL devices ${isMinimal ? 'minimal' : 'full'} - consider pagination!)',
+            );
           }
         } else if (opType == 'read' && commandType == 'devices_summary') {
-          // Summary without registers: much smaller
-          timeoutDuration = const Duration(seconds: 60);
-          AppHelpers.debugLog('Using timeout (60s) for devices_summary');
-        } else if (opType == 'read' && commandType == 'device') {
-          // Single device with 70 registers: ~10KB
-          // 10KB / 18 bytes × 100ms = ~56s
-          timeoutDuration = const Duration(seconds: 90);
+          timeoutDuration = timeoutDevicesSummary;
           AppHelpers.debugLog(
-            'Using timeout (90s) for single device read (may have 70 registers)',
+            'Using timeout: ${timeoutDuration.inSeconds}s (devices summary)',
           );
-        } else if (opType == 'read' && commandType == 'registers') {
-          // Reading registers for one device: ~10KB
-          timeoutDuration = const Duration(seconds: 90);
+        } else if (opType == 'read' &&
+            (commandType == 'device' || commandType == 'registers')) {
+          timeoutDuration = timeoutSingleDevice;
           AppHelpers.debugLog(
-            'Using timeout (90s) for registers read (may have 70 registers)',
-          );
-        } else if (opType == 'read') {
-          // Other read operations
-          timeoutDuration = const Duration(seconds: 60);
-          AppHelpers.debugLog(
-            'Using standard timeout (60s) for read operation',
+            'Using timeout: ${timeoutDuration.inSeconds}s (single device/registers)',
           );
         } else if (opType == 'create' || opType == 'update') {
-          // Write operations: request small, response small
-          timeoutDuration = const Duration(seconds: 45);
-          AppHelpers.debugLog('Using timeout (45s) for write operation');
+          timeoutDuration = timeoutWriteOperation;
+          AppHelpers.debugLog(
+            'Using timeout: ${timeoutDuration.inSeconds}s (write operation)',
+          );
         } else {
-          // Default fallback
-          timeoutDuration = const Duration(seconds: 90);
-          AppHelpers.debugLog('Using default timeout (90s)');
+          timeoutDuration = timeoutDefault;
+          AppHelpers.debugLog(
+            'Using timeout: ${timeoutDuration.inSeconds}s (default)',
+          );
         }
       }
 
@@ -1324,6 +1367,7 @@ class BleController extends GetxController {
             return CommandResponse(
               status: 'ok',
               message: 'Stream stopped successfully',
+
               type: command['type'] ?? 'device',
             );
           }
@@ -1466,20 +1510,34 @@ class BleController extends GetxController {
     String jsonStr = jsonEncode(readCommand);
     AppHelpers.debugLog('Full read command JSON: $jsonStr');
 
-    const chunkSize = 18;
+    const chunkSize = bleChunkSize;
     int totalChunks = (jsonStr.length / chunkSize).ceil() + 1;
     int currentChunk = 0;
 
     commandLoading.value = true;
     commandProgress.value = 0.0;
 
-    try {
-      // FIX: Cancel sub lama dan wait untuk ensure clean state
-      await responseSubscription?.cancel();
-      responseSubscription = null;
+    // FIX: Store characteristic references to prevent null issues
+    final cmd = commandChar;
+    final resp = responseChar;
+    if (cmd == null || resp == null) {
+      errorMessage.value = 'Characteristics became null';
+      return CommandResponse(
+        status: 'error',
+        message: 'Characteristics became null',
+        type: type,
+        config: [],
+      );
+    }
 
-      // Small delay to ensure old subscription is fully cancelled
-      await Future.delayed(const Duration(milliseconds: 50));
+    try {
+      // FIX: Improved subscription cleanup
+      if (responseSubscription != null) {
+        await responseSubscription!.cancel();
+        await Future.delayed(subscriptionCleanupDelay);
+        responseSubscription = null;
+        AppHelpers.debugLog('Previous read subscription cleaned up');
+      }
 
       // FIX: Apply same Python-style response handling for read commands
       final responseCompleter = Completer<CommandResponse?>();
@@ -1490,7 +1548,7 @@ class BleController extends GetxController {
       AppHelpers.debugLog(
         'Starting new response subscription before sending read command',
       );
-      responseSubscription = responseChar!.lastValueStream.listen(
+      responseSubscription = resp.lastValueStream.listen(
         (data) {
           // Skip jika completer sudah completed
           if (responseCompleter.isCompleted) {
@@ -1691,8 +1749,11 @@ class BleController extends GetxController {
       await responseChar!.setNotifyValue(true);
       await Future.delayed(const Duration(milliseconds: 300));
 
-      final bool useWriteWithResponse =
-          !(commandChar?.properties.writeWithoutResponse ?? false);
+      // FIX: Clear any stale data received during setup/delay
+      responseChunks.clear();
+      AppHelpers.debugLog('Cleared response buffer before sending command');
+
+      final bool useWriteWithResponse = !(cmd.properties.writeWithoutResponse);
       AppHelpers.debugLog('Using write with response: $useWriteWithResponse');
 
       StringBuffer sentCommand = StringBuffer();
@@ -1702,15 +1763,15 @@ class BleController extends GetxController {
           (i + chunkSize > jsonStr.length) ? jsonStr.length : i + chunkSize,
         );
         sentCommand.write(chunk);
-        await commandChar!.write(
+        await cmd.write(
           utf8.encode(chunk),
           withoutResponse: !useWriteWithResponse,
         );
         AppHelpers.debugLog('Sent chunk: $chunk');
         currentChunk++;
         commandProgress.value = currentChunk / totalChunks;
-        // FIX: Match Python delay - 100ms for stable transmission
-        await Future.delayed(const Duration(milliseconds: 100));
+        // Delay for stable BLE transmission
+        await Future.delayed(chunkTransmissionDelay);
       }
 
       AppHelpers.debugLog('Full sent read command: ${sentCommand.toString()}');
@@ -1721,8 +1782,8 @@ class BleController extends GetxController {
         AppHelpers.debugLog('Sent read command is not valid JSON: $e');
       }
 
-      await Future.delayed(const Duration(milliseconds: 100));
-      await commandChar!.write(
+      await Future.delayed(endDelimiterDelay);
+      await cmd.write(
         utf8.encode('<END>'),
         withoutResponse: !useWriteWithResponse,
       );
@@ -1904,18 +1965,19 @@ class BleController extends GetxController {
           });
         }
 
-        // Check buffer size before writing
-        if (streamBuffer.length > maxBufferSize) {
+        final chunk = utf8.decode(data, allowMalformed: true);
+        AppHelpers.debugLog('Realtime chunk received: $chunk');
+
+        // FIX: Check buffer size BEFORE writing to prevent overflow
+        if (streamBuffer.length + chunk.length > maxBufferSize) {
           AppHelpers.debugLog(
-            '⚠️ Buffer overflow detected (${streamBuffer.length} bytes), clearing buffer',
+            '⚠️ Buffer would overflow (current: ${streamBuffer.length}, chunk: ${chunk.length}), clearing buffer',
           );
           streamBuffer.clear();
           errorMessage.value = 'Buffer overflow - data stream too large';
           return;
         }
 
-        final chunk = utf8.decode(data, allowMalformed: true);
-        AppHelpers.debugLog('Realtime chunk received: $chunk');
         streamBuffer.write(chunk);
 
         if (chunk.contains('<END>')) {
@@ -2071,6 +2133,42 @@ class BleController extends GetxController {
     }
   }
 
+  /// Helper method to send BLE command manually without subscription management
+  /// Used by streaming methods to avoid subscription conflicts
+  Future<void> _sendCommandManually(Map<String, dynamic> command) async {
+    if (commandChar == null) {
+      throw Exception('Command characteristic is null');
+    }
+
+    final jsonStr = jsonEncode(command);
+    AppHelpers.debugLog('Sending manual command: $jsonStr');
+
+    final bool useWriteWithResponse =
+        !(commandChar?.properties.writeWithoutResponse ?? false);
+
+    // Send command in chunks
+    for (int i = 0; i < jsonStr.length; i += bleChunkSize) {
+      String chunk = jsonStr.substring(
+        i,
+        (i + bleChunkSize > jsonStr.length) ? jsonStr.length : i + bleChunkSize,
+      );
+      await commandChar!.write(
+        utf8.encode(chunk),
+        withoutResponse: !useWriteWithResponse,
+      );
+      AppHelpers.debugLog('Sent chunk: $chunk');
+      await Future.delayed(const Duration(milliseconds: 50));
+    }
+
+    // Send END delimiter
+    await Future.delayed(endDelimiterDelay);
+    await commandChar!.write(
+      utf8.encode('<END>'),
+      withoutResponse: !useWriteWithResponse,
+    );
+    AppHelpers.debugLog('Sent chunk: <END>');
+  }
+
   Future<void> stopDataStream(String type) async {
     try {
       // Cancel timeout first
@@ -2079,32 +2177,7 @@ class BleController extends GetxController {
       // Send stop command FIRST before canceling subscription
       if (commandChar != null) {
         final stopCommand = {"op": "read", "type": type, "device_id": "stop"};
-        String jsonStr = jsonEncode(stopCommand);
-        AppHelpers.debugLog('Sending stream stop command: $jsonStr');
-
-        const chunkSize = 18;
-        final bool useWriteWithResponse =
-            !(commandChar?.properties.writeWithoutResponse ?? false);
-
-        // Send command in chunks
-        for (int i = 0; i < jsonStr.length; i += chunkSize) {
-          String chunk = jsonStr.substring(
-            i,
-            (i + chunkSize > jsonStr.length) ? jsonStr.length : i + chunkSize,
-          );
-          await commandChar!.write(
-            utf8.encode(chunk),
-            withoutResponse: !useWriteWithResponse,
-          );
-          await Future.delayed(const Duration(milliseconds: 50));
-        }
-
-        // Send END delimiter
-        await Future.delayed(const Duration(milliseconds: 100));
-        await commandChar!.write(
-          utf8.encode('<END>'),
-          withoutResponse: !useWriteWithResponse,
-        );
+        await _sendCommandManually(stopCommand);
 
         // Wait for device to process stop command
         await Future.delayed(const Duration(milliseconds: 500));
@@ -2198,10 +2271,15 @@ class BleController extends GetxController {
           });
         }
 
-        // Check buffer size before writing
-        if (streamBuffer.length > maxBufferSize) {
+        final chunk = utf8.decode(data, allowMalformed: true);
+        AppHelpers.debugLog(
+          'Stream chunk received for device $deviceId: $chunk',
+        );
+
+        // FIX: Check buffer size BEFORE writing to prevent overflow
+        if (streamBuffer.length + chunk.length > maxBufferSize) {
           AppHelpers.debugLog(
-            '⚠️ Enhanced stream buffer overflow detected (${streamBuffer.length} bytes), clearing buffer',
+            '⚠️ Enhanced stream buffer would overflow (current: ${streamBuffer.length}, chunk: ${chunk.length}), clearing buffer',
           );
           streamBuffer.clear();
           errorMessage.value =
@@ -2209,10 +2287,6 @@ class BleController extends GetxController {
           return;
         }
 
-        final chunk = utf8.decode(data, allowMalformed: true);
-        AppHelpers.debugLog(
-          'Stream chunk received for device $deviceId: $chunk',
-        );
         streamBuffer.write(chunk);
 
         if (chunk.contains('<END>')) {
@@ -2401,32 +2475,7 @@ class BleController extends GetxController {
       // Send stop command manually FIRST (avoid sendCommand subscription conflict)
       if (commandChar != null) {
         final stopCommand = {"op": "read", "type": type, "device_id": "stop"};
-        String jsonStr = jsonEncode(stopCommand);
-        AppHelpers.debugLog('Sending enhanced stream stop command: $jsonStr');
-
-        const chunkSize = 18;
-        final bool useWriteWithResponse =
-            !(commandChar?.properties.writeWithoutResponse ?? false);
-
-        // Send command in chunks
-        for (int i = 0; i < jsonStr.length; i += chunkSize) {
-          String chunk = jsonStr.substring(
-            i,
-            (i + chunkSize > jsonStr.length) ? jsonStr.length : i + chunkSize,
-          );
-          await commandChar!.write(
-            utf8.encode(chunk),
-            withoutResponse: !useWriteWithResponse,
-          );
-          await Future.delayed(const Duration(milliseconds: 50));
-        }
-
-        // Send END delimiter
-        await Future.delayed(const Duration(milliseconds: 100));
-        await commandChar!.write(
-          utf8.encode('<END>'),
-          withoutResponse: !useWriteWithResponse,
-        );
+        await _sendCommandManually(stopCommand);
 
         // Wait for device to process stop command
         await Future.delayed(const Duration(milliseconds: 500));
