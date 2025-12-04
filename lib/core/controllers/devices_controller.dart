@@ -144,29 +144,7 @@ class DevicesController extends GetxController {
     selectedDevice.clear(); // Clear previous data to prevent stale state
 
     try {
-      // FIX: First try to get device from cache (dataDevices)
-      // Cache already has complete data from devices_summary (device_name, protocol, serial_port, etc.)
-      final cachedDevice = dataDevices.firstWhereOrNull(
-        (device) => device['device_id'] == deviceId,
-      );
-
-      if (cachedDevice != null) {
-        AppHelpers.debugLog(
-          'Found device $deviceId in cache, using cached data',
-        );
-        selectedDevice.assignAll([Map<String, dynamic>.from(cachedDevice)]);
-        AppHelpers.debugLog(
-          'Device loaded from cache: $deviceId (${cachedDevice['device_name']})',
-        );
-        return;
-      }
-
-      // If not in cache, fall back to BLE request
-      AppHelpers.debugLog(
-        'Device $deviceId not in cache, fetching from BLE...',
-      );
-
-      // Retry logic untuk handle timing issue (max 3 retry dengan 500ms delay)
+      // Check device connection with retry logic (max 3 retry dengan 500ms delay)
       if (!model.isConnected.value) {
         if (retryCount < 3) {
           AppHelpers.debugLog(

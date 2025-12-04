@@ -1116,7 +1116,11 @@ class BleController extends GetxController {
           }
 
           final chunk = utf8.decode(data, allowMalformed: true);
-          AppHelpers.debugLog('Notify chunk received: "$chunk"');
+          // Limit log output to prevent console truncation
+          final chunkPreview = chunk.length > 100
+              ? '${chunk.substring(0, 100)}... (${chunk.length} bytes total)'
+              : chunk;
+          AppHelpers.debugLog('Notify chunk received: "$chunkPreview"');
 
           // FIX: Python-style logic - check if chunk IS <END>, not contains
           if (chunk == '<END>') {
@@ -1557,7 +1561,11 @@ class BleController extends GetxController {
           }
 
           final chunk = utf8.decode(data, allowMalformed: true);
-          AppHelpers.debugLog('Notify chunk received: "$chunk"');
+          // Limit log output to prevent console truncation
+          final chunkPreview = chunk.length > 100
+              ? '${chunk.substring(0, 100)}... (${chunk.length} bytes total)'
+              : chunk;
+          AppHelpers.debugLog('Notify chunk received: "$chunkPreview"');
 
           // FIX: Same Python-style logic
           if (chunk == '<END>') {
@@ -2402,6 +2410,11 @@ class BleController extends GetxController {
                   'Keeping partial data for next chunk: ${parts.last.substring(0, parts.last.length > 30 ? 30 : parts.last.length)}...',
                 );
               }
+            } else {
+              // If buffer ends with <END>, all data is complete
+              // Cancel timeout to prevent false "inactive timeout" warning
+              _streamTimeout?.cancel();
+              AppHelpers.debugLog('Stream data complete, timeout cancelled');
             }
           } catch (e) {
             AppHelpers.debugLog('Enhanced stream parsing error: $e');
