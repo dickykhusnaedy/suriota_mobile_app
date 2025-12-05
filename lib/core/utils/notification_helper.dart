@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:gateway_config/core/utils/app_helpers.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class NotificationHelper {
@@ -11,7 +12,9 @@ class NotificationHelper {
   final FlutterLocalNotificationsPlugin _notifications =
       FlutterLocalNotificationsPlugin();
 
-  static const MethodChannel _channel = MethodChannel('com.gateway.config/file_manager');
+  static const MethodChannel _channel = MethodChannel(
+    'com.gateway.config/file_manager',
+  );
 
   bool _initialized = false;
 
@@ -21,7 +24,9 @@ class NotificationHelper {
     // Request notification permission for Android 13+
     await _requestNotificationPermission();
 
-    const androidSettings = AndroidInitializationSettings('@mipmap/launcher_icon');
+    const androidSettings = AndroidInitializationSettings(
+      '@mipmap/launcher_icon',
+    );
     const iosSettings = DarwinInitializationSettings(
       requestAlertPermission: true,
       requestBadgePermission: true,
@@ -49,14 +54,16 @@ class NotificationHelper {
 
   /// Check if the app was launched by tapping on a notification
   Future<void> _checkLaunchNotification() async {
-    final NotificationAppLaunchDetails? launchDetails =
-        await _notifications.getNotificationAppLaunchDetails();
+    final NotificationAppLaunchDetails? launchDetails = await _notifications
+        .getNotificationAppLaunchDetails();
 
     if (launchDetails != null && launchDetails.didNotificationLaunchApp) {
       // App was launched from notification
       final response = launchDetails.notificationResponse;
       if (response != null) {
-        print('App launched from notification with payload: ${response.payload}');
+        AppHelpers.debugLog(
+          'App launched from notification with payload: ${response.payload}',
+        );
         // Handle the notification that launched the app
         await _handleNotificationTap(response);
       }
@@ -72,36 +79,36 @@ class NotificationHelper {
 
   Future<void> _openFileManager(String filePath) async {
     try {
-      print('=== Opening File Manager ===');
-      print('File path: $filePath');
+      AppHelpers.debugLog('=== Opening File Manager ===');
+      AppHelpers.debugLog('File path: $filePath');
 
       if (!Platform.isAndroid) {
-        print('iOS not supported for file manager intent');
+        AppHelpers.debugLog('iOS not supported for file manager intent');
         return;
       }
 
       // Check if file exists
       final file = File(filePath);
       final fileExists = await file.exists();
-      print('File exists: $fileExists');
+      AppHelpers.debugLog('File exists: $fileExists');
 
       // Get the directory path
       final directory = file.parent;
       final directoryPath = directory.path;
-      print('Directory path: $directoryPath');
+      AppHelpers.debugLog('Directory path: $directoryPath');
 
       // Call native Android code to open file manager
       try {
         await _channel.invokeMethod('openFileManager', {
           'directoryPath': directoryPath,
         });
-        print('=== File Manager Opened Successfully ===');
+        AppHelpers.debugLog('=== File Manager Opened Successfully ===');
       } on PlatformException catch (e) {
-        print('Platform exception: ${e.message}');
-        print('Error code: ${e.code}');
+        AppHelpers.debugLog('Platform exception: ${e.message}');
+        AppHelpers.debugLog('Error code: ${e.code}');
       }
     } catch (e) {
-      print('Error opening file manager: $e');
+      AppHelpers.debugLog('Error opening file manager: $e');
     }
   }
 
@@ -142,13 +149,7 @@ class NotificationHelper {
       iOS: iosDetails,
     );
 
-    await _notifications.show(
-      id,
-      title,
-      message,
-      details,
-      payload: payload,
-    );
+    await _notifications.show(id, title, message, details, payload: payload);
   }
 
   Future<void> showDownloadSuccessNotification({

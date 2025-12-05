@@ -41,11 +41,9 @@ class DevicesController extends GetxController {
       final reason = dataDevices.isEmpty
           ? "empty"
           : hasUpdate
-              ? "data updated"
-              : "stale";
-      AppHelpers.debugLog(
-        'Cache is $reason, fetching fresh data...',
-      );
+          ? "data updated"
+          : "stale";
+      AppHelpers.debugLog('Cache is $reason, fetching fresh data...');
       await fetchDevices(model);
 
       // Reset updatedAt after fetch
@@ -143,9 +141,10 @@ class DevicesController extends GetxController {
     int retryCount = 0,
   }) async {
     isFetching.value = true;
+    selectedDevice.clear(); // Clear previous data to prevent stale state
 
     try {
-      // Retry logic untuk handle timing issue (max 3 retry dengan 500ms delay)
+      // Check device connection with retry logic (max 3 retry dengan 500ms delay)
       if (!model.isConnected.value) {
         if (retryCount < 3) {
           AppHelpers.debugLog(
@@ -180,12 +179,24 @@ class DevicesController extends GetxController {
         dynamic config = response.config;
 
         if (config is List) {
-          selectedDevice.assignAll(config.cast<Map<String, dynamic>>());
+          // Safe type conversion - handle Map<dynamic, dynamic>
+          final safeList = config.map((item) {
+            if (item is Map) {
+              return Map<String, dynamic>.from(item);
+            }
+            AppHelpers.debugLog(
+              'Warning: Non-map item in config list: ${item.runtimeType}',
+            );
+            return <String, dynamic>{};
+          }).toList();
+
+          selectedDevice.assignAll(safeList);
           AppHelpers.debugLog(
             'Device fetched successfully: $deviceId (${selectedDevice.length} items)',
           );
         } else if (config is Map) {
-          selectedDevice.assignAll([config.cast<String, dynamic>()]);
+          // Safe type conversion for single Map
+          selectedDevice.assignAll([Map<String, dynamic>.from(config)]);
           AppHelpers.debugLog(
             'Device fetched successfully: $deviceId (1 item)',
           );

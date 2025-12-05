@@ -89,8 +89,6 @@ class SettingsScreen extends StatelessWidget {
                 ),
                 AppSpacing.lg,
                 MenuSection(
-
-                  
                   title: 'Other',
                   items: [
                     MenuItem(
@@ -108,9 +106,7 @@ class SettingsScreen extends StatelessWidget {
                       title: 'Logout',
                       iconColor: AppColor.redColor,
                       titleColor: AppColor.redColor,
-                      onTap: () {
-                        // TODO: Implement logout
-                      },
+                      onTap: () {},
                     ),
                   ],
                 ),

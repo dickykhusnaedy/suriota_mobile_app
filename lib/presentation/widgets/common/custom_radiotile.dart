@@ -4,10 +4,7 @@ import 'package:gateway_config/core/constants/app_font.dart';
 import 'package:gateway_config/core/utils/extensions.dart';
 
 class CustomRadioTileController extends ValueNotifier<String?> {
-  CustomRadioTileController(String? initialValue) : super(initialValue);
-
-  String? get value => super.value;
-  set value(String? newValue) => super.value = newValue;
+  CustomRadioTileController(super.initialValue);
 }
 
 class CustomRadioTile extends StatefulWidget {
@@ -94,7 +91,9 @@ class _CustomRadioTileState extends State<CustomRadioTile> {
             overlayColor: const WidgetStatePropertyAll(Colors.transparent),
             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
             value: widget.value,
+            // ignore: deprecated_member_use
             groupValue: widget.grupValue,
+            // ignore: deprecated_member_use
             onChanged: (value) {
               setState(() {
                 // Update controller if provided

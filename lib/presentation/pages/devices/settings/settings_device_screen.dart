@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:gateway_config/core/constants/app_color.dart';
 import 'package:gateway_config/core/constants/app_gap.dart';
+import 'package:gateway_config/core/utils/app_helpers.dart';
 import 'package:gateway_config/core/utils/extensions.dart';
 import 'package:gateway_config/core/utils/notification_helper.dart';
 import 'package:gateway_config/core/utils/snackbar_custom.dart';
@@ -111,18 +112,18 @@ class _SettingsDeviceScreenState extends State<SettingsDeviceScreen> {
       return true; // iOS doesn't need permission for app documents
     }
 
-    print('=== Storage Permission Request ===');
+    AppHelpers.debugLog('=== Storage Permission Request ===');
 
     // Try Android 13+ permissions first (photos/media)
     // If not available, will automatically fall back to storage
     PermissionStatus photosStatus = await Permission.photos.status;
-    print('Photos Permission Status: $photosStatus');
+    AppHelpers.debugLog('Photos Permission Status: $photosStatus');
 
     // Check if photos permission is available (Android 13+)
     // On older Android, Permission.photos will return denied/restricted
     if (photosStatus != PermissionStatus.restricted) {
       // Android 13+ detected - use photos permission
-      print('Using Photos Permission (Android 13+)');
+      AppHelpers.debugLog('Using Photos Permission (Android 13+)');
 
       if (photosStatus.isGranted) {
         return true;
@@ -130,7 +131,7 @@ class _SettingsDeviceScreenState extends State<SettingsDeviceScreen> {
 
       // Request photos permission
       photosStatus = await Permission.photos.request();
-      print('Photos Permission After Request: $photosStatus');
+      AppHelpers.debugLog('Photos Permission After Request: $photosStatus');
 
       if (photosStatus.isGranted) {
         return true;
@@ -150,9 +151,9 @@ class _SettingsDeviceScreenState extends State<SettingsDeviceScreen> {
     }
 
     // Fallback to storage permission for Android 12 and below
-    print('Using Storage Permission (Android 12 and below)');
+    AppHelpers.debugLog('Using Storage Permission (Android 12 and below)');
     PermissionStatus storageStatus = await Permission.storage.status;
-    print('Storage Permission Status: $storageStatus');
+    AppHelpers.debugLog('Storage Permission Status: $storageStatus');
 
     if (storageStatus.isGranted) {
       return true;
@@ -160,7 +161,7 @@ class _SettingsDeviceScreenState extends State<SettingsDeviceScreen> {
 
     // Request storage permission
     storageStatus = await Permission.storage.request();
-    print('Storage Permission After Request: $storageStatus');
+    AppHelpers.debugLog('Storage Permission After Request: $storageStatus');
 
     if (storageStatus.isGranted) {
       return true;
@@ -197,10 +198,12 @@ class _SettingsDeviceScreenState extends State<SettingsDeviceScreen> {
       }, useGlobalLoading: false);
 
       if (response.status == 'ok' || response.status == 'success') {
-        print('=== BLE Response Received ===');
-        print('Response status: ${response.status}');
-        print('Response has backup_info: ${response.backupInfo != null}');
-        print('Response has config: ${response.config != null}');
+        AppHelpers.debugLog('=== BLE Response Received ===');
+        AppHelpers.debugLog('Response status: ${response.status}');
+        AppHelpers.debugLog(
+          'Response has backup_info: ${response.backupInfo != null}',
+        );
+        AppHelpers.debugLog('Response has config: ${response.config != null}');
 
         // Extract backup info for display
         final backupInfo = response.backupInfo;
@@ -234,22 +237,26 @@ class _SettingsDeviceScreenState extends State<SettingsDeviceScreen> {
           "config": response.config,
         };
 
-        print('Backup info: ${backup["backup_info"]}');
+        AppHelpers.debugLog('Backup info: ${backup["backup_info"]}');
 
         // Calculate devices count from config
         final configMap = response.config is Map
             ? response.config as Map
             : null;
         final devicesCount = configMap?["devices"]?.length ?? 0;
-        print('Config devices count: $devicesCount');
+        AppHelpers.debugLog('Config devices count: $devicesCount');
 
         if (response.backupInfo != null) {
-          print(
+          AppHelpers.debugLog(
             'Firmware version: ${response.backupInfo!["firmware_version"]}',
           );
-          print('Total devices: ${response.backupInfo!["total_devices"]}');
-          print('Total registers: ${response.backupInfo!["total_registers"]}');
-          print(
+          AppHelpers.debugLog(
+            'Total devices: ${response.backupInfo!["total_devices"]}',
+          );
+          AppHelpers.debugLog(
+            'Total registers: ${response.backupInfo!["total_registers"]}',
+          );
+          AppHelpers.debugLog(
             'Backup size: ${response.backupInfo!["backup_size_bytes"]} bytes',
           );
         }
@@ -279,15 +286,15 @@ class _SettingsDeviceScreenState extends State<SettingsDeviceScreen> {
             final publicPath = externalDir.path.split('/Android/data/')[0];
             directory = Directory('$publicPath/Documents/GatewayConfig/backup');
 
-            print('=== Saving Backup File ===');
-            print('Target Directory: ${directory.path}');
+            AppHelpers.debugLog('=== Saving Backup File ===');
+            AppHelpers.debugLog('Target Directory: ${directory.path}');
           }
         } else {
           // iOS uses app documents directory
           directory = await getApplicationDocumentsDirectory();
           directory = Directory('${directory.path}/GatewayConfig/backup');
-          print('=== Saving Backup File (iOS) ===');
-          print('Target Directory: ${directory.path}');
+          AppHelpers.debugLog('=== Saving Backup File (iOS) ===');
+          AppHelpers.debugLog('Target Directory: ${directory.path}');
         }
 
         if (directory == null) {
@@ -296,34 +303,34 @@ class _SettingsDeviceScreenState extends State<SettingsDeviceScreen> {
 
         // Create directory if not exists
         if (!await directory.exists()) {
-          print('Creating directory: ${directory.path}');
+          AppHelpers.debugLog('Creating directory: ${directory.path}');
           await directory.create(recursive: true);
-          print('✅ Directory created successfully');
+          AppHelpers.debugLog('✅ Directory created successfully');
         } else {
-          print('✅ Directory already exists');
+          AppHelpers.debugLog('✅ Directory already exists');
         }
 
         // Verify directory is writable
-        print('Directory path: ${directory.path}');
-        print('Directory exists: ${await directory.exists()}');
+        AppHelpers.debugLog('Directory path: ${directory.path}');
+        AppHelpers.debugLog('Directory exists: ${await directory.exists()}');
 
         // Save file
         filePath = '${directory.path}/$filename';
         final file = File(filePath);
 
-        print('=== Writing Backup File ===');
-        print('Full file path: $filePath');
-        print('File name: $filename');
+        AppHelpers.debugLog('=== Writing Backup File ===');
+        AppHelpers.debugLog('Full file path: $filePath');
+        AppHelpers.debugLog('File name: $filename');
 
         await file.writeAsString(jsonEncode(backup));
 
-        print('✅ File written successfully');
+        AppHelpers.debugLog('✅ File written successfully');
 
         // Verify file exists
         final fileExists = await file.exists();
         final fileSize = await file.length();
-        print('File exists: $fileExists');
-        print('File size: $fileSize bytes');
+        AppHelpers.debugLog('File exists: $fileExists');
+        AppHelpers.debugLog('File size: $fileSize bytes');
 
         setState(() {
           setState(() {
@@ -354,9 +361,9 @@ class _SettingsDeviceScreenState extends State<SettingsDeviceScreen> {
           filePath: filePath, // Use full path, not displayPath
         );
 
-        print('=== Backup Complete ===');
-        print('Full path: $filePath');
-        print('Display path: $displayPath');
+        AppHelpers.debugLog('=== Backup Complete ===');
+        AppHelpers.debugLog('Full path: $filePath');
+        AppHelpers.debugLog('Display path: $displayPath');
       } else {
         setState(() {
           setState(() {
@@ -570,6 +577,9 @@ class _SettingsDeviceScreenState extends State<SettingsDeviceScreen> {
               Colors.green,
               AppColor.whiteColor,
             );
+
+            // Clear device data and register data from controllers
+            widget.model.clearData();
 
             // Wait 3 seconds after snackbar before navigating to home
             await Future.delayed(const Duration(seconds: 3));

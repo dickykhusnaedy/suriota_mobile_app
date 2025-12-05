@@ -543,12 +543,12 @@ class _ModbusScreenState extends State<ModbusScreen> {
               ),
             ),
             AppSpacing.sm,
-            // Kolom Kanan: Action Buttons
+            // Action Buttons (di samping kanan)
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _buildIconButton(
-                  icon: Icons.edit,
+                _buildCircularActionButton(
+                  icon: Icons.edit_outlined,
                   color: AppColor.primaryColor,
                   onPressed: () {
                     context.push(
@@ -556,9 +556,9 @@ class _ModbusScreenState extends State<ModbusScreen> {
                     );
                   },
                 ),
-                AppSpacing.xs,
-                _buildIconButton(
-                  icon: Icons.delete,
+                const SizedBox(width: 8),
+                _buildCircularActionButton(
+                  icon: Icons.delete_outline,
                   color: AppColor.redColor,
                   onPressed: selectedDevice != null
                       ? () => _deleteDataModbus(
@@ -597,34 +597,26 @@ class _ModbusScreenState extends State<ModbusScreen> {
     );
   }
 
-  Widget _buildIconButton({
+  Widget _buildCircularActionButton({
     required IconData icon,
     required Color color,
     VoidCallback? onPressed,
   }) {
-    return Container(
-      width: 32,
-      height: 32,
-      decoration: BoxDecoration(
-        color: onPressed != null ? color : AppColor.grey,
-        borderRadius: BorderRadius.circular(6),
-        boxShadow: [
-          BoxShadow(
-            color: (onPressed != null ? color : AppColor.grey).withValues(
-              alpha: 0.25,
-            ),
-            blurRadius: 3,
-            offset: const Offset(0, 1),
+    return Material(
+      color: (onPressed != null ? color : AppColor.grey).withValues(alpha: 0.1),
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          width: 40,
+          height: 40,
+          alignment: Alignment.center,
+          child: Icon(
+            icon,
+            size: 18,
+            color: onPressed != null ? color : AppColor.grey,
           ),
-        ],
-      ),
-      child: IconButton(
-        onPressed: onPressed,
-        icon: Icon(icon, size: 14, color: AppColor.whiteColor),
-        padding: EdgeInsets.zero,
-        constraints: const BoxConstraints(),
-        style: IconButton.styleFrom(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
         ),
       ),
     );

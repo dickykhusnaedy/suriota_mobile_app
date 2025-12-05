@@ -9,6 +9,7 @@ import 'package:gateway_config/core/utils/snackbar_custom.dart';
 import 'package:gateway_config/models/device_model.dart';
 import 'package:gateway_config/models/dropdown_items.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_alert_dialog.dart';
+import 'package:gateway_config/presentation/widgets/common/custom_button.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_textfield.dart';
 import 'package:gateway_config/presentation/widgets/common/dropdown.dart';
 import 'package:gateway_config/presentation/widgets/common/loading_overlay.dart';
@@ -256,152 +257,366 @@ class _FormSetupDeviceScreenState extends State<FormSetupDeviceScreen> {
   }
 
   SafeArea _body(BuildContext context) {
-    return SafeArea(
-      child: SingleChildScrollView(
-        padding: AppPadding.horizontalMedium,
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              AppSpacing.md,
-              CustomTextFormField(
-                controller: deviceNameController,
-                labelTxt: 'Device Name',
-                hintTxt: 'Enter the device name',
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Device name is required';
-                  }
-                  if (value.length > 50) {
-                    return 'Device name too long (max 50 characters)';
-                  }
-                  return null;
-                },
-                readOnly: false,
-                isRequired: true,
-              ),
-              AppSpacing.md,
-              CustomTextFormField(
-                controller: slaveIdController,
-                labelTxt: 'Slave ID',
-                hintTxt: 'Enter the slave ID',
-                keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Slave ID is required';
-                  }
-                  return null;
-                },
-                readOnly: false,
-                isRequired: true,
-              ),
-              AppSpacing.md,
-              SectionDivider(
-                title: 'Protocol Selection',
-                icon: Icons.settings_input_antenna,
-              ),
-              AppSpacing.md,
-              _buildModbusTypeSelector(),
-              AppSpacing.md,
-              SectionDivider(
-                title: 'Modbus $modBusSelected Configuration',
-                icon: Icons.tune,
-              ),
-              AppSpacing.md,
-              modBusSelected == 'RTU'
-                  ? _formRS485Wrapper()
-                  : _formTCPIPWrapper(),
-              AppSpacing.md,
-              SectionDivider(
-                title: 'Advanced Settings',
-                icon: Icons.settings_suggest,
-              ),
-              AppSpacing.md,
-              CustomTextFormField(
-                controller: retryCountController,
-                labelTxt: 'Retry Count',
-                hintTxt: 'ex. 3',
-                keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Retry count is required';
-                  }
-                  return null;
-                },
-                isRequired: true,
-              ),
-              AppSpacing.md,
-              CustomTextFormField(
-                controller: connectionTimeoutController,
-                labelTxt: 'Connect Timeout',
-                hintTxt: 'ex. 3000',
-                keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Timeout is required';
-                  }
-
-                  final timeout = ThousandsSeparatorInputFormatter.getIntValue(
-                    value,
-                  );
-                  if (timeout == null || timeout <= 0) {
-                    return 'Enter a valid positive number';
-                  }
-
-                  return null;
-                },
-                suffixIcon: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      'm/s',
-                      style: context.bodySmall.copyWith(color: AppColor.grey),
-                    ),
-                  ],
+    // For create mode (deviceId is null), no need for Obx - return form directly
+    if (widget.deviceId == null) {
+      return SafeArea(
+        child: SingleChildScrollView(
+          padding: AppPadding.horizontalMedium,
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AppSpacing.md,
+                CustomTextFormField(
+                  controller: deviceNameController,
+                  labelTxt: 'Device Name',
+                  hintTxt: 'Enter the device name',
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Device name is required';
+                    }
+                    if (value.length > 50) {
+                      return 'Device name too long (max 50 characters)';
+                    }
+                    return null;
+                  },
+                  readOnly: false,
+                  isRequired: true,
                 ),
-                isRequired: true,
-              ),
-              AppSpacing.md,
-              CustomTextFormField(
-                controller: refreshRateController,
-                labelTxt: 'Refresh Rate',
-                hintTxt: 'ex. 5000',
-                keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Refresh rate is required';
-                  }
-                  final num = ThousandsSeparatorInputFormatter.getIntValue(
-                    value,
-                  );
-                  if (num == null || num <= 0) {
-                    return 'Enter a valid positive number';
-                  }
-                  return null;
-                },
-                suffixIcon: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      'm/s',
-                      style: context.bodySmall.copyWith(color: AppColor.grey),
-                    ),
-                  ],
+                AppSpacing.md,
+                CustomTextFormField(
+                  controller: slaveIdController,
+                  labelTxt: 'Slave ID',
+                  hintTxt: 'Enter the slave ID',
+                  keyboardType: TextInputType.number,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Slave ID is required';
+                    }
+                    return null;
+                  },
+                  readOnly: false,
+                  isRequired: true,
                 ),
-                isRequired: true,
-              ),
-              AppSpacing.lg,
-              GradientButton(
-                text: widget.deviceId != null
-                    ? 'Update Device Configuration'
-                    : 'Save Device Configuration',
-                icon: widget.deviceId != null ? Icons.update : Icons.save,
-                onPressed: _submit,
-              ),
-              AppSpacing.lg,
-            ],
+                AppSpacing.md,
+                SectionDivider(
+                  title: 'Protocol Selection',
+                  icon: Icons.settings_input_antenna,
+                ),
+                AppSpacing.md,
+                _buildModbusTypeSelector(),
+                AppSpacing.md,
+                SectionDivider(
+                  title: 'Modbus $modBusSelected Configuration',
+                  icon: Icons.tune,
+                ),
+                AppSpacing.md,
+                modBusSelected == 'RTU'
+                    ? _formRS485Wrapper()
+                    : _formTCPIPWrapper(),
+                AppSpacing.md,
+                SectionDivider(
+                  title: 'Advanced Settings',
+                  icon: Icons.settings_suggest,
+                ),
+                AppSpacing.md,
+                CustomTextFormField(
+                  controller: retryCountController,
+                  labelTxt: 'Retry Count',
+                  hintTxt: 'ex. 3',
+                  keyboardType: TextInputType.number,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Retry count is required';
+                    }
+                    return null;
+                  },
+                  isRequired: true,
+                ),
+                AppSpacing.md,
+                CustomTextFormField(
+                  controller: connectionTimeoutController,
+                  labelTxt: 'Connect Timeout',
+                  hintTxt: 'ex. 3000',
+                  keyboardType: TextInputType.number,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Timeout is required';
+                    }
+
+                    final timeout =
+                        ThousandsSeparatorInputFormatter.getIntValue(value);
+                    if (timeout == null || timeout <= 0) {
+                      return 'Enter a valid positive number';
+                    }
+
+                    return null;
+                  },
+                  suffixIcon: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'm/s',
+                        style: context.bodySmall.copyWith(color: AppColor.grey),
+                      ),
+                    ],
+                  ),
+                  isRequired: true,
+                ),
+                AppSpacing.md,
+                CustomTextFormField(
+                  controller: refreshRateController,
+                  labelTxt: 'Refresh Rate',
+                  hintTxt: 'ex. 5000',
+                  keyboardType: TextInputType.number,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Refresh rate is required';
+                    }
+                    final num = ThousandsSeparatorInputFormatter.getIntValue(
+                      value,
+                    );
+                    if (num == null || num <= 0) {
+                      return 'Enter a valid positive number';
+                    }
+                    return null;
+                  },
+                  suffixIcon: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'm/s',
+                        style: context.bodySmall.copyWith(color: AppColor.grey),
+                      ),
+                    ],
+                  ),
+                  isRequired: true,
+                ),
+                AppSpacing.lg,
+                GradientButton(
+                  text: 'Save Device Configuration',
+                  icon: Icons.save,
+                  onPressed: _submit,
+                ),
+                AppSpacing.lg,
+              ],
+            ),
           ),
+        ),
+      );
+    }
+
+    // For edit mode (deviceId is not null), use Obx for reactive state
+    return SafeArea(
+      child: Obx(() {
+        // Show error state ONLY if:
+        // 1. deviceId is provided (edit mode) - already checked above
+        // 2. NOT currently fetching (loading selesai)
+        // 3. selectedDevice is empty (fetch failed or device not found)
+        if (!devicesController.isFetching.value &&
+            devicesController.selectedDevice.isEmpty) {
+          return _buildErrorState();
+        }
+
+        // Show form (during loading or when data exists)
+        return SingleChildScrollView(
+          padding: AppPadding.horizontalMedium,
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AppSpacing.md,
+                CustomTextFormField(
+                  controller: deviceNameController,
+                  labelTxt: 'Device Name',
+                  hintTxt: 'Enter the device name',
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Device name is required';
+                    }
+                    if (value.length > 50) {
+                      return 'Device name too long (max 50 characters)';
+                    }
+                    return null;
+                  },
+                  readOnly: false,
+                  isRequired: true,
+                ),
+                AppSpacing.md,
+                CustomTextFormField(
+                  controller: slaveIdController,
+                  labelTxt: 'Slave ID',
+                  hintTxt: 'Enter the slave ID',
+                  keyboardType: TextInputType.number,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Slave ID is required';
+                    }
+                    return null;
+                  },
+                  readOnly: false,
+                  isRequired: true,
+                ),
+                AppSpacing.md,
+                SectionDivider(
+                  title: 'Protocol Selection',
+                  icon: Icons.settings_input_antenna,
+                ),
+                AppSpacing.md,
+                _buildModbusTypeSelector(),
+                AppSpacing.md,
+                SectionDivider(
+                  title: 'Modbus $modBusSelected Configuration',
+                  icon: Icons.tune,
+                ),
+                AppSpacing.md,
+                modBusSelected == 'RTU'
+                    ? _formRS485Wrapper()
+                    : _formTCPIPWrapper(),
+                AppSpacing.md,
+                SectionDivider(
+                  title: 'Advanced Settings',
+                  icon: Icons.settings_suggest,
+                ),
+                AppSpacing.md,
+                CustomTextFormField(
+                  controller: retryCountController,
+                  labelTxt: 'Retry Count',
+                  hintTxt: 'ex. 3',
+                  keyboardType: TextInputType.number,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Retry count is required';
+                    }
+                    return null;
+                  },
+                  isRequired: true,
+                ),
+                AppSpacing.md,
+                CustomTextFormField(
+                  controller: connectionTimeoutController,
+                  labelTxt: 'Connect Timeout',
+                  hintTxt: 'ex. 3000',
+                  keyboardType: TextInputType.number,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Timeout is required';
+                    }
+
+                    final timeout =
+                        ThousandsSeparatorInputFormatter.getIntValue(value);
+                    if (timeout == null || timeout <= 0) {
+                      return 'Enter a valid positive number';
+                    }
+
+                    return null;
+                  },
+                  suffixIcon: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'm/s',
+                        style: context.bodySmall.copyWith(color: AppColor.grey),
+                      ),
+                    ],
+                  ),
+                  isRequired: true,
+                ),
+                AppSpacing.md,
+                CustomTextFormField(
+                  controller: refreshRateController,
+                  labelTxt: 'Refresh Rate',
+                  hintTxt: 'ex. 5000',
+                  keyboardType: TextInputType.number,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Refresh rate is required';
+                    }
+                    final num = ThousandsSeparatorInputFormatter.getIntValue(
+                      value,
+                    );
+                    if (num == null || num <= 0) {
+                      return 'Enter a valid positive number';
+                    }
+                    return null;
+                  },
+                  suffixIcon: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'm/s',
+                        style: context.bodySmall.copyWith(color: AppColor.grey),
+                      ),
+                    ],
+                  ),
+                  isRequired: true,
+                ),
+                AppSpacing.lg,
+                GradientButton(
+                  text: widget.deviceId != null
+                      ? 'Update Device Configuration'
+                      : 'Save Device Configuration',
+                  icon: widget.deviceId != null ? Icons.update : Icons.save,
+                  onPressed: _submit,
+                ),
+                AppSpacing.lg,
+              ],
+            ),
+          ),
+        );
+      }),
+    );
+  }
+
+  Widget _buildErrorState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 64, color: AppColor.redColor),
+            AppSpacing.md,
+            Text(
+              'Failed to load device data',
+              style: context.h6.copyWith(fontWeight: FontWeight.bold),
+            ),
+            AppSpacing.sm,
+            Text(
+              'Could not retrieve device information. Please ensure the device is connected and try again.',
+              style: context.bodySmall.copyWith(color: AppColor.grey),
+              textAlign: TextAlign.center,
+            ),
+            AppSpacing.lg,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Button(
+                  onPressed: () async {
+                    await devicesController.getDeviceById(
+                      widget.model,
+                      widget.deviceId!,
+                    );
+                  },
+                  text: 'Retry',
+                  width: 120,
+                  height: 40,
+                ),
+                const SizedBox(width: 12),
+                Button(
+                  onPressed: () {
+                    Get.back();
+                  },
+                  text: 'Back',
+                  width: 120,
+                  height: 40,
+                  btnColor: AppColor.grey,
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );

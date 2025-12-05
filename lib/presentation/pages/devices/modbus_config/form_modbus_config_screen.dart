@@ -11,6 +11,7 @@ import 'package:gateway_config/core/utils/snackbar_custom.dart';
 import 'package:gateway_config/models/device_model.dart';
 import 'package:gateway_config/models/dropdown_items.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_alert_dialog.dart';
+import 'package:gateway_config/presentation/widgets/common/custom_button.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_textfield.dart';
 import 'package:gateway_config/presentation/widgets/common/dropdown.dart';
 import 'package:gateway_config/presentation/widgets/common/loading_overlay.dart';
@@ -67,6 +68,7 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
 
   String? selectedDevice;
   String? selectedFunction;
+  String? selectedFunctionText;
   String? selectedTypeData;
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
@@ -85,6 +87,15 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
         _fillFormFromDevice(dataList[0]);
       }
     });
+
+    // Initialize selectedDevice for create mode
+    // In create mode, deviceId is passed but registerId is null
+    if (widget.deviceId != null && widget.registerId == null) {
+      selectedDevice = widget.deviceId;
+      AppHelpers.debugLog(
+        'Initialized selectedDevice for create mode: $selectedDevice',
+      );
+    }
 
     // Fetch data after widget build - already using async callback
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -163,6 +174,7 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
               "address": _tryParseInt(addressController.text),
               "register_name": _sanitizeInput(deviceNameController.text),
               "function_code": _tryParseInt(selectedFunction),
+              "type": selectedFunctionText,
               "data_type": selectedTypeData,
               "description": descriptionController.text,
               "scale": _tryParseDouble(scaleController.text, defaultValue: 1.0),
@@ -173,6 +185,12 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
               "unit": unitController.text.isEmpty ? '' : unitController.text,
             },
           };
+
+          // Debug: Log form data before sending
+          AppHelpers.debugLog('Sending register formData: $formData');
+          AppHelpers.debugLog('selectedDevice: $selectedDevice');
+          AppHelpers.debugLog('selectedFunction: $selectedFunction');
+          AppHelpers.debugLog('selectedTypeData: $selectedTypeData');
 
           await bleController.sendCommand(formData);
 
@@ -211,6 +229,7 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
     offsetController.dispose();
     unitController.dispose();
     isInitialized = false;
+
     super.dispose();
   }
 
@@ -256,6 +275,84 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
           ),
         )
         .toList();
+
+    // For create mode (deviceId or registerId is null), no need for Obx - return form directly
+    if (widget.deviceId == null || widget.registerId == null) {
+      return SafeArea(child: _buildForm(context, deviceItem));
+    }
+
+    // For edit mode (both deviceId and registerId are not null), use Obx for reactive state
+    return SafeArea(
+      child: Obx(() {
+        // Show error state ONLY if:
+        // 1. deviceId and registerId are provided (edit mode) - already checked above
+        // 2. NOT currently fetching (loading selesai)
+        // 3. selectedModbus is empty (fetch failed or register not found)
+        if (!modbusController.isFetching.value &&
+            modbusController.selectedModbus.isEmpty) {
+          return _buildErrorState();
+        }
+
+        // Show form (during loading or when data exists)
+        return _buildForm(context, deviceItem);
+      }),
+    );
+  }
+
+  Widget _buildErrorState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 64, color: AppColor.redColor),
+            AppSpacing.md,
+            Text(
+              'Failed to load register data',
+              style: context.h6.copyWith(fontWeight: FontWeight.bold),
+            ),
+            AppSpacing.sm,
+            Text(
+              'Could not retrieve register information. Please ensure the device is connected and try again.',
+              style: context.bodySmall.copyWith(color: AppColor.grey),
+              textAlign: TextAlign.center,
+            ),
+            AppSpacing.lg,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Button(
+                  onPressed: () async {
+                    await modbusController.getDeviceById(
+                      widget.model,
+                      widget.deviceId!,
+                      widget.registerId!,
+                    );
+                  },
+                  text: 'Retry',
+                  width: 120,
+                  height: 40,
+                ),
+                const SizedBox(width: 12),
+                Button(
+                  onPressed: () {
+                    Get.back();
+                  },
+                  text: 'Back',
+                  width: 120,
+                  height: 40,
+                  btnColor: AppColor.grey,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildForm(BuildContext context, List<DropdownItems> deviceItem) {
     return SafeArea(
       child: SingleChildScrollView(
         padding: AppPadding.horizontalMedium,
@@ -299,7 +396,8 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
                   return null;
                 },
                 isRequired: true,
-                isDisabled: widget.registerId != null,
+                // Disable if in edit mode OR if deviceId is provided (create from device detail)
+                isDisabled: widget.deviceId != null,
               ),
               AppSpacing.md,
               CustomTextFormField(
@@ -332,6 +430,7 @@ class _FormModbusConfigScreenState extends State<FormModbusConfigScreen> {
                 onChanged: (item) {
                   setState(() {
                     selectedFunction = item!.value;
+                    selectedFunctionText = item.text;
                   });
                 },
                 validator: (value) {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:gateway_config/core/constants/app_color.dart';
 import 'package:gateway_config/core/constants/app_gap.dart';
+import 'package:gateway_config/core/utils/app_helpers.dart';
 import 'package:gateway_config/core/utils/extensions.dart';
 import 'package:gateway_config/presentation/widgets/common/custom_button.dart';
 import 'package:get/get.dart';
@@ -8,16 +9,6 @@ import 'package:permission_handler/permission_handler.dart';
 
 class BluetoothPermissionService extends GetxController {
   static Future<bool> checkAndRequestPermissions(BuildContext context) async {
-    // First check current status before requesting
-    print('=== Checking Initial Permission Status ===');
-    var bluetoothScanStatus = await Permission.bluetoothScan.status;
-    var bluetoothConnectStatus = await Permission.bluetoothConnect.status;
-    var locationStatus = await Permission.locationWhenInUse.status;
-
-    print('BluetoothScan: $bluetoothScanStatus');
-    print('BluetoothConnect: $bluetoothConnectStatus');
-    print('LocationWhenInUse: $locationStatus');
-
     // Define required permissions based on platform and Android version
     List<Permission> requiredPermissions = [
       Permission.bluetoothScan,
@@ -25,18 +16,14 @@ class BluetoothPermissionService extends GetxController {
       Permission.locationWhenInUse,
     ];
 
-    // NOTE: Storage permission is NOT requested at startup
-    // It will be requested later when user actually needs it (backup/restore)
-    // See settings_device_screen.dart for storage permission handling
-
     // Request permissions
-    print('=== Requesting Permissions ===');
+
     final statuses = await requiredPermissions.request();
 
     // Debug: Print permission statuses
-    print('=== Permission Statuses ===');
+
     statuses.forEach((permission, status) {
-      print(
+      AppHelpers.debugLog(
         '$permission: $status (isGranted: ${status.isGranted}, isPermanentlyDenied: ${status.isPermanentlyDenied})',
       );
     });
@@ -48,8 +35,6 @@ class BluetoothPermissionService extends GetxController {
         (statuses[Permission.bluetoothConnect]?.isGranted ?? false) &&
         (statuses[Permission.locationWhenInUse]?.isGranted ?? false);
 
-    print('Critical Permissions Granted: $criticalPermissionsGranted');
-
     // If critical permissions not granted, check if any are permanently denied
     if (!criticalPermissionsGranted) {
       // Check if any CRITICAL permission is permanently denied
@@ -60,20 +45,16 @@ class BluetoothPermissionService extends GetxController {
           (statuses[Permission.locationWhenInUse]?.isPermanentlyDenied ??
               false);
 
-      print('Critical Permanently Denied: $criticalPermanentlyDenied');
-
       if (criticalPermanentlyDenied) {
         // Show bottom sheet to guide user to settings
         // ignore: use_build_context_synchronously
         await _showPermissionBottomSheet(context, isDenied: false);
 
         // Re-check permissions after user returns from settings
-        print('=== Re-checking Permissions After Settings ===');
+
         final recheckStatuses = await requiredPermissions.request();
 
-        recheckStatuses.forEach((permission, status) {
-          print('$permission: $status (isGranted: ${status.isGranted})');
-        });
+        recheckStatuses.forEach((permission, status) {});
 
         criticalPermissionsGranted =
             (recheckStatuses[Permission.bluetoothScan]?.isGranted ?? false) &&
@@ -81,7 +62,7 @@ class BluetoothPermissionService extends GetxController {
                 false) &&
             (recheckStatuses[Permission.locationWhenInUse]?.isGranted ?? false);
 
-        print(
+        AppHelpers.debugLog(
           'Critical Permissions After Recheck: $criticalPermissionsGranted',
         );
       } else {
@@ -90,7 +71,7 @@ class BluetoothPermissionService extends GetxController {
         await _showPermissionBottomSheet(context, isDenied: true);
 
         // Re-request after user sees the explanation
-        print('=== Re-requesting Permissions ===');
+
         final recheckStatuses = await requiredPermissions.request();
 
         criticalPermissionsGranted =
@@ -99,13 +80,12 @@ class BluetoothPermissionService extends GetxController {
                 false) &&
             (recheckStatuses[Permission.locationWhenInUse]?.isGranted ?? false);
 
-        print(
+        AppHelpers.debugLog(
           'Critical Permissions After Re-request: $criticalPermissionsGranted',
         );
       }
     }
 
-    print('Final Result: $criticalPermissionsGranted');
     return criticalPermissionsGranted;
   }
 
@@ -117,9 +97,9 @@ class BluetoothPermissionService extends GetxController {
       context: context,
       isDismissible:
           !isDenied, // Can dismiss if just denied, not if permanently denied
-      enableDrag: !isDenied,
+      enableDrag     : !isDenied,
       backgroundColor: AppColor.whiteColor,
-      shape: const RoundedRectangleBorder(
+      shape          : const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (sheetContext) {

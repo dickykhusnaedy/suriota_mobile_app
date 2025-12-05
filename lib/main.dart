@@ -78,6 +78,7 @@ class GlobalLoadingWrapper extends StatelessWidget {
                       ? controller.message.value
                       : controller.errorMessage.value,
                 );
+                
               }),
             ],
           ),
@@ -86,3 +87,4 @@ class GlobalLoadingWrapper extends StatelessWidget {
     );
   }
 }
+

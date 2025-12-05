@@ -62,11 +62,13 @@ class _DisplayDataPageState extends State<DisplayDataPage> {
     // Listener untuk selectedDevice
     _worker = ever(devicesController.selectedDevice, (dataList) {
       if (!mounted) return;
-      if (dataList.isNotEmpty) {
-        setState(() {
+      setState(() {
+        if (dataList.isNotEmpty) {
           dataDevice = dataList[0];
-        });
-      }
+        } else {
+          dataDevice = {};
+        }
+      });
     });
 
     // Listener untuk streamedData dari BLE dengan logika device tracking
@@ -371,6 +373,12 @@ class _DisplayDataPageState extends State<DisplayDataPage> {
           if (devicesController.isFetching.value) {
             return const LoadingProgress();
           }
+
+          // FIX: Handle empty dataDevice (fetch failed or returned no data)
+          if (dataDevice.isEmpty) {
+            return _buildErrorState();
+          }
+
           return Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -387,6 +395,43 @@ class _DisplayDataPageState extends State<DisplayDataPage> {
           );
         }),
       ],
+    );
+  }
+
+  Widget _buildErrorState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 64, color: AppColor.redColor),
+            AppSpacing.md,
+            Text(
+              'Failed to load device data',
+              style: context.h6.copyWith(fontWeight: FontWeight.bold),
+            ),
+            AppSpacing.sm,
+            Text(
+              'Could not retrieve device information. Please ensure the device is connected and try again.',
+              style: context.bodySmall.copyWith(color: AppColor.grey),
+              textAlign: TextAlign.center,
+            ),
+            AppSpacing.lg,
+            Button(
+              onPressed: () async {
+                await devicesController.getDeviceById(
+                  widget.model,
+                  widget.deviceId,
+                );
+              },
+              text: 'Retry',
+              width: 120,
+              height: 40,
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -417,8 +462,9 @@ class _DisplayDataPageState extends State<DisplayDataPage> {
             ),
             _buildInfoBadge(
               icon: Icons.power,
-              label:
-                  'Serial Port: ${dataDevice['serial_port']?.toString() ?? ''}',
+              label: dataDevice.containsKey('serial_port')
+                  ? 'Serial Port: ${dataDevice['serial_port']?.toString() ?? ''}'
+                  : 'Port: ${dataDevice['port']?.toString() ?? ''}',
             ),
           ],
         ),
