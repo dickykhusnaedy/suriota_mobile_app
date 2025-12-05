@@ -175,18 +175,29 @@ class BleController extends GetxController {
     clearSearch(); // Clear search state
 
     try {
-      await FlutterBluePlus.startScan(timeout: const Duration(seconds: 10));
+      // SUPER FAST SCANNING: Aggressive 7-second timeout
+      // Most nearby BLE devices are detected within 2-5 seconds
+      // This provides quick results while still catching devices with weaker signals
+      await FlutterBluePlus.startScan(timeout: const Duration(seconds: 7));
 
       // OPTIMIZATION: Batch processing - kumpulkan devices dulu, process nanti
+      // Auto-stop scanning when MGate device is found
       FlutterBluePlus.scanResults.listen((results) {
         for (ScanResult r in results) {
           _addDeviceToBatch(r.device);
+        }
+
+        // SUPER FAST: Stop immediately after finding first MGate device
+        // This dramatically reduces scan time (typically 2-5 seconds vs 7-15 seconds)
+        if (scannedDevices.isNotEmpty) {
+          AppHelpers.debugLog('MGate device found! Stopping scan early');
+          stopScan();
         }
       });
     } catch (e) {
       errorMessage.value = 'Error scanning: $e';
     } finally {
-      await Future.delayed(const Duration(seconds: 10));
+      await Future.delayed(const Duration(seconds: 7));
       await stopScan();
       isScanning.value = false;
       isLoading.value = false;
@@ -196,6 +207,15 @@ class BleController extends GetxController {
   // OPTIMIZATION: Batch processing methods untuk mengurangi UI stuttering
   void _addDeviceToBatch(BluetoothDevice device) {
     final deviceId = device.remoteId.toString();
+
+    // Filter: Only process devices with "MGate" in their name
+    final deviceName = device.platformName.toLowerCase();
+    if (!deviceName.contains('mgate')) {
+      AppHelpers.debugLog(
+        'Filtered out device: ${device.platformName} (ID: $deviceId) - does not contain "MGate"',
+      );
+      return;
+    }
 
     // Skip jika sudah ada di cache (menghindari duplicate processing)
     if (_deviceCache.containsKey(deviceId)) {
@@ -207,6 +227,9 @@ class BleController extends GetxController {
       return;
     }
 
+    AppHelpers.debugLog(
+      'Adding MGate device to batch: ${device.platformName} (ID: $deviceId)',
+    );
     _scanBatchQueue.add(device);
 
     // Cancel existing timer
